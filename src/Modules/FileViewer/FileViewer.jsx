@@ -11,7 +11,7 @@ let fileFetcher = (url) => {
 const FileViewer = (props) => {
   useEffect(() => {
     fileFetcher(
-      "https://raw.githubusercontent.com/NukaWorks/ModularKit/develop/README.md"
+      "https://git.nuka.works/api/v4/projects/3/repository/files/README.md/raw"
     )
       .then((res) => {
         document.querySelector(".file-content").innerHTML = marked.parse(res);

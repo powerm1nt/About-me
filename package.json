@@ -1,8 +1,8 @@
 {
   "name": "modularkit-web",
-  "version": "1.6.2",
+  "version": "1.6.3",
   "description": "ModularKit Docs Website",
-  "repository": "https://github.com/NukaWorks/ModularKit-Web",
+  "repository": "https://git.nuka.works/nukaworks/pages/ModularKit-Web",
   "homepage": "https://modularkit.nuka.works",
   "private": true,
   "dependencies": {
