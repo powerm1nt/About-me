@@ -5,17 +5,18 @@
   align-items: center;
   justify-content: center;
   text-decoration: none !important;
-  color: white;
+  color: $bg-grey160;
   padding: 10px;
   border-radius: 3px;
   user-select: none;
   cursor: pointer;
   background-color: $text-selected;
-  transition: background-color 0.2s ease-in-out;
+  transition: all 0.2s ease-in-out;
   font-weight: 500;
 
   &:hover {
     background-color: #0475d8;
+    color: $text-selected;
   }
 }
 

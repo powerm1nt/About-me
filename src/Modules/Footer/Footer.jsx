@@ -22,7 +22,7 @@ const Footer = () => {
           width="40px"
           alt="NukaWorks Logo"
         />
-        <p>NukaWorks</p>
+        <p><span>Nuka</span>Works</p>
       </a>
 
       <div className="projAbout">
@@ -30,7 +30,7 @@ const Footer = () => {
         <a
           href={projManifest.repository}
           rel="noreferrer"
-          title="Go to ModularKit-Web ..."
+          title="Go to About me ..."
           target="_blank"
           className="buildinfo"
         >

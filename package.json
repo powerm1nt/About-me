@@ -1,15 +1,15 @@
 {
-  "name": "modularkit-web",
-  "version": "1.6.3",
-  "description": "ModularKit Docs Website",
-  "repository": "https://git.nuka.works/nukaworks/pages/ModularKit-Web",
-  "homepage": "https://modularkit.nuka.works",
+  "name": "aboutme-web",
+  "version": "1.6.4",
+  "description": "About me Website",
+  "repository": "https://central.developer.nuka.works/nukaworks/pages/About-me",
+  "homepage": "https://developer.nuka.works/team/powerm1nt",
   "private": true,
   "dependencies": {
-    "highlight.js": "^11.9.0",
-    "marked": "^12.0.2",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "highlight.js": "^11.11.1",
+    "marked": "^18.0.3",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
   },
   "scripts": {
     "start": "vite",
@@ -18,9 +18,9 @@
     "deploy": "npm run build && npm run gh-pages"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.2.1",
-    "gh-pages": "^6.1.1",
-    "sass": "^1.75.0",
-    "vite": "^5.2.10"
+    "@vitejs/plugin-react": "^6.0.1",
+    "gh-pages": "^6.3.0",
+    "sass": "^1.99.0",
+    "vite": "^8.0.10"
   }
 }

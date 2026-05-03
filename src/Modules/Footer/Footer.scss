@@ -10,13 +10,17 @@
   padding: 1em;
 
   p {
+    display: inline-flex;
     margin: 0;
-    font-size: 1em;
-    font-weight: 900;
+    font-size: 1.2rem;
+    font-weight: 100;
+    & span {
+      font-weight: 600;
+    }
   }
 
   .sunproj-logo {
-    gap: 5px;
+    gap: 0.5em;
 
     & img {
       border-radius: 50%;
