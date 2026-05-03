@@ -9,9 +9,14 @@ let fileFetcher = (url) => {
 };
 
 const FileViewer = (props) => {
+  const url = import.meta.env.DEV ?
+    "http://localhost:5173/README.md" :
+    "https://raw.githubusercontent.com/powerm1nt/About-me/refs/heads/main/README.md"
+
+
   useEffect(() => {
     fileFetcher(
-      "https://raw.githubusercontent.com/powerm1nt/About-me/refs/heads/main/README.md"
+      url
     )
       .then((res) => {
         document.querySelector(".file-content").innerHTML = marked.parse(res);
