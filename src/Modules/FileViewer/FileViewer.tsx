@@ -194,7 +194,7 @@ const FileViewer: React.FC = () => {
         <div className="file-content">
           {errorState ? (
             <Info title={`Error: ${errorState.brief}`}>
-              {errorState.stack && <p className="mdx-error-stack">{errorState.stack}</p>}
+              {errorState.stack && <p>{errorState.stack}</p>}
             </Info>
           ) : MDXContent ? (
             <MDXContent components={mdxComponents as Record<string, React.ComponentType<unknown>>} />
