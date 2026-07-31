@@ -47,6 +47,30 @@ const resolveLinkUrl = (urlStr: string, currentFile: string): string => {
 };
 
 const processDOMContent = (container: HTMLElement, currentFile: string) => {
+  // Process custom <Info> / <info> elements into HIG Confluence-style Info bubbles
+  container.querySelectorAll("info, Info, info-bubble").forEach((el) => {
+    const textAttr = el.getAttribute("text") || el.getAttribute("data-text");
+    const titleAttr = el.getAttribute("title");
+    const innerText = textAttr || el.textContent || "";
+
+    const bubble = document.createElement("div");
+    bubble.className = "cmpns cmpns-info-bubble";
+    bubble.innerHTML = `
+      <div class="info-icon-wrapper" aria-hidden="true">
+        <svg class="info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="16" x2="12" y2="12"></line>
+          <line x1="12" y1="8" x2="12.01" y2="8"></line>
+        </svg>
+      </div>
+      <div class="info-body">
+        ${titleAttr ? `<div class="info-title">${titleAttr}</div>` : ""}
+        <div class="info-content">${innerText}</div>
+      </div>
+    `;
+    el.replaceWith(bubble);
+  });
+
   // Resolve image sources to remote GitHub raw repository
   container.querySelectorAll("img").forEach((img) => {
     const rawSrc = img.getAttribute("src");
