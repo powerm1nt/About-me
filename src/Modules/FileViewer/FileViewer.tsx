@@ -107,28 +107,6 @@ const FileViewer = () => {
           return `<a href="${resolvedHref}"${title ? ` title="${title}"` : ""}${target}>${text}</a>`;
         };
 
-        customRenderer.html = ({ text }) => {
-          const infoMatch = text.match(/<(Info|info)\s+text=["']([^"']*)["']\s*\/?>/i);
-          if (infoMatch) {
-            const infoText = infoMatch[2];
-            return `
-              <div class="cmpns cmpns-info-bubble">
-                <div class="info-icon-wrapper" aria-hidden="true">
-                  <svg class="info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <line x1="12" y1="16" x2="12" y2="12"></line>
-                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                  </svg>
-                </div>
-                <div class="info-body">
-                  <div class="info-content">${infoText}</div>
-                </div>
-              </div>
-            `;
-          }
-          return text;
-        };
-
         const parsed = marked.parse(rawText, { renderer: customRenderer });
         const htmlResult = typeof parsed === "string" ? parsed : await parsed;
         setHtmlContent(htmlResult);
