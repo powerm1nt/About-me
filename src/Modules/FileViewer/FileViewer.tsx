@@ -14,9 +14,11 @@ const isExternal = (url: string): boolean => {
 };
 
 const normalizeRelativePath = (baseFile: string, relativePath: string): string => {
-  const cleanRel = relativePath.replace(/^\.\//, "");
-  if (cleanRel.startsWith("/")) {
-    return cleanRel.replace(/^\/+/, "");
+  let cleanRel = relativePath.replace(/^\.\//, "");
+  if (cleanRel.startsWith("/public/")) {
+    cleanRel = cleanRel.replace(/^\/public\//, "public/");
+  } else if (cleanRel.startsWith("/")) {
+    cleanRel = cleanRel.replace(/^\/+/, "");
   }
   const parts = baseFile.split("/");
   parts.pop(); // remove current filename
@@ -107,7 +109,6 @@ const FileViewer: React.FC = () => {
             Fragment,
             jsx,
             jsxs,
-            baseUrl: window.location.href,
             useMDXComponents: () => ({ Info }),
           });
 
