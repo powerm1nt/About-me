@@ -27,7 +27,7 @@
   padding: 1.5em;
   background-color: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.3);
-  border-radius: 8px;
+  border-left: 4px solid rgba(239, 68, 68, 0.3);
 
   h2 {
     color: #f87171;
@@ -39,14 +39,13 @@
   }
 
   .mdx-error-stack {
-    color: #9ca3af; // gray (secondary text color)
+    color: #9ca3af;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     font-size: 0.85rem;
     line-height: 1.5;
     margin: 0;
     padding: 1em;
     background: rgba(0, 0, 0, 0.4);
-    border-radius: 6px;
     max-height: 300px;
     overflow: auto;
     white-space: pre-wrap;
