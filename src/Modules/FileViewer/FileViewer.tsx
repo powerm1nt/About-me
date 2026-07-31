@@ -18,9 +18,17 @@ const normalizeRelativePath = (baseFile: string, relativePath: string): string =
     return cleanRel.replace(/^\/+/, "");
   }
   const parts = baseFile.split("/");
-  parts.pop(); // remove filename
-  const baseDir = parts.join("/");
-  return baseDir ? `${baseDir}/${cleanRel}` : cleanRel;
+  parts.pop(); // remove current filename
+
+  const relParts = cleanRel.split("/");
+  for (const part of relParts) {
+    if (part === "..") {
+      parts.pop();
+    } else if (part !== "." && part !== "") {
+      parts.push(part);
+    }
+  }
+  return parts.join("/");
 };
 
 const resolveAssetUrl = (urlStr: string, currentFile: string): string => {
