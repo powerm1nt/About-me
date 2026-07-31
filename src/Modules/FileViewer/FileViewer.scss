@@ -20,3 +20,36 @@
   padding: 2em;
   overflow: hidden;
 }
+
+.mdx-error-wrapper {
+  display: block;
+  margin: 1.5em 0;
+  padding: 1.5em;
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+
+  h2 {
+    color: #f87171;
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin-top: 0;
+    margin-bottom: 0.75em;
+    line-height: 1.4;
+  }
+
+  .mdx-error-stack {
+    color: #9ca3af; // gray (secondary text color)
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    margin: 0;
+    padding: 1em;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 6px;
+    max-height: 300px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+}

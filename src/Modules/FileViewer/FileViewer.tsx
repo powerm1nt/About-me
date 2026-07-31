@@ -89,10 +89,15 @@ type MDXComponentProps = {
   components?: Record<string, React.ComponentType<unknown>>;
 };
 
+type ErrorState = {
+  brief: string;
+  stack?: string;
+};
+
 const FileViewer: React.FC = () => {
   const [filePath, setFilePath] = useState<string>("README.mdx");
   const [MDXContent, setMDXContent] = useState<ComponentType<MDXComponentProps> | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [errorState, setErrorState] = useState<ErrorState | null>(null);
 
   useEffect(() => {
     const handleUrlChange = () => {
@@ -122,21 +127,27 @@ const FileViewer: React.FC = () => {
           });
 
           if (isMounted) {
-            setErrorMsg(null);
+            setErrorState(null);
             setMDXContent(() => CompiledComponent as ComponentType<MDXComponentProps>);
             setTimeout(() => hljs.highlightAll(), 0);
           }
         } catch (err: unknown) {
           if (isMounted) {
-            const message = err instanceof Error ? err.message : String(err);
-            setErrorMsg(`Failed to render MDX: ${message}`);
+            if (err instanceof Error) {
+              setErrorState({ brief: err.message, stack: err.stack });
+            } else {
+              setErrorState({ brief: String(err) });
+            }
           }
         }
       })
       .catch((err: unknown) => {
         if (isMounted) {
-          const message = err instanceof Error ? err.message : String(err);
-          setErrorMsg(message || `Unable to fetch requested page: ${filePath}`);
+          if (err instanceof Error) {
+            setErrorState({ brief: err.message, stack: err.stack });
+          } else {
+            setErrorState({ brief: String(err) });
+          }
         }
       });
 
@@ -181,8 +192,11 @@ const FileViewer: React.FC = () => {
     <main className="main-content">
       <div className="main-content-container">
         <div className="file-content">
-          {errorMsg ? (
-            <h1>{errorMsg}</h1>
+          {errorState ? (
+            <span className="mdx-error-wrapper">
+              <h2>Error: {errorState.brief}</h2>
+              {errorState.stack && <p className="mdx-error-stack">{errorState.stack}</p>}
+            </span>
           ) : MDXContent ? (
             <MDXContent components={mdxComponents as Record<string, React.ComponentType<unknown>>} />
           ) : (
