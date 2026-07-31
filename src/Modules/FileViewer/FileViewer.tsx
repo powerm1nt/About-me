@@ -46,34 +46,40 @@ const resolveLinkUrl = (urlStr: string, currentFile: string): string => {
   return `${GITHUB_REPO_BASE}${path}`;
 };
 
-const preprocessMDXSelfClosingTags = (text: string): string => {
-  // Expand self-closing <Info ... /> and <info ... /> tags into explicit <Info ...></Info>
-  // so the HTML parser does not treat them as unclosed parent elements that wrap the rest of the document!
-  return text
-    .replace(/<Info\s+([^>]*?)\/>/gi, '<Info $1></Info>')
-    .replace(/<info\s+([^>]*?)\/>/gi, '<info $1></info>');
+const preprocessInfoTags = (rawText: string): string => {
+  // Convert any <Info ... /> or <info ...> tags into a clean standard HTML div placeholder
+  // BEFORE marked.parse runs, preventing marked from treating unclosed tags as raw HTML blocks that consume the rest of the document!
+  return rawText.replace(/<(Info|info|info-bubble)\s+([^>]*?)(\/>|>(.*?)<\/(Info|info|info-bubble)>)/gi, (_match, _tag, attrs, _end, content) => {
+    const textMatch = attrs.match(/text=["']([^"']*)["']/i);
+    const titleMatch = attrs.match(/title=["']([^"']*)["']/i);
+    const text = textMatch ? textMatch[1] : (content || "");
+    const title = titleMatch ? titleMatch[1] : "";
+    return `\n\n<div class="cmpns-info-placeholder" data-text="${encodeURIComponent(text)}" data-title="${encodeURIComponent(title)}"></div>\n\n`;
+  });
 };
 
 const processDOMContent = (container: HTMLElement, currentFile: string) => {
   // Process custom <Info> / <info> elements into HIG Confluence-style Info bubbles
-  container.querySelectorAll("info, Info, info-bubble").forEach((el) => {
-    const textAttr = el.getAttribute("text") || el.getAttribute("data-text");
-    const titleAttr = el.getAttribute("title");
-    const innerText = textAttr || el.getAttribute("content") || el.textContent || "";
+  container.querySelectorAll(".cmpns-info-placeholder, info, Info, info-bubble").forEach((el) => {
+    const rawText = el.getAttribute("data-text");
+    const textAttr = rawText ? decodeURIComponent(rawText) : (el.getAttribute("text") || el.getAttribute("content") || el.textContent || "");
+    const rawTitle = el.getAttribute("data-title");
+    const titleAttr = rawTitle ? decodeURIComponent(rawTitle) : (el.getAttribute("title") || "");
 
     const bubble = document.createElement("div");
     bubble.className = "cmpns cmpns-info-bubble";
+    bubble.style.cssText = "display: flex !important; width: 100% !important; box-sizing: border-box !important; margin: 1.2em 0 !important; padding: 1em !important; border: 1px solid #ffffff !important; border-left: 4px solid #ffffff !important; border-radius: 8px !important; background-color: rgba(30, 58, 138, 0.35) !important; color: #ffffff !important; align-items: center !important; gap: 1em !important;";
     bubble.innerHTML = `
-      <div class="info-icon-wrapper" aria-hidden="true">
-        <svg class="info-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <div class="info-icon-wrapper" style="display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 24px; height: 24px; color: #ffffff;" aria-hidden="true">
+        <svg class="info-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px; min-width: 20px; min-height: 20px; display: block;">
           <circle cx="12" cy="12" r="10"></circle>
           <line x1="12" y1="16" x2="12" y2="12"></line>
           <line x1="12" y1="8" x2="12.01" y2="8"></line>
         </svg>
       </div>
-      <div class="info-body">
-        ${titleAttr ? `<div class="info-title">${titleAttr}</div>` : ""}
-        <div class="info-content">${innerText}</div>
+      <div class="info-body" style="display: flex; flex-direction: column; justify-content: center; flex: 1; color: #ffffff;">
+        ${titleAttr ? `<div class="info-title" style="font-weight: 700; color: #ffffff; font-size: 0.95rem; margin-bottom: 0.2em;">${titleAttr}</div>` : ""}
+        <div class="info-content" style="font-weight: 400; color: #ffffff; line-height: 1.5;">${textAttr}</div>
       </div>
     `;
     el.replaceWith(bubble);
@@ -102,7 +108,7 @@ const processDOMContent = (container: HTMLElement, currentFile: string) => {
 };
 
 const parseMDXOrMarkdown = async (rawText: string): Promise<string> => {
-  const preprocessed = preprocessMDXSelfClosingTags(rawText);
+  const preprocessed = preprocessInfoTags(rawText);
   try {
     await compile(preprocessed, { jsx: true });
   } catch {
