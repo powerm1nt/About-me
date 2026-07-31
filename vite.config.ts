@@ -9,8 +9,8 @@ export default defineConfig({
     {
       name: "copy-public-to-dist-public",
       closeBundle() {
-        const publicDir = path.resolve(__dirname, "public");
-        const distPublicDir = path.resolve(__dirname, "dist/public");
+        const publicDir = path.resolve(import.meta.dirname, "public");
+        const distPublicDir = path.resolve(import.meta.dirname, "dist/public");
         if (fs.existsSync(publicDir)) {
           fs.mkdirSync(distPublicDir, { recursive: true });
           fs.cpSync(publicDir, distPublicDir, { recursive: true });
