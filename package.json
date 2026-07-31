@@ -19,6 +19,7 @@
     "deploy": "pnpm build && pnpm gh-pages"
   },
   "dependencies": {
+    "@mdx-js/mdx": "^3.1.1",
     "highlight.js": "^11.11.1",
     "marked": "^18.0.7",
     "react": "^19.2.8",
@@ -27,6 +28,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/gh-pages": "^6.1.0",
+    "@types/mdx": "^2.0.14",
     "@types/node": "^26.1.2",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
