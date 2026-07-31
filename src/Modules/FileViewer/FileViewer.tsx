@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, ComponentType } from "react";
 import "./FileViewer.scss";
-import { marked } from "marked";
+import { evaluate } from "@mdx-js/mdx";
+import { Fragment, jsx, jsxs } from "react/jsx-runtime";
 import hljs from "highlight.js";
 import "./_hljs.scss";
-import "../../Common/Components/Info/Info.scss";
+import Info from "../../Common/Components/Info/Info";
 
 const RAW_REPO_BASE = "https://raw.githubusercontent.com/powerm1nt/About-me/main/";
 const GITHUB_REPO_BASE = "https://github.com/powerm1nt/About-me/blob/main/";
@@ -75,9 +76,14 @@ const fetchFileContent = async (file: string): Promise<string> => {
   throw new Error(`Failed to load ${file} (HTTP ${primaryRes.status})`);
 };
 
-const FileViewer = () => {
+type MDXComponentProps = {
+  components?: Record<string, React.ComponentType<unknown>>;
+};
+
+const FileViewer: React.FC = () => {
   const [filePath, setFilePath] = useState<string>("README.mdx");
-  const [htmlContent, setHtmlContent] = useState<string>("");
+  const [MDXContent, setMDXContent] = useState<ComponentType<MDXComponentProps> | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     const handleUrlChange = () => {
@@ -92,64 +98,87 @@ const FileViewer = () => {
   }, []);
 
   useEffect(() => {
+    let isMounted = true;
+
     fetchFileContent(filePath)
       .then(async (rawText) => {
-        const customRenderer = new marked.Renderer();
+        try {
+          const { default: CompiledComponent } = await evaluate(rawText, {
+            Fragment,
+            jsx,
+            jsxs,
+            baseUrl: window.location.href,
+            useMDXComponents: () => ({ Info }),
+          });
 
-        customRenderer.image = ({ href, title, text }) => {
-          const resolvedSrc = resolveAssetUrl(href, filePath);
-          return `<img src="${resolvedSrc}" alt="${text || ""}"${title ? ` title="${title}"` : ""} />`;
-        };
-
-        customRenderer.link = ({ href, title, text }) => {
-          const resolvedHref = resolveLinkUrl(href, filePath);
-          const target = resolvedHref.startsWith("?") ? "" : ' target="_blank" rel="noreferrer"';
-          return `<a href="${resolvedHref}"${title ? ` title="${title}"` : ""}${target}>${text}</a>`;
-        };
-
-        const parsed = marked.parse(rawText, { renderer: customRenderer });
-        const htmlResult = typeof parsed === "string" ? parsed : await parsed;
-        setHtmlContent(htmlResult);
-        setTimeout(() => hljs.highlightAll(), 0);
+          if (isMounted) {
+            setErrorMsg(null);
+            setMDXContent(() => CompiledComponent as ComponentType<MDXComponentProps>);
+            setTimeout(() => hljs.highlightAll(), 0);
+          }
+        } catch (err: unknown) {
+          if (isMounted) {
+            const message = err instanceof Error ? err.message : String(err);
+            setErrorMsg(`Failed to render MDX: ${message}`);
+          }
+        }
       })
-      .catch(() => {
-        setHtmlContent(`<h1>Unable to fetch requested page: ${filePath}</h1>`);
+      .catch((err: unknown) => {
+        if (isMounted) {
+          const message = err instanceof Error ? err.message : String(err);
+          setErrorMsg(message || `Unable to fetch requested page: ${filePath}`);
+        }
       });
+
+    return () => {
+      isMounted = false;
+    };
   }, [filePath]);
 
-  const handleContentClick = (e: React.MouseEvent<HTMLElement>) => {
-    const target = e.target as HTMLElement;
-    const anchor = target.closest("a");
-    if (!anchor) return;
-
-    const href = anchor.getAttribute("href");
-    if (!href) return;
-
-    if (href.startsWith("?file=")) {
-      e.preventDefault();
-      const params = new URLSearchParams(href);
-      const targetFile = params.get("file");
-      if (targetFile) {
-        window.history.pushState({}, "", href);
-        setFilePath(targetFile);
-      }
-    } else if (!isExternal(href) && (href.endsWith(".md") || href.endsWith(".mdx"))) {
-      e.preventDefault();
-      const normalized = normalizeRelativePath(filePath, href);
-      const newUrl = `?file=${encodeURIComponent(normalized)}`;
-      window.history.pushState({}, "", newUrl);
-      setFilePath(normalized);
-    }
+  const mdxComponents = {
+    Info,
+    img: (props: React.ImgHTMLAttributes<HTMLImageElement>) => {
+      const resolvedSrc = props.src ? resolveAssetUrl(props.src, filePath) : "";
+      return <img {...props} src={resolvedSrc} />;
+    },
+    a: (props: React.AnchorHTMLAttributes<HTMLAnchorElement>) => {
+      const resolvedHref = props.href ? resolveLinkUrl(props.href, filePath) : "";
+      const isTargetExternal = !resolvedHref.startsWith("?");
+      return (
+        <a
+          {...props}
+          href={resolvedHref}
+          target={isTargetExternal ? "_blank" : undefined}
+          rel={isTargetExternal ? "noreferrer" : undefined}
+          onClick={(e) => {
+            if (props.onClick) props.onClick(e);
+            if (resolvedHref.startsWith("?")) {
+              e.preventDefault();
+              const params = new URLSearchParams(resolvedHref);
+              const targetFile = params.get("file");
+              if (targetFile) {
+                window.history.pushState({}, "", resolvedHref);
+                setFilePath(targetFile);
+              }
+            }
+          }}
+        />
+      );
+    },
   };
 
   return (
     <main className="main-content">
       <div className="main-content-container">
-        <div
-          className="file-content"
-          dangerouslySetInnerHTML={{ __html: htmlContent }}
-          onClick={handleContentClick}
-        />
+        <div className="file-content">
+          {errorMsg ? (
+            <h1>{errorMsg}</h1>
+          ) : MDXContent ? (
+            <MDXContent components={mdxComponents as Record<string, React.ComponentType<unknown>>} />
+          ) : (
+            <p>Loading...</p>
+          )}
+        </div>
       </div>
     </main>
   );
