@@ -49,6 +49,13 @@ const resolveLinkUrl = (urlStr: string, currentFile: string): string => {
   return `${GITHUB_REPO_BASE}${path}`;
 };
 
+const stripMDXImportsAndExports = (text: string): string => {
+  // Strip import statements (e.g. import Info from "...") to prevent MDX evaluate from requiring baseUrl / dynamic HTTP fetches
+  return text
+    .replace(/^import\s+[\s\S]*?from\s+['"][^'"]*['"];?/gm, "")
+    .replace(/^import\s+['"][^'"]*['"];?/gm, "");
+};
+
 const fetchFileContent = async (file: string): Promise<string> => {
   if (import.meta.env.DEV && (file === "README.mdx" || file === "README.md")) {
     try {
@@ -105,10 +112,12 @@ const FileViewer: React.FC = () => {
     fetchFileContent(filePath)
       .then(async (rawText) => {
         try {
-          const { default: CompiledComponent } = await evaluate(rawText, {
+          const cleanedText = stripMDXImportsAndExports(rawText);
+          const { default: CompiledComponent } = await evaluate(cleanedText, {
             Fragment,
             jsx,
             jsxs,
+            baseUrl: window.location.href,
             useMDXComponents: () => ({ Info }),
           });
 
