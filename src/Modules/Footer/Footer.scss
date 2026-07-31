@@ -1,4 +1,4 @@
-@import "/src/Common/main.scss";
+@use "/src/Common/main" as *;
 
 .main-footer {
   background-color: $shared-grey170;

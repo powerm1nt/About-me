@@ -1,4 +1,3 @@
-import React from "react";
 import logo from "./pfp.jpg";
 
 const HeadlineLogo = () => {
@@ -8,12 +7,12 @@ const HeadlineLogo = () => {
       style={{
         display: "flex",
         alignItems: "center",
-        gap: "0.5em"
+        gap: "0.5em",
       }}
     >
       <img
         style={{
-          borderRadius: "100%"
+          borderRadius: "100%",
         }}
         className="logo"
         src={logo}
@@ -22,10 +21,10 @@ const HeadlineLogo = () => {
         alt="About me"
       />
       <p
-       style={{
-         fontWeight: '400',
-         fontSize: '1.2rem'
-       }}
+        style={{
+          fontWeight: "400",
+          fontSize: "1.2rem",
+        }}
       >
         About me
       </p>

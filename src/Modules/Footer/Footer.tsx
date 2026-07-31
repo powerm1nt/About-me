@@ -1,4 +1,3 @@
-import React from "react";
 import "./Footer.scss";
 import projManifest from "../../../package.json";
 import logo from "./logo.png";
@@ -22,7 +21,9 @@ const Footer = () => {
           width="40px"
           alt="NukaWorks Logo"
         />
-        <p><span>Nuka</span>Works</p>
+        <p>
+          <span>Nuka</span>Works
+        </p>
       </a>
 
       <div className="projAbout">

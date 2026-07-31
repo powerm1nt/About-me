@@ -1,4 +1,5 @@
-@import './Theme/Default/theme.scss';
+@forward './Theme/Default/theme';
+@use './Theme/Default/theme' as *;
 
 ::-webkit-scrollbar {
   width: 0.5em;
@@ -12,7 +13,7 @@
     background: $bg-content;
     border-radius: 1em;
   }
-} 
+}
 
 ::selection {
   background: $text-selected;
@@ -44,7 +45,7 @@ h1 {
 
 a {
   color: inherit;
-  transition: color, 0.1s ease-in-out;
+  transition: color 0.1s ease-in-out;
   text-decoration: underline dotted;
 
   &:hover {

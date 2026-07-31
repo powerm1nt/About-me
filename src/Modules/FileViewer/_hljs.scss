@@ -1,4 +1,4 @@
-@import "/src/Common/main.scss";
+@use "/src/Common/main" as *;
 
 code.hljs {
   padding: 20px;
@@ -11,7 +11,7 @@ code.hljs {
   overflow-x: auto;
 
   @media screen and (max-width: 800px) {
-    width: clamp(55%, 1200px, calc(100% - 30px));;
+    width: clamp(55%, 1200px, calc(100% - 30px));
   }
 
   &::-webkit-scrollbar {
@@ -21,7 +21,6 @@ code.hljs {
     &-track {
       background: $bg-main;
       border-radius: 10px;
-
     }
 
     &-thumb {
@@ -51,7 +50,6 @@ code.hljs {
   &-selector-tag {
     color: #00e01e;
     font-weight: bold;
-
   }
 
   &-tag &-attr,

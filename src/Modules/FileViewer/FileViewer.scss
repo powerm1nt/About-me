@@ -1,4 +1,4 @@
-@import "/src/Common/main.scss";
+@use "/src/Common/main" as *;
 
 :root {
   --site-width: clamp(280px, 90%, 1420px);
@@ -11,7 +11,7 @@
   &-container {
     width: 100%;
     min-height: 100vh;
-   background: $bg-grey160;
+    background: $bg-grey160;
     overflow: hidden;
   }
 }

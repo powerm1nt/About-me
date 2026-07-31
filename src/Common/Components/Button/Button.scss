@@ -1,4 +1,4 @@
-@import "../../main.scss";
+@use "../../main" as *;
 
 .cmpns-button {
   display: flex;

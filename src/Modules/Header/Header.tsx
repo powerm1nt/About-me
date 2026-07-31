@@ -1,7 +1,6 @@
-import React from "react";
 import "./Header.scss";
 import HeadlineLogo from "../../Common/Components/HeadlineLogo/HeadlineLogo";
-import Button from "../../Common/Components/Button/Button.jsx";
+import Button from "../../Common/Components/Button/Button";
 
 const Header = () => {
   return (
