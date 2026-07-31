@@ -46,12 +46,20 @@ const resolveLinkUrl = (urlStr: string, currentFile: string): string => {
   return `${GITHUB_REPO_BASE}${path}`;
 };
 
+const preprocessMDXSelfClosingTags = (text: string): string => {
+  // Expand self-closing <Info ... /> and <info ... /> tags into explicit <Info ...></Info>
+  // so the HTML parser does not treat them as unclosed parent elements that wrap the rest of the document!
+  return text
+    .replace(/<Info\s+([^>]*?)\/>/gi, '<Info $1></Info>')
+    .replace(/<info\s+([^>]*?)\/>/gi, '<info $1></info>');
+};
+
 const processDOMContent = (container: HTMLElement, currentFile: string) => {
   // Process custom <Info> / <info> elements into HIG Confluence-style Info bubbles
   container.querySelectorAll("info, Info, info-bubble").forEach((el) => {
     const textAttr = el.getAttribute("text") || el.getAttribute("data-text");
     const titleAttr = el.getAttribute("title");
-    const innerText = textAttr || el.textContent || "";
+    const innerText = textAttr || el.getAttribute("content") || el.textContent || "";
 
     const bubble = document.createElement("div");
     bubble.className = "cmpns cmpns-info-bubble";
@@ -94,13 +102,13 @@ const processDOMContent = (container: HTMLElement, currentFile: string) => {
 };
 
 const parseMDXOrMarkdown = async (rawText: string): Promise<string> => {
+  const preprocessed = preprocessMDXSelfClosingTags(rawText);
   try {
-    // Attempt MDX compilation check
-    await compile(rawText, { jsx: true });
+    await compile(preprocessed, { jsx: true });
   } catch {
     // Fallback if MDX compilation encounters strict JSX syntax variations
   }
-  const parsed = marked.parse(rawText);
+  const parsed = marked.parse(preprocessed);
   return typeof parsed === "string" ? parsed : await parsed;
 };
 
