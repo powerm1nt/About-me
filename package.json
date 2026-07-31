@@ -2,7 +2,7 @@
   "name": "aboutme-web",
   "version": "1.6.4",
   "description": "About me Website",
-  "repository": "https://central.developer.nuka.works/nukaworks/pages/About-me",
+  "repository": "https://github.com/powerm1nt/About-me",
   "homepage": "https://developer.nuka.works/team/powerm1nt",
   "private": true,
   "type": "module",

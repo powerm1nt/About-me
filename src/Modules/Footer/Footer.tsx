@@ -27,7 +27,7 @@ const Footer = () => {
       </a>
 
       <div className="projAbout">
-        <p>© {new Date().getFullYear()} NukaWorks - All rights reserved.</p>
+        <p>© {new Date().getFullYear()} NukaWorks Solutions - All rights reserved.</p>
         <a
           href={projManifest.repository}
           rel="noreferrer"
