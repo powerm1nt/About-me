@@ -11,8 +11,16 @@ export interface InfoProps {
 export default function Info({ text, title, children, className = "" }: InfoProps) {
   const content = text || children;
 
+  const checkString = [
+    title,
+    text,
+    typeof children === "string" ? children : ""
+  ].filter(Boolean).join(" ");
+
+  const hasTypeError = /TypeError:/i.test(checkString);
+
   return (
-    <div className={`cmpns cmpns-info-bubble ${className}`}>
+    <div className={`cmpns cmpns-info-bubble ${hasTypeError ? "is-type-error" : ""} ${className}`.trim()}>
       <div className="info-icon-wrapper" aria-hidden="true">
         <svg
           className="info-icon"

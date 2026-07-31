@@ -16,6 +16,12 @@
   font-size: 0.95rem;
   line-height: 1.5;
 
+  &.is-type-error,
+  &.is-type-error .info-title,
+  &.is-type-error .info-content {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  }
+
   .info-icon-wrapper {
     display: inline-flex;
     align-items: center;
