@@ -2,12 +2,22 @@
 
 .main-footer {
   background-color: $shared-grey170;
-  display: flex;
-  justify-content: space-between;
-  flex-flow: row wrap;
-  align-items: center;
-  font-family: "Outfit", sans-serif;
-  padding: 1em;
+  width: 100%;
+
+  .footer-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    flex-flow: row wrap;
+    align-items: center;
+    font-family: "Outfit", sans-serif;
+    padding: 1em 2em;
+
+    @media screen and (max-width: 600px) {
+      padding: 1em 1em;
+    }
+  }
 
   p {
     display: inline-flex;
