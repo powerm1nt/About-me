@@ -19,6 +19,15 @@
 .file-content {
   padding: 2em;
   overflow: hidden;
+
+  img {
+    max-width: 100%;
+    height: auto;
+    border: 1px solid #ffffff;
+    border-left: 4px solid #ffffff;
+    border-radius: 0;
+    margin: 1em 0;
+  }
 }
 
 .article-header-meta {
