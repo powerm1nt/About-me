@@ -142,7 +142,7 @@ export const generateMetadata = () => {
   for (const relPath of Object.keys(metadataMap)) {
     if (relPath === "README.mdx") continue;
     const loc = `${baseUrl}/?file=${encodeURIComponent(relPath)}`;
-    const lastmod = metadataMap[relPath].lastEditedIso || new Date().toISOString();
+    const lastmod = metadataMap[relPath]?.lastEditedIso || new Date().toISOString();
     sitemapXml += `  <url>\n    <loc>${loc.replace(/&/g, "&amp;")}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.8</priority>\n  </url>\n`;
   }
   sitemapXml += `</urlset>\n`;
