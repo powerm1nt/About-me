@@ -38,6 +38,16 @@ const normalizeRelativePath = (baseFile: string, relativePath: string): string =
 
 const resolveAssetUrl = (urlStr: string, currentFile: string): string => {
   if (!urlStr || isExternal(urlStr)) return urlStr;
+
+  let cleanPath = urlStr.replace(/^\.\//, "");
+  if (cleanPath.startsWith("/public/")) cleanPath = cleanPath.slice(8);
+  else if (cleanPath.startsWith("public/")) cleanPath = cleanPath.slice(7);
+  else if (cleanPath.startsWith("/")) cleanPath = cleanPath.slice(1);
+
+  if (import.meta.env.DEV) {
+    return `/${cleanPath}`;
+  }
+
   const path = normalizeRelativePath(currentFile, urlStr);
   return `${RAW_REPO_BASE}${path}`;
 };
