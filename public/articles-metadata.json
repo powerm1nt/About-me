@@ -1,0 +1,38 @@
+{
+  "README.mdx": {
+    "filePath": "README.mdx",
+    "title": "About Me",
+    "description": "Welcome to my portfolio, software projects, and engineering blog.",
+    "author": "Pookie (powerm1nt)",
+    "lastEditedIso": "2026-07-31T16:14:17-04:00",
+    "lastEdited": "2026-07-31 16:14",
+    "created": "2021-07-30 16:10"
+  },
+  "blog/building-modular-apps.mdx": {
+    "filePath": "blog/building-modular-apps.mdx",
+    "title": "Building Modular Applications with ModularKit",
+    "description": "Creating software that is clean, fast, and easy to maintain using ModularKit.",
+    "author": "Pookie (powerm1nt)",
+    "lastEditedIso": "2026-07-31T17:04:47-04:00",
+    "lastEdited": "2026-07-31 17:04",
+    "created": "2026-07-31 16:14"
+  },
+  "blog/index.mdx": {
+    "filePath": "blog/index.mdx",
+    "title": "Blog & Writings",
+    "description": "Articles, technical notes, and architecture insights by Pookie.",
+    "author": "Pookie (powerm1nt)",
+    "lastEditedIso": "2026-07-31T16:24:08-04:00",
+    "lastEdited": "2026-07-31 16:24",
+    "created": "2026-07-31 16:14"
+  },
+  "blog/welcome.mdx": {
+    "filePath": "blog/welcome.mdx",
+    "title": "Welcome to My Blog!",
+    "description": "Introduction to my blog where I share software design patterns, modularity guides, and development logs.",
+    "author": "Pookie (powerm1nt)",
+    "lastEditedIso": "2026-07-31T16:14:17-04:00",
+    "lastEdited": "2026-07-31 16:14",
+    "created": "2026-07-31 16:14"
+  }
+}
