@@ -263,9 +263,9 @@ const FileViewer: React.FC = () => {
 
     return (
       <footer className="article-footer-nav">
-        {(prevArticle || nextArticle) && (
-          <div className="article-nav-prev-next">
-            {prevArticle ? (
+        <div className="article-nav-row">
+          <div className="nav-cell nav-cell-prev">
+            {prevArticle && (
               <a
                 href={`?file=${encodeURIComponent(prevArticle.filePath)}`}
                 className="nav-link prev-link"
@@ -273,10 +273,43 @@ const FileViewer: React.FC = () => {
               >
                 ← {prevArticle.title}
               </a>
-            ) : (
-              <div />
             )}
-            {nextArticle ? (
+          </div>
+
+          <div className="nav-cell nav-cell-middle">
+            {isBlogPage && !isBlogIndex && (
+              <>
+                <a
+                  href="?file=blog/index.mdx"
+                  className="breadcrumb-link"
+                  onClick={(e) => handleNavClick(e, "blog/index.mdx")}
+                >
+                  Blog Index
+                </a>
+                <span className="nav-separator">|</span>
+              </>
+            )}
+            {filePath !== "README.mdx" ? (
+              <a
+                href="?file=README.mdx"
+                className="breadcrumb-link"
+                onClick={(e) => handleNavClick(e, "README.mdx")}
+              >
+                Home
+              </a>
+            ) : (
+              <a
+                href="?file=blog/index.mdx"
+                className="breadcrumb-link"
+                onClick={(e) => handleNavClick(e, "blog/index.mdx")}
+              >
+                Explore Blog →
+              </a>
+            )}
+          </div>
+
+          <div className="nav-cell nav-cell-next">
+            {nextArticle && (
               <a
                 href={`?file=${encodeURIComponent(nextArticle.filePath)}`}
                 className="nav-link next-link"
@@ -284,42 +317,8 @@ const FileViewer: React.FC = () => {
               >
                 {nextArticle.title} →
               </a>
-            ) : (
-              <div />
             )}
           </div>
-        )}
-
-        <div className="article-nav-breadcrumbs">
-          {isBlogPage && !isBlogIndex && (
-            <>
-              <a
-                href="?file=blog/index.mdx"
-                className="breadcrumb-link"
-                onClick={(e) => handleNavClick(e, "blog/index.mdx")}
-              >
-                ← Back to Blog Index
-              </a>
-              <span className="nav-separator">|</span>
-            </>
-          )}
-          {filePath !== "README.mdx" ? (
-            <a
-              href="?file=README.mdx"
-              className="breadcrumb-link"
-              onClick={(e) => handleNavClick(e, "README.mdx")}
-            >
-              Home
-            </a>
-          ) : (
-            <a
-              href="?file=blog/index.mdx"
-              className="breadcrumb-link"
-              onClick={(e) => handleNavClick(e, "blog/index.mdx")}
-            >
-              Explore Blog →
-            </a>
-          )}
         </div>
       </footer>
     );
