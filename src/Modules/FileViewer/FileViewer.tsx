@@ -217,6 +217,7 @@ const FileViewer: React.FC = () => {
     e.preventDefault();
     const newUrl = `?file=${encodeURIComponent(targetFile)}`;
     window.history.pushState({}, "", newUrl);
+    window.dispatchEvent(new Event("popstate"));
     setFilePath(targetFile);
   };
 
@@ -245,6 +246,7 @@ const FileViewer: React.FC = () => {
               const targetFile = params.get("file");
               if (targetFile) {
                 window.history.pushState({}, "", resolvedHref);
+                window.dispatchEvent(new Event("popstate"));
                 setFilePath(targetFile);
               }
             }

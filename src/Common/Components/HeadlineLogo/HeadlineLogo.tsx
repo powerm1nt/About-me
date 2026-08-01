@@ -7,26 +7,28 @@ const HeadlineLogo = () => {
       style={{
         display: "flex",
         alignItems: "center",
-        gap: "0.5em",
+        gap: "0.6em",
       }}
     >
       <img
         style={{
           borderRadius: "100%",
+          objectFit: "cover",
         }}
         className="logo"
         src={logo}
-        height="48px"
-        width="48px"
-        alt="About me"
+        height="44px"
+        width="44px"
+        alt="Pookie"
       />
       <p
         style={{
-          fontWeight: "400",
+          fontWeight: "700",
           fontSize: "1.2rem",
+          margin: 0,
         }}
       >
-        About me
+        Pookie
       </p>
     </div>
   );

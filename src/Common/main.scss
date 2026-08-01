@@ -20,9 +20,10 @@
   color: #000000 !important;
 }
 
-body {
+html, body {
   padding: 0;
   margin: 0;
+  background-color: $shared-grey170;
 }
 
 #root {
@@ -45,7 +46,7 @@ h1 {
 
 a {
   color: inherit;
-  transition: color 0.1s ease-in-out;
+  transition: color 0.15s ease-in-out;
   text-decoration: underline dotted;
 
   &:hover {

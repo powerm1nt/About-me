@@ -1,3 +1,4 @@
+import React from "react";
 import articlesData from "../../../generated/articles-metadata.json";
 import "./BlogIndex.scss";
 
@@ -15,6 +16,13 @@ export default function BlogIndex() {
     (item) => item.filePath.startsWith("blog/") && item.filePath !== "blog/index.mdx"
   );
 
+  const handleArticleClick = (e: React.MouseEvent<HTMLAnchorElement>, targetFile: string) => {
+    e.preventDefault();
+    const newUrl = `?file=${encodeURIComponent(targetFile)}`;
+    window.history.pushState({}, "", newUrl);
+    window.dispatchEvent(new Event("popstate"));
+  };
+
   return (
     <div className="blog-index-container">
       <h2>Articles</h2>
@@ -22,7 +30,12 @@ export default function BlogIndex() {
         {articles.map((art) => (
           <article key={art.filePath} className="blog-index-card">
             <h3 className="blog-card-title">
-              <a href={`?file=${encodeURIComponent(art.filePath)}`}>{art.title}</a>
+              <a
+                href={`?file=${encodeURIComponent(art.filePath)}`}
+                onClick={(e) => handleArticleClick(e, art.filePath)}
+              >
+                {art.title}
+              </a>
             </h3>
             {art.description && <p className="blog-card-desc">{art.description}</p>}
             <div className="blog-card-meta">
