@@ -7,30 +7,25 @@
     font-size: 1.3rem;
     color: #ffffff;
     margin-bottom: 1em;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    border-bottom: 1px solid #ffffff;
     padding-bottom: 0.4em;
   }
 
   .blog-index-list {
     display: flex;
     flex-direction: column;
-    gap: 1.2em;
+    gap: 1em;
   }
 
   .blog-index-card {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 8px;
-    padding: 1.2em 1.4em;
-    transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
-
-    &:hover {
-      background: rgba(255, 255, 255, 0.06);
-      border-color: rgba(255, 255, 255, 0.25);
-    }
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 0;
+    padding: 0.8em 0;
 
     .blog-card-title {
-      margin: 0 0 0.4em 0;
+      margin: 0 0 0.3em 0;
       font-size: 1.15rem;
 
       a {
@@ -48,28 +43,30 @@
       color: #cbd5e1;
       font-size: 0.95rem;
       line-height: 1.5;
-      margin: 0 0 0.8em 0;
+      margin: 0 0 0.6em 0;
     }
 
     .blog-card-meta {
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      justify-content: flex-start;
+      gap: 1em;
       flex-wrap: wrap;
-      gap: 0.8em;
       font-size: 0.85rem;
       color: #94a3b8;
 
       .blog-card-author {
         font-weight: 500;
+        color: #e2e8f0;
       }
 
       .blog-card-last-edited {
         font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-        background: rgba(255, 255, 255, 0.06);
-        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: #000000;
+        border: 1px solid #ffffff;
+        border-left: 4px solid #ffffff;
         padding: 0.2em 0.6em;
-        border-radius: 4px;
+        border-radius: 0;
         color: #9ca3af;
         display: inline-flex;
         align-items: center;
