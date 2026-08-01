@@ -26,10 +26,10 @@ html, body {
   margin: 0;
   background-color: $bg-main;
   background-image: 
-    linear-gradient(45deg, rgba(255, 255, 255, 0.03) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.03) 75%),
-    linear-gradient(45deg, rgba(255, 255, 255, 0.03) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.03) 75%);
-  background-position: 0 0, 2px 2px;
-  background-size: 4px 4px;
+    linear-gradient(45deg, rgba(255, 255, 255, 0.04) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.04) 75%),
+    linear-gradient(45deg, rgba(255, 255, 255, 0.04) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.04) 75%);
+  background-position: 0 0, 1px 1px;
+  background-size: 2px 2px;
 }
 
 #root {
