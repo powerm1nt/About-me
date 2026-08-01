@@ -32,6 +32,18 @@ html, body {
   background-size: 2px 2px;
 }
 
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: url("/paper-texture.jpg");
+  background-size: cover;
+  opacity: 0.06;
+  filter: grayscale(1) contrast(1.5);
+  pointer-events: none;
+  z-index: 9999;
+}
+
 #root {
   box-sizing: border-box;
   font-size: clamp(12px, 3vw, 16px);
