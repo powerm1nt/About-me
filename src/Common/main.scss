@@ -24,6 +24,8 @@ html, body {
   padding: 0;
   margin: 0;
   background-color: $shared-grey170;
+  background-image: url("/graphy-dark.png");
+  background-repeat: repeat;
 }
 
 #root {
@@ -36,7 +38,7 @@ html, body {
   justify-content: space-between;
   font-family: "Outfit", sans-serif;
   font-weight: 300;
-  background-color: $bg-main;
+  background-color: transparent;
   width: 100%;
 }
 
