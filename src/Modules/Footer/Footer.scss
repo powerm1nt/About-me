@@ -5,17 +5,17 @@
   width: 100%;
 
   .footer-container {
-    max-width: 1400px;
+    width: clamp(280px, 85%, 1200px);
     margin: 0 auto;
     display: flex;
     justify-content: space-between;
     flex-flow: row wrap;
     align-items: center;
     font-family: "Outfit", sans-serif;
-    padding: 1em 2em;
+    padding: 1em 0;
 
-    @media screen and (max-width: 600px) {
-      padding: 1em 1em;
+    @media screen and (max-width: 768px) {
+      width: 95%;
     }
   }
 

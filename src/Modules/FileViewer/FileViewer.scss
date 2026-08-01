@@ -12,17 +12,16 @@
     overflow: hidden;
     display: flex;
     justify-content: center;
-    padding: 2.5em 1.5em;
+    padding: 2.5em 0;
 
     @media screen and (max-width: 600px) {
-      padding: 1em 0.5em;
+      padding: 1em 0;
     }
   }
 }
 
 .file-content {
-  width: 100%;
-  max-width: 1120px; // Generous, clean reading format for wide screens
+  width: clamp(280px, 85%, 1200px);
   min-height: 700px;
   padding: 3em 3.5em;
   background: #121212;
@@ -33,6 +32,7 @@
   overflow: hidden;
 
   @media screen and (max-width: 768px) {
+    width: 95%;
     padding: 2em 1.25em;
     min-height: auto;
   }
