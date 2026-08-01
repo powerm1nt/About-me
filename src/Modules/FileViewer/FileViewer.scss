@@ -21,11 +21,12 @@
 }
 
 .file-content {
+  position: relative;
   width: clamp(280px, 85%, 1200px);
   min-height: 700px;
   padding: 3em 3.5em;
   background-color: #121212;
-  background-image: linear-gradient(rgba(18, 18, 18, 0.82), rgba(18, 18, 18, 0.82)), url("/paper-texture.jpg");
+  background-image: linear-gradient(rgba(18, 18, 18, 0.78), rgba(18, 18, 18, 0.78)), url("/paper-texture.png");
   background-size: cover;
   background-position: center;
   border: 1px solid #ffffff;
