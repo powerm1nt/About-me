@@ -2,16 +2,17 @@
 @use './Theme/Default/theme' as *;
 
 ::-webkit-scrollbar {
-  width: 0.5em;
-  height: 0.5em;
+  width: 10px;
+  height: 10px;
 
   &-track {
     background: $bg-main;
+    border-radius: 0;
   }
 
   &-thumb {
-    background: $bg-content;
-    border-radius: 1em;
+    background: #ffffff;
+    border-radius: 0;
   }
 }
 
