@@ -125,6 +125,29 @@ export const generateMetadata = () => {
   fs.writeFileSync(publicOut, jsonStr, "utf-8");
   fs.writeFileSync(srcOut, jsonStr, "utf-8");
 
+  // Generate sitemap.xml
+  const sitemapOut = path.resolve(rootDir, "public/sitemap.xml");
+  let baseUrl = "https://p.nuka.works";
+  const cnamePath = path.resolve(rootDir, "public/CNAME");
+  if (fs.existsSync(cnamePath)) {
+    const cname = fs.readFileSync(cnamePath, "utf-8").trim();
+    if (cname) baseUrl = `https://${cname}`;
+  }
+
+  let sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
+  
+  // Add root url
+  sitemapXml += `  <url>\n    <loc>${baseUrl}/</loc>\n    <lastmod>${metadataMap["README.mdx"]?.lastEditedIso || new Date().toISOString()}</lastmod>\n    <changefreq>daily</changefreq>\n    <priority>1.0</priority>\n  </url>\n`;
+
+  for (const relPath of Object.keys(metadataMap)) {
+    if (relPath === "README.mdx") continue;
+    const loc = `${baseUrl}/?file=${encodeURIComponent(relPath)}`;
+    const lastmod = metadataMap[relPath].lastEditedIso || new Date().toISOString();
+    sitemapXml += `  <url>\n    <loc>${loc.replace(/&/g, "&amp;")}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.8</priority>\n  </url>\n`;
+  }
+  sitemapXml += `</urlset>\n`;
+  fs.writeFileSync(sitemapOut, sitemapXml, "utf-8");
+
   console.log(`[blog-metadata] Generated metadata for ${Object.keys(metadataMap).length} files.`);
 };
 
