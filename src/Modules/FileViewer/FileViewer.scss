@@ -61,20 +61,15 @@
     display: inline-flex;
     align-items: center;
     gap: 0.45em;
-    padding: 0.4em 0.8em;
     font-size: 0.85rem;
     font-weight: 500;
     color: #f1f5f9;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    border-radius: 6px;
-    text-decoration: none;
-    transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+    text-decoration: underline dotted;
+    transition: color 0.15s ease-in-out;
 
     &:hover {
-      background: rgba(255, 255, 255, 0.12);
-      border-color: rgba(255, 255, 255, 0.35);
       color: #ffffff;
+      text-decoration: underline;
     }
   }
 }
@@ -102,7 +97,7 @@
     display: flex;
     justify-content: flex-start;
     align-items: center;
-    gap: 1em;
+    gap: 1.5em;
     flex-wrap: wrap;
     width: 100%;
 
@@ -111,15 +106,9 @@
       font-weight: 500;
       font-size: 0.95rem;
       text-decoration: underline dotted;
-      padding: 0.6em 1em;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 6px;
-      transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+      transition: color 0.15s ease-in-out;
 
       &:hover {
-        background: rgba(255, 255, 255, 0.08);
-        border-color: rgba(255, 255, 255, 0.25);
         color: #ffffff;
         text-decoration: underline;
       }
