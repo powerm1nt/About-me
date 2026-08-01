@@ -1,9 +1,5 @@
 @use "/src/Common/main" as *;
 
-:root {
-  --site-width: clamp(280px, 90%, 1420px);
-}
-
 .main-content {
   display: flex;
   justify-content: center;
@@ -13,12 +9,32 @@
     min-height: 100vh;
     background: $bg-grey160;
     overflow: hidden;
+    display: flex;
+    justify-content: center;
+    padding: 2.5em 1em;
+
+    @media screen and (max-width: 600px) {
+      padding: 1em 0.5em;
+    }
   }
 }
 
 .file-content {
-  padding: 2em;
+  width: 100%;
+  max-width: 840px; // A4 web proportion (210mm equivalent)
+  min-height: 1188px; // A4 aspect-ratio (210mm x 297mm ~ 1 : 1.4142)
+  padding: 3.5em 4em;
+  background: #121212;
+  border: 1px solid #ffffff;
+  border-left: 4px solid #ffffff;
+  border-radius: 0;
+  box-sizing: border-box;
   overflow: hidden;
+
+  @media screen and (max-width: 768px) {
+    padding: 2em 1.5em;
+    min-height: auto;
+  }
 
   img {
     max-width: 100%;
