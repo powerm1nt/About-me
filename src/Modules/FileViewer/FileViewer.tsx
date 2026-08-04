@@ -259,8 +259,14 @@ const FileViewer: React.FC = () => {
   const githubEditUrl = `https://github.com/powerm1nt/About-me/edit/main/${filePath}`;
 
   const renderArticleFooterNav = () => {
+    const isJapanese = filePath.endsWith(".ja.mdx");
+
     const articlesList = (Object.values(articlesData) as ArticleItem[]).filter(
-      (art) => art.filePath.startsWith("blog/") && art.filePath !== "blog/index.mdx"
+      (art) =>
+        art.filePath.startsWith("blog/") &&
+        art.filePath !== "blog/index.mdx" &&
+        art.filePath !== "blog/index.ja.mdx" &&
+        (isJapanese ? art.filePath.endsWith(".ja.mdx") : !art.filePath.endsWith(".ja.mdx"))
     );
 
     const currentIndex = articlesList.findIndex((art) => art.filePath === filePath);

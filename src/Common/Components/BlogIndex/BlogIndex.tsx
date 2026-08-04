@@ -12,8 +12,16 @@ export interface ArticleItem {
 }
 
 export default function BlogIndex() {
+  const params = new URLSearchParams(window.location.search);
+  const currentFile = params.get("file") || "README.mdx";
+  const isJapanese = currentFile.endsWith(".ja.mdx");
+
   const articles = (Object.values(articlesData) as ArticleItem[]).filter(
-    (item) => item.filePath.startsWith("blog/") && item.filePath !== "blog/index.mdx"
+    (item) =>
+      item.filePath.startsWith("blog/") &&
+      item.filePath !== "blog/index.mdx" &&
+      item.filePath !== "blog/index.ja.mdx" &&
+      (isJapanese ? item.filePath.endsWith(".ja.mdx") : !item.filePath.endsWith(".ja.mdx"))
   );
 
   const handleArticleClick = (e: React.MouseEvent<HTMLAnchorElement>, targetFile: string) => {
