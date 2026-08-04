@@ -19,7 +19,7 @@ const HeadlineLogo = () => {
         src={logo}
         height="44px"
         width="44px"
-        alt="Pookie"
+        alt="Emi"
       />
       <p
         style={{
@@ -28,7 +28,7 @@ const HeadlineLogo = () => {
           margin: 0,
         }}
       >
-        Pookie
+        Emi
       </p>
     </div>
   );

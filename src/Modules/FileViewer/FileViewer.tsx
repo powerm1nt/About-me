@@ -169,7 +169,7 @@ const FileViewer: React.FC = () => {
           const resolvedMeta: PageMeta = {
             title: frontmatter.title || gitMeta.title || "",
             description: frontmatter.description || gitMeta.description || "",
-            author: frontmatter.author || gitMeta.author || "Pookie (powerm1nt)",
+            author: frontmatter.author || gitMeta.author || "Emi (powerm1nt)",
             lastEdited: frontmatter.lastEdited || gitMeta.lastEdited || "",
           };
 

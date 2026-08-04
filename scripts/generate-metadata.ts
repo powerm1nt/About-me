@@ -107,7 +107,7 @@ export const generateMetadata = () => {
       filePath: relPath,
       title,
       description: data.description || "",
-      author: data.author || "Pookie (powerm1nt)",
+      author: data.author || "Emi (powerm1nt)",
       lastEditedIso,
       lastEdited: data.lastEdited || formatDate(lastEditedIso),
       created: formatDate(createdIso),
