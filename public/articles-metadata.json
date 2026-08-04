@@ -12,9 +12,9 @@
     "filePath": "blog/building-modular-apps.ja.mdx",
     "title": "ModularKitを使ったモジュール型アプリの開発",
     "description": "ModularKitを使用して、クリーンで高速、かつ保守しやすいソフトウェアを作成する。",
-    "author": "えみ (powerm1nt)",
-    "lastEditedIso": "2026-08-04T17:42:01-04:00",
-    "lastEdited": "2026-08-04 17:42",
+    "author": "「えみ」Emi (powerm1nt)",
+    "lastEditedIso": "2026-08-04T17:43:12-04:00",
+    "lastEdited": "2026-08-04 17:43",
     "created": "2026-08-04 17:34"
   },
   "blog/building-modular-apps.mdx": {
@@ -29,10 +29,10 @@
   "blog/index.ja.mdx": {
     "filePath": "blog/index.ja.mdx",
     "title": "ブログと執筆",
-    "description": "えみによる記事、技術ノート、アーキテクチャの洞察。",
-    "author": "えみ (powerm1nt)",
-    "lastEditedIso": "2026-08-04T17:42:01-04:00",
-    "lastEdited": "2026-08-04 17:42",
+    "description": "「えみ」Emiによる記事、技術ノート、アーキテクチャの洞察。",
+    "author": "「えみ」Emi (powerm1nt)",
+    "lastEditedIso": "2026-08-04T17:43:12-04:00",
+    "lastEdited": "2026-08-04 17:43",
     "created": "2026-08-04 17:34"
   },
   "blog/index.mdx": {
@@ -48,9 +48,9 @@
     "filePath": "blog/welcome.ja.mdx",
     "title": "私のブログへようこそ！",
     "description": "私がソフトウェアの設計パターン、モジュール化ガイド、開発ログなどを共有するブログの紹介。",
-    "author": "えみ (powerm1nt)",
-    "lastEditedIso": "2026-08-04T17:42:01-04:00",
-    "lastEdited": "2026-08-04 17:42",
+    "author": "「えみ」Emi (powerm1nt)",
+    "lastEditedIso": "2026-08-04T17:43:12-04:00",
+    "lastEdited": "2026-08-04 17:43",
     "created": "2026-08-04 17:34"
   },
   "blog/welcome.mdx": {
