@@ -4,17 +4,17 @@
     "title": "About Me",
     "description": "Welcome to my portfolio, software projects, and engineering blog.",
     "author": "Emi (powerm1nt)",
-    "lastEditedIso": "2026-08-01T09:13:41-04:00",
-    "lastEdited": "2026-08-01 09:13",
+    "lastEditedIso": "2026-08-04T17:42:01-04:00",
+    "lastEdited": "2026-08-04 17:42",
     "created": "2021-07-30 16:10"
   },
   "blog/building-modular-apps.ja.mdx": {
     "filePath": "blog/building-modular-apps.ja.mdx",
     "title": "ModularKitを使ったモジュール型アプリの開発",
     "description": "ModularKitを使用して、クリーンで高速、かつ保守しやすいソフトウェアを作成する。",
-    "author": "エミ (powerm1nt)",
-    "lastEditedIso": "2026-08-04T17:34:49-04:00",
-    "lastEdited": "2026-08-04 17:34",
+    "author": "えみ (powerm1nt)",
+    "lastEditedIso": "2026-08-04T17:42:01-04:00",
+    "lastEdited": "2026-08-04 17:42",
     "created": "2026-08-04 17:34"
   },
   "blog/building-modular-apps.mdx": {
@@ -22,17 +22,17 @@
     "title": "Building Modular Applications with ModularKit",
     "description": "Creating software that is clean, fast, and easy to maintain using ModularKit.",
     "author": "Emi (powerm1nt)",
-    "lastEditedIso": "2026-08-01T09:05:59-04:00",
-    "lastEdited": "2026-08-01 09:05",
+    "lastEditedIso": "2026-08-04T17:42:01-04:00",
+    "lastEdited": "2026-08-04 17:42",
     "created": "2026-07-31 16:14"
   },
   "blog/index.ja.mdx": {
     "filePath": "blog/index.ja.mdx",
     "title": "ブログと執筆",
-    "description": "エミによる記事、技術ノート、アーキテクチャの洞察。",
-    "author": "エミ (powerm1nt)",
-    "lastEditedIso": "2026-08-04T17:34:49-04:00",
-    "lastEdited": "2026-08-04 17:34",
+    "description": "えみによる記事、技術ノート、アーキテクチャの洞察。",
+    "author": "えみ (powerm1nt)",
+    "lastEditedIso": "2026-08-04T17:42:01-04:00",
+    "lastEdited": "2026-08-04 17:42",
     "created": "2026-08-04 17:34"
   },
   "blog/index.mdx": {
@@ -40,17 +40,17 @@
     "title": "Blog & Writings",
     "description": "Articles, technical notes, and architecture insights by Emi.",
     "author": "Emi (powerm1nt)",
-    "lastEditedIso": "2026-08-01T09:05:59-04:00",
-    "lastEdited": "2026-08-01 09:05",
+    "lastEditedIso": "2026-08-04T17:42:01-04:00",
+    "lastEdited": "2026-08-04 17:42",
     "created": "2026-07-31 16:14"
   },
   "blog/welcome.ja.mdx": {
     "filePath": "blog/welcome.ja.mdx",
     "title": "私のブログへようこそ！",
     "description": "私がソフトウェアの設計パターン、モジュール化ガイド、開発ログなどを共有するブログの紹介。",
-    "author": "エミ (powerm1nt)",
-    "lastEditedIso": "2026-08-04T17:34:49-04:00",
-    "lastEdited": "2026-08-04 17:34",
+    "author": "えみ (powerm1nt)",
+    "lastEditedIso": "2026-08-04T17:42:01-04:00",
+    "lastEdited": "2026-08-04 17:42",
     "created": "2026-08-04 17:34"
   },
   "blog/welcome.mdx": {
@@ -58,8 +58,8 @@
     "title": "Welcome to My Blog!",
     "description": "Introduction to my blog where I share software design patterns, modularity guides, and development logs.",
     "author": "Emi (powerm1nt)",
-    "lastEditedIso": "2026-08-01T09:05:59-04:00",
-    "lastEdited": "2026-08-01 09:05",
+    "lastEditedIso": "2026-08-04T17:42:01-04:00",
+    "lastEdited": "2026-08-04 17:42",
     "created": "2026-07-31 16:14"
   }
 }
