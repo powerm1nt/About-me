@@ -8,6 +8,15 @@
     "lastEdited": "2026-08-01 09:13",
     "created": "2021-07-30 16:10"
   },
+  "blog/building-modular-apps.ja.mdx": {
+    "filePath": "blog/building-modular-apps.ja.mdx",
+    "title": "ModularKitを使ったモジュール型アプリの開発",
+    "description": "ModularKitを使用して、クリーンで高速、かつ保守しやすいソフトウェアを作成する。",
+    "author": "プーキー (powerm1nt)",
+    "lastEditedIso": "2026-08-04T21:33:55.078Z",
+    "lastEdited": "2026-08-04 17:33",
+    "created": "2026-08-04 17:33"
+  },
   "blog/building-modular-apps.mdx": {
     "filePath": "blog/building-modular-apps.mdx",
     "title": "Building Modular Applications with ModularKit",
@@ -17,6 +26,15 @@
     "lastEdited": "2026-08-01 09:05",
     "created": "2026-07-31 16:14"
   },
+  "blog/index.ja.mdx": {
+    "filePath": "blog/index.ja.mdx",
+    "title": "ブログと執筆",
+    "description": "プーキーによる記事、技術ノート、アーキテクチャの洞察。",
+    "author": "プーキー (powerm1nt)",
+    "lastEditedIso": "2026-08-04T21:33:54.978Z",
+    "lastEdited": "2026-08-04 17:33",
+    "created": "2026-08-04 17:33"
+  },
   "blog/index.mdx": {
     "filePath": "blog/index.mdx",
     "title": "Blog & Writings",
@@ -25,6 +43,15 @@
     "lastEditedIso": "2026-08-01T09:05:59-04:00",
     "lastEdited": "2026-08-01 09:05",
     "created": "2026-07-31 16:14"
+  },
+  "blog/welcome.ja.mdx": {
+    "filePath": "blog/welcome.ja.mdx",
+    "title": "私のブログへようこそ！",
+    "description": "私がソフトウェアの設計パターン、モジュール化ガイド、開発ログなどを共有するブログの紹介。",
+    "author": "プーキー (powerm1nt)",
+    "lastEditedIso": "2026-08-04T21:33:54.982Z",
+    "lastEdited": "2026-08-04 17:33",
+    "created": "2026-08-04 17:33"
   },
   "blog/welcome.mdx": {
     "filePath": "blog/welcome.mdx",

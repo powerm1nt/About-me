@@ -7,14 +7,32 @@
     <priority>1.0</priority>
   </url>
   <url>
+    <loc>https://p.nuka.works/?file=blog%2Fbuilding-modular-apps.ja.mdx</loc>
+    <lastmod>2026-08-04T21:33:55.078Z</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://p.nuka.works/?file=blog%2Fbuilding-modular-apps.mdx</loc>
     <lastmod>2026-08-01T09:05:59-04:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://p.nuka.works/?file=blog%2Findex.ja.mdx</loc>
+    <lastmod>2026-08-04T21:33:54.978Z</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://p.nuka.works/?file=blog%2Findex.mdx</loc>
     <lastmod>2026-08-01T09:05:59-04:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://p.nuka.works/?file=blog%2Fwelcome.ja.mdx</loc>
+    <lastmod>2026-08-04T21:33:54.982Z</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
