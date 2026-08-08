@@ -1,0 +1,21 @@
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*",
+  "BlobStorage": {
+    "AccountName": "nwrks",
+    "ContainerName": "static",
+    "AccountKey": ""
+  },
+  "AssetProxyBase": "http://localhost:5066",
+  "Cors": {
+    "AllowedOrigins": [
+      "https://localhost:7217",
+      "http://localhost:5279"
+    ]
+  }
+}

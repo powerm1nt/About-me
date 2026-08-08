@@ -1,0 +1,46 @@
+@using Web.Components
+
+@attribute [MdComponent("info")]
+@attribute [MdComponent("warning")]
+@attribute [MdComponent("tip")]
+@attribute [MdComponent("danger")]
+
+@{
+    var hasTypeError = (Title + " " + Text).Contains("TypeError:", StringComparison.OrdinalIgnoreCase);
+    var bubbleClass = $"cmpns cmpns-info-bubble {(hasTypeError ? "is-type-error" : "")} {Class}".Trim();
+}
+
+<div class="@bubbleClass">
+    <div class="info-icon-wrapper" aria-hidden="true">
+        <svg class="info-icon" width="20" height="20" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="16" x2="12" y2="12" />
+            <line x1="12" y1="8" x2="12.01" y2="8" />
+        </svg>
+    </div>
+    <div class="info-body">
+        @if (!string.IsNullOrEmpty(Title))
+        {
+            <div class="info-title">@Title</div>
+        }
+        <div class="info-content">
+            @if (ChildContent is not null)
+            {
+                @ChildContent
+            }
+            else
+            {
+                @Text
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? Text { get; set; }
+    [Parameter] public string Class { get; set; } = string.Empty;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

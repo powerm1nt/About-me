@@ -1,0 +1,25 @@
+@page "/blog/{Slug}"
+@implements IDisposable
+
+<PageTitle>@Slug — powerm1nt</PageTitle>
+
+<FileViewer FilePath="@(LangState?.IsJapanese == true ? $"blog/{Slug}.ja.md" : $"blog/{Slug}.md")" />
+
+@code {
+    [Parameter] public string Slug { get; set; } = string.Empty;
+    [CascadingParameter] public Web.Services.LanguageState? LangState { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (LangState is not null)
+            LangState.OnChange += OnLanguageChanged;
+    }
+
+    private void OnLanguageChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        if (LangState is not null)
+            LangState.OnChange -= OnLanguageChanged;
+    }
+}

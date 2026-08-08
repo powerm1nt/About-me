@@ -1,0 +1,17 @@
+﻿@inherits LayoutComponentBase
+@inject Web.Services.AssetService Assets
+@inject Web.Services.LanguageState LangState
+
+<CascadingValue Value="LangState">
+    <AppHeader />
+    @Body
+    <AppFooter />
+</CascadingValue>
+
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await Assets.InjectCssVariablesAsync();
+    }
+}

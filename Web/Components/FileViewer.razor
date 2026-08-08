@@ -1,0 +1,217 @@
+@inject HttpClient Http
+@inject NavigationManager Nav
+@implements IDisposable
+@using Shared.Dto
+
+<main class="main-content">
+    <div class="main-content-container">
+        <div class="file-content">
+            @if (_error is not null)
+            {
+                <InfoBubble Title="@($"Error: {_error}")" />
+            }
+            else if (_page is null)
+            {
+                <div class="article-header-meta" aria-hidden="true">
+                    <div class="article-meta-info">
+                        <Skeleton Class="skeleton-meta" Width="130px" />
+                        <Skeleton Class="skeleton-meta" Width="90px" />
+                    </div>
+                    <Skeleton Class="skeleton-meta" Width="110px" />
+                </div>
+                <Skeleton Class="skeleton-title" Width="65%" />
+                <Skeleton Class="skeleton-title" Width="42%" />
+                <Skeleton Class="skeleton-line" Width="100%" />
+                <Skeleton Class="skeleton-line" Width="93%" />
+                <Skeleton Class="skeleton-line" Width="97%" />
+                <Skeleton Class="skeleton-line" Width="78%" />
+                <Skeleton Class="skeleton-line" Width="88%" />
+                <Skeleton Class="skeleton-line" Width="100%" />
+                <Skeleton Class="skeleton-line" Width="60%" />
+            }
+            else
+            {
+                <div class="article-header-meta">
+                    <div class="article-meta-info">
+                        @if (!string.IsNullOrEmpty(_page.Meta.Author))
+                        {
+                            <span class="article-meta-author">By @_page.Meta.Author</span>
+                        }
+                        @if (!string.IsNullOrEmpty(_page.Meta.LastEdited))
+                        {
+                            <span class="article-last-edited-badge" title="Last edited timestamp">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10" />
+                                    <polyline points="12 6 12 12 16 14" />
+                                </svg>
+                                @_page.Meta.LastEdited
+                            </span>
+                        }
+                    </div>
+                    <a href="@GithubEditUrl"
+                       target="_blank"
+                       rel="noreferrer"
+                       class="github-edit-btn"
+                       title="Edit this page on GitHub">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
+                        </svg>
+                        <span>Edit on GitHub</span>
+                    </a>
+                </div>
+
+                @if (!string.IsNullOrEmpty(_page.Meta.Description))
+                {
+                    <p class="article-header-description">@_page.Meta.Description</p>
+                }
+
+                <MdContentRenderer Html="@_page.RenderedHtml" IsJapanese="@_isJapanese" />
+
+                <footer class="article-footer-nav">
+                    <div class="article-nav-row">
+                        <div class="nav-cell nav-cell-prev">
+                            @if (_prevArticle is not null)
+                            {
+                                <a href="@ArticleRoute(_prevArticle.FilePath)"
+                                   class="nav-link prev-link">
+                                    &larr; @_prevArticle.Title
+                                </a>
+                            }
+                        </div>
+
+                        <div class="nav-cell nav-cell-middle">
+                            @if (_isBlogPost)
+                            {
+                                <a href="@(_isJapanese ? "/blog/ja" : "/blog")"
+                                   class="breadcrumb-link">
+                                    Blog Index
+                                </a>
+                                <span class="nav-separator">|</span>
+                            }
+                            @if (FilePath != "README.md")
+                            {
+                                <a href="/"
+                                   class="breadcrumb-link">
+                                    Home
+                                </a>
+                            }
+                            else
+                            {
+                                <a href="/blog"
+                                   class="breadcrumb-link">
+                                    Explore Blog &rarr;
+                                </a>
+                            }
+                        </div>
+
+                        <div class="nav-cell nav-cell-next">
+                            @if (_nextArticle is not null)
+                            {
+                                <a href="@ArticleRoute(_nextArticle.FilePath)"
+                                   class="nav-link next-link">
+                                    @_nextArticle.Title &rarr;
+                                </a>
+                            }
+                        </div>
+                    </div>
+                </footer>
+            }
+        </div>
+    </div>
+</main>
+
+@code {
+    private const string GithubRepoBase = "https://github.com/powerm1nt/About-me/blob/main/";
+
+    [Parameter, EditorRequired] public string FilePath { get; set; } = "README.md";
+    [Parameter] public bool IsJapanese { get; set; }
+
+    // Derived from FilePath for nav/breadcrumb logic; IsJapanese param is used for BlogIndex rendering
+    private bool _isJapanesePath => FilePath.EndsWith(".ja.md");
+    private bool _isJapanese => IsJapanese || _isJapanesePath;
+
+    private PageDto? _page;
+    private string? _error;
+    private List<ArticleMetadataDto> _allArticles = [];
+    private ArticleMetadataDto? _prevArticle;
+    private ArticleMetadataDto? _nextArticle;
+
+    private bool _isBlogPost => FilePath.StartsWith("blog/") &&
+                                FilePath != "blog/index.md" &&
+                                FilePath != "blog/index.ja.md";
+
+    private string GithubEditUrl => $"{GithubRepoBase}{FilePath}";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadArticlesAsync();
+        await LoadPageAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadPageAsync();
+        UpdateNavArticles();
+    }
+
+    private async Task LoadArticlesAsync()
+    {
+        try
+        {
+            var articles = await Http.GetFromJsonAsync<List<ArticleMetadataDto>>("/api/pages/articles");
+            _allArticles = articles ?? [];
+        }
+        catch { _allArticles = []; }
+    }
+
+    private async Task LoadPageAsync()
+    {
+        _page = null;
+        _error = null;
+        StateHasChanged();
+
+        try
+        {
+            var response = await Http.GetAsync($"/api/pages?path={Uri.EscapeDataString(FilePath)}");
+
+            if (!response.IsSuccessStatusCode)
+                _error = $"Could not load '{FilePath}' (HTTP {(int)response.StatusCode})";
+            else
+            {
+                _page = await response.Content.ReadFromJsonAsync<PageDto>();
+                UpdateNavArticles();
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+
+        StateHasChanged();
+    }
+
+    private void UpdateNavArticles()
+    {
+        var blogArticles = _allArticles
+            .Where(a => a.FilePath.StartsWith("blog/") &&
+                        a.FilePath != "blog/index.md" &&
+                        a.FilePath != "blog/index.ja.md" &&
+                        (_isJapanese ? a.FilePath.EndsWith(".ja.md") : !a.FilePath.EndsWith(".ja.md")))
+            .ToList();
+
+        var idx = blogArticles.FindIndex(a => a.FilePath == FilePath);
+        _prevArticle = idx > 0 ? blogArticles[idx - 1] : null;
+        _nextArticle = idx >= 0 && idx < blogArticles.Count - 1 ? blogArticles[idx + 1] : null;
+    }
+
+    // Convert a blob file path like "blog/welcome.ja.md" to a route like "/blog/welcome/ja"
+    private static string ArticleRoute(string filePath)
+    {
+        var isJa = filePath.EndsWith(".ja.md");
+        var name = filePath.StartsWith("blog/") ? filePath["blog/".Length..] : filePath;
+        name = isJa ? name[..^".ja.md".Length] : name[..^".md".Length];
+        return isJa ? $"/blog/{name}/ja" : $"/blog/{name}";
+    }
+
+    public void Dispose() { }
+}

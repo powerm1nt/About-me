@@ -1,0 +1,74 @@
+@inject NavigationManager Nav
+@inject Web.Services.LanguageState LangState
+@implements IDisposable
+
+<header class="main-header">
+    <div class="header-container">
+        <div class="header-left">
+            <a href="/" class="logo-link">
+                <HeadlineLogo />
+            </a>
+        </div>
+
+        <nav class="header-nav">
+            <a href="/" class="nav-item @(IsHomeActive ? "is-active" : "")">
+                @(LangState.IsJapanese ? "ホーム" : "Home")
+            </a>
+            <a href="/blog" class="nav-item @(IsBlogActive ? "is-active" : "")">
+                @(LangState.IsJapanese ? "ブログ" : "Blog")
+            </a>
+            <a href="https://github.com/powerm1nt"
+               target="_blank" rel="noreferrer"
+               class="nav-item external-link">
+                GitHub ↗
+            </a>
+            <a href="https://www.linkedin.com/in/lchab1440/"
+               target="_blank" rel="noreferrer"
+               class="nav-item external-link">
+                LinkedIn ↗
+            </a>
+
+            <div class="language-selector" style="display:flex; gap:0.5rem; margin-left:1rem;">
+                <button @onclick="() => LangState.SetLanguage(false)"
+                        style="font-weight:@(!LangState.IsJapanese ? "bold" : "normal"); cursor:pointer; background:none; border:none; color:inherit;">
+                    EN
+                </button>
+                <span>|</span>
+                <button @onclick="() => LangState.SetLanguage(true)"
+                        style="font-weight:@(LangState.IsJapanese ? "bold" : "normal"); cursor:pointer; background:none; border:none; color:inherit;">
+                    JA
+                </button>
+            </div>
+        </nav>
+    </div>
+</header>
+
+@code {
+    private string _path = "/";
+
+    private bool IsHomeActive => _path == "/";
+    private bool IsBlogActive => _path.StartsWith("/blog", StringComparison.OrdinalIgnoreCase);
+
+    protected override void OnInitialized()
+    {
+        UpdatePath(Nav.Uri);
+        Nav.LocationChanged += OnLocationChanged;
+        LangState.OnChange += OnLanguageChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        UpdatePath(e.Location);
+        StateHasChanged();
+    }
+
+    private void OnLanguageChanged() => InvokeAsync(StateHasChanged);
+
+    private void UpdatePath(string uri) => _path = new Uri(uri).AbsolutePath;
+
+    public void Dispose()
+    {
+        Nav.LocationChanged -= OnLocationChanged;
+        LangState.OnChange -= OnLanguageChanged;
+    }
+}

@@ -1,0 +1,19 @@
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Debug",
+      "Microsoft.AspNetCore": "Information"
+    }
+  },
+  "BlobStorage": {
+    "AccountName": "nwrks",
+    "ContainerName": "static",
+    "AccountKey": ""
+  },
+  "Cors": {
+    "AllowedOrigins": [
+      "https://localhost:7217",
+      "http://localhost:5279"
+    ]
+  }
+}
