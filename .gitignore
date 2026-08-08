@@ -27,4 +27,3 @@ Thumbs.db
 
 ## Local secrets
 Server/appsettings.Development.json
-Server/appsettings.json
