@@ -11,7 +11,7 @@
     "ContainerName": "static",
     "AccountKey": ""
   },
-  "AssetProxyBase": "http://localhost:5066",
+  "AssetProxyBase": "https://blog-api-cpbkeye3dzfhbqev.canadacentral-01.azurewebsites.net",
   "Cors": {
     "AllowedOrigins": [
       "https://localhost:7217",
