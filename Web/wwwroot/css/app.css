@@ -61,7 +61,9 @@ a:hover { text-decoration: underline; color: #ffffff; }
 .buildinfo:hover { color: #ffffff; }
 .buildinfo span { margin: 0 0.15em; }
 .blog-index-container { margin: 1.5em 0; }
-.blog-index-container h2 { font-size: 1.3rem; color: #ffffff; margin-bottom: 1em; border-bottom: 1px solid #ffffff; padding-bottom: 0.4em; }
+.blog-index-container h2 { font-size: 1.3rem; color: #ffffff; margin: 0; }
+.blog-index-header { display: flex; align-items: center; justify-content: space-between; gap: 1em; flex-wrap: wrap; margin-bottom: 1em; border-bottom: 1px solid #ffffff; padding-bottom: 0.4em; }
+.blog-index-header .editor-btn { font-size: 0.8rem; padding: 0.4em 0.9em; white-space: nowrap; }
 .blog-index-list { display: flex; flex-direction: column; gap: 1em; }
 .blog-index-card { background: transparent; border: none; border-bottom: 1px solid rgba(255,255,255,0.12); border-radius: 0; padding: 0.8em 0; }
 .blog-card-title { margin: 0 0 0.3em 0; font-size: 1.15rem; }
@@ -150,5 +152,43 @@ a:hover { text-decoration: underline; color: #ffffff; }
   .sk-header-inner, .sk-content, .sk-footer-inner { width: 95%; }
   .sk-content { padding: 2em 1.25em; }
 }
+
+/* Page editor ("propose changes") */
+.editor-toggle-row { display: flex; align-items: center; gap: 0.8em; flex-wrap: wrap; }
+.editor-signed-in { font-size: 0.85rem; color: #9ca3af; }
+.editor-signed-in button { background: none; border: none; color: inherit; text-decoration: underline dotted; cursor: pointer; font-family: inherit; padding: 0; margin-left: 0.4em; }
+.page-editor { margin-bottom: 1.5em; }
+.editor-status { color: #9ca3af; font-size: 0.9rem; }
+.editor-tabs { display: flex; gap: 0.5em; margin-bottom: 0.8em; }
+.editor-tab { background: rgba(255,255,255,0.05); border: 1px solid #ffffff; border-radius: 0; color: #cbd5e1; padding: 0.4em 1em; font-size: 0.85rem; cursor: pointer; font-family: inherit; }
+.editor-tab.is-active { background: #ffffff; color: #121212; font-weight: 700; }
+.editor-pane { border: 1px solid #ffffff; border-left: 4px solid #ffffff; margin-bottom: 1em; }
+.editor-preview { padding: 1.5em; background: #0a0a0a; max-height: 480px; overflow-y: auto; }
+.page-editor-monaco { height: 420px; }
+.editor-fields { display: flex; flex-direction: column; gap: 0.6em; margin-bottom: 1em; }
+.editor-commit-input, .editor-description-input { background: #000000; border: 1px solid #ffffff; border-left: 4px solid #ffffff; border-radius: 0; color: #ffffff; font-family: inherit; font-size: 0.9rem; padding: 0.6em 0.8em; resize: vertical; }
+.editor-commit-input::placeholder, .editor-description-input::placeholder { color: #6b7280; }
+.editor-actions { display: flex; justify-content: flex-end; gap: 0.6em; }
+.editor-btn { font-family: inherit; font-size: 0.85rem; font-weight: 500; padding: 0.5em 1.1em; border: 1px solid #ffffff; border-left: 4px solid #ffffff; border-radius: 0; cursor: pointer; }
+.editor-btn-cancel { background: transparent; color: #f1f5f9; }
+.editor-btn-cancel:hover { background: rgba(255,255,255,0.08); }
+.editor-btn-primary { background: #ffffff; color: #121212; }
+.editor-btn-primary:hover { background: #e2e8f0; }
+.editor-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.editor-success { border: 1px solid #ffffff; border-left: 4px solid #ffffff; padding: 1.2em 1.5em; display: flex; align-items: center; justify-content: space-between; gap: 1em; flex-wrap: wrap; }
+.editor-skeleton-tabs { display: flex; gap: 0.5em; margin-bottom: 0.8em; }
+.skeleton-tab { height: 2em; }
+.skeleton-editor-block { height: 420px; margin-bottom: 1em; }
+.editor-skeleton-fields { display: flex; flex-direction: column; gap: 0.6em; margin-bottom: 1em; }
+.skeleton-field { height: 2.4em; }
+.skeleton-field-lg { height: 4.5em; }
+.editor-skeleton-actions { display: flex; justify-content: flex-end; gap: 0.6em; }
+.skeleton-action { height: 2.4em; }
+.editor-slug-field { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6em; margin-bottom: 1em; }
+.editor-slug-field label { font-size: 0.85rem; color: #cbd5e1; }
+.editor-slug-input { flex: 1 1 220px; margin: 0; background: #000000; border: 1px solid #ffffff; border-left: 4px solid #ffffff; border-radius: 0; color: #ffffff; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.9rem; padding: 0.5em 0.7em; }
+.editor-slug-input::placeholder { color: #6b7280; }
+.editor-slug-preview { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.85rem; color: #9ca3af; }
+.editor-slug-error { flex-basis: 100%; font-size: 0.8rem; color: #f87171; }
 
 

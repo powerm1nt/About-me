@@ -11,6 +11,12 @@
     "ContainerName": "static",
     "AccountKey": ""
   },
+  "GitHub": {
+    "ClientId": "",
+    "ClientSecret": "",
+    "RepoOwner": "powerm1nt",
+    "RepoName": "About-me"
+  },
   "AssetProxyBase": "https://blog-api-cpbkeye3dzfhbqev.canadacentral-01.azurewebsites.net",
   "Cors": {
     "AllowedOrigins": [

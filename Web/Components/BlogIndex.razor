@@ -1,13 +1,27 @@
 @inject HttpClient Http
+@inject Web.Services.AuthService Auth
+@implements IDisposable
 @using Shared.Dto
 @using Web.Components
 
 @attribute [MdComponent("blog-index")]
 
 <div class="blog-index-container">
-    <h2>Articles</h2>
+    <div class="blog-index-header">
+        <h2>Articles</h2>
+        @if (!_isCreating)
+        {
+            <button type="button" class="editor-btn editor-btn-primary" @onclick="StartCreating">
+                + Add new article
+            </button>
+        }
+    </div>
 
-    @if (_loading)
+    @if (_isCreating)
+    {
+        <PageEditor IsNewFile="true" IsJapanese="@IsJapanese" OnClose="CloseCreating" />
+    }
+    else if (_loading)
     {
         <div class="blog-index-list" aria-hidden="true">
             @for (int i = 0; i < 4; i++)
@@ -70,11 +84,30 @@
     private bool _loading = true;
     private bool _prevIsJapanese;
     private string? _error;
+    private bool _isCreating;
 
     protected override async Task OnInitializedAsync()
     {
+        Auth.OnChange += OnAuthChanged;
         await LoadArticlesAsync();
     }
+
+    private void StartCreating()
+    {
+        if (!Auth.IsSignedIn)
+        {
+            Auth.RedirectToLogin(resumeEdit: false);
+            return;
+        }
+
+        _isCreating = true;
+    }
+
+    private void CloseCreating() => _isCreating = false;
+
+    private void OnAuthChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Auth.OnChange -= OnAuthChanged;
 
     protected override Task OnParametersSetAsync()
     {

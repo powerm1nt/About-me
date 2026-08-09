@@ -44,7 +44,9 @@ jobs:
           az webapp config appsettings set \
             --name ${{ env.AZURE_WEBAPP_NAME }} \
             --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --settings BlobStorage__AccountKey=${{ secrets.BLOB_STORAGE_ACCOUNT_KEY }}
+            --settings BlobStorage__AccountKey=${{ secrets.BLOB_STORAGE_ACCOUNT_KEY }} \
+                       GitHub__ClientId=${{ secrets.GH_OAUTH_CLIENT_ID }} \
+                       GitHub__ClientSecret=${{ secrets.GH_OAUTH_CLIENT_SECRET }}
 
       - name: Deploy to Azure App Service
         uses: azure/webapps-deploy@v3

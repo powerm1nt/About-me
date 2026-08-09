@@ -1,0 +1,73 @@
+name: Apply content patches to Blob Storage
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "patches/**/*.patch"
+
+env:
+  STORAGE_ACCOUNT: nwrks
+  CONTAINER_NAME: static
+
+jobs:
+  apply-patches:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Find newly added patch files
+        id: find
+        run: |
+          added=$(git diff --name-status "${{ github.event.before }}" "${{ github.sha }}" -- 'patches/**/*.patch' | awk '$1 == "A" { print $2 }')
+          if [ -z "$added" ]; then
+            echo "No newly added patch files in this push."
+          fi
+          {
+            echo "files<<EOF"
+            echo "$added"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      # Every proposal's diff base is fetched fresh from Blob at proposal time (ProposalsController),
+      # so a patch that no longer applies cleanly means blob content changed since — fail loudly
+      # rather than silently corrupting the page.
+      - name: Apply each patch to its target blob
+        if: steps.find.outputs.files != ''
+        run: |
+          set -e
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+
+            rel="${file#patches/}"
+            target="${rel%/*}"
+            echo "::group::Applying $file -> $target"
+
+            tmp=$(mktemp)
+            if ! az storage blob download \
+              --account-name "$STORAGE_ACCOUNT" --container-name "$CONTAINER_NAME" \
+              --account-key "$BLOB_STORAGE_ACCOUNT_KEY" \
+              --name "$target" --file "$tmp" --only-show-errors 2>/dev/null; then
+              # No existing blob at this path — only valid for a "new article" proposal, whose
+              # patch is a pure-insertion hunk (@@ -1,0 ...) that applies cleanly to an empty file.
+              # An edit patch against a genuinely-missing target will just fail at the next step.
+              echo "No existing blob at '$target' — treating as a new file."
+              : > "$tmp"
+            fi
+
+            patch --fuzz=3 "$tmp" < "$file"
+
+            az storage blob upload \
+              --account-name "$STORAGE_ACCOUNT" --container-name "$CONTAINER_NAME" \
+              --account-key "$BLOB_STORAGE_ACCOUNT_KEY" \
+              --name "$target" --file "$tmp" --content-type "text/markdown" \
+              --overwrite --only-show-errors
+
+            rm -f "$tmp"
+            echo "::endgroup::"
+          done <<< "${{ steps.find.outputs.files }}"
+        env:
+          BLOB_STORAGE_ACCOUNT_KEY: ${{ secrets.BLOB_STORAGE_ACCOUNT_KEY }}

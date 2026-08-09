@@ -5,6 +5,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.Configure<BlobStorageConfig>(
     builder.Configuration.GetSection(BlobStorageConfig.SectionName));
+builder.Services.Configure<GitHubConfig>(
+    builder.Configuration.GetSection(GitHubConfig.SectionName));
 
 var allowedOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins")
@@ -19,6 +21,10 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddSingleton<BlobStorageService>();
+builder.Services.AddSingleton<AuthSessionStore>();
+builder.Services.AddSingleton<DiffService>();
+builder.Services.AddSingleton<GitHubProposalService>();
+builder.Services.AddHttpClient();
 builder.Services.AddMemoryCache(opts => opts.SizeLimit = 50 * 1024 * 1024); // 50 MB cap
 builder.Services.AddControllers();
 

@@ -1,0 +1,79 @@
+name: Check proposed content patches
+
+# Proposal PRs always come from a fork of a visitor's own account (see ProposalsController /
+# GitHubProposalService), so a plain `pull_request` trigger would run with no secrets at all —
+# GitHub withholds them from fork-triggered `pull_request` runs. `pull_request_target` runs this
+# workflow file from the BASE repo (an attacker can't alter what this job does by editing their
+# fork's copy) and does have secrets. The only fork-supplied content we touch is the `.patch` text
+# itself, and it's only ever read as inert data and handed to `patch`/`az` — never executed as code.
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+    branches:
+      - main
+    paths:
+      - "patches/**/*.patch"
+
+permissions:
+  contents: read
+
+env:
+  STORAGE_ACCOUNT: nwrks
+  CONTAINER_NAME: static
+
+jobs:
+  check-patches:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Find patch files changed in this PR
+        id: find
+        run: |
+          changed=$(git diff --name-status "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}" -- 'patches/**/*.patch' | awk '$1 != "D" { print $2 }')
+          {
+            echo "files<<EOF"
+            echo "$changed"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      # Dry-run each patch against the *current* live blob content — this is the check that
+      # actually matters: it catches a proposal that's gone stale because the page was edited
+      # (by another merged proposal, or manually) since this PR was opened.
+      - name: Dry-run apply each patch against the live blob
+        if: steps.find.outputs.files != ''
+        run: |
+          fail=0
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+
+            rel="${file#patches/}"
+            target="${rel%/*}"
+            echo "::group::Checking $file -> $target"
+
+            tmp=$(mktemp)
+            if ! az storage blob download \
+              --account-name "$STORAGE_ACCOUNT" --container-name "$CONTAINER_NAME" \
+              --account-key "$BLOB_STORAGE_ACCOUNT_KEY" \
+              --name "$target" --file "$tmp" --only-show-errors 2>/dev/null; then
+              # No existing blob — valid for a "new article" proposal (pure-insertion patch applies
+              # cleanly to an empty file); an edit patch against a genuinely-missing target will
+              # simply fail the dry-run apply below instead.
+              echo "No existing blob at '$target' — checking as a new file."
+              : > "$tmp"
+            fi
+
+            if ! patch --fuzz=3 --dry-run "$tmp" < "$file"; then
+              echo "::error file=$file::Patch no longer applies cleanly to the current content of '$target' — the page was likely edited since this proposal was opened."
+              fail=1
+            fi
+
+            rm -f "$tmp"
+            echo "::endgroup::"
+          done <<< "${{ steps.find.outputs.files }}"
+          exit $fail
+        env:
+          BLOB_STORAGE_ACCOUNT_KEY: ${{ secrets.BLOB_STORAGE_ACCOUNT_KEY }}

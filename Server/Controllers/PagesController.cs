@@ -35,10 +35,8 @@ public class PagesController : ControllerBase
         if (rawText is null)
             return NotFound(new { error = $"Page '{normalizedPath}' not found." });
 
-        var (meta, markdown) = ParseFrontmatter(rawText);
-        var preprocessed = InjectComponentSentinels(markdown);
-        var html = Markdown.ToHtml(preprocessed, Pipeline);
-        html = RewriteAssetPaths(html, _assetBase);
+        var (meta, html) = RenderRawText(rawText);
+        var (_, markdown) = ParseFrontmatter(rawText);
 
         return Ok(new PageDto
         {
@@ -49,6 +47,43 @@ public class PagesController : ControllerBase
             Found = true,
             Meta = meta
         });
+    }
+
+    // GET /api/pages/raw?path=blog/welcome.md — byte-for-byte blob content (frontmatter included),
+    // used by the editor so proposed diffs are generated against the exact source the patch will target.
+    [HttpGet("raw")]
+    public async Task<ActionResult<PageRawDto>> GetRawPage([FromQuery] string path)
+    {
+        var normalizedPath = NormalizePath(path);
+        var rawText = await _blob.GetTextAsync(normalizedPath);
+
+        if (rawText is null)
+            return NotFound(new { error = $"Page '{normalizedPath}' not found." });
+
+        return Ok(new PageRawDto
+        {
+            Path = normalizedPath,
+            RawContent = rawText,
+            Found = true
+        });
+    }
+
+    // POST /api/pages/preview — renders arbitrary raw markdown (frontmatter + body) through the
+    // same pipeline as GetPage, so the editor's Preview tab matches the live page exactly.
+    [HttpPost("preview")]
+    public ActionResult<PagePreviewResultDto> PreviewPage([FromBody] PagePreviewRequestDto request)
+    {
+        var (_, html) = RenderRawText(request.Markdown ?? string.Empty);
+        return Ok(new PagePreviewResultDto { Html = html });
+    }
+
+    private (PageMetaDto meta, string html) RenderRawText(string rawText)
+    {
+        var (meta, markdown) = ParseFrontmatter(rawText);
+        var preprocessed = InjectComponentSentinels(markdown);
+        var html = Markdown.ToHtml(preprocessed, Pipeline);
+        html = RewriteAssetPaths(html, _assetBase);
+        return (meta, html);
     }
 
     // GET /api/pages/articles

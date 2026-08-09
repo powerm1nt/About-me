@@ -1,0 +1,236 @@
+@inject HttpClient Http
+@inject Web.Services.AuthService Auth
+@using System.Text.RegularExpressions
+
+<div class="page-editor">
+    @if (_state == EditorState.Loading)
+    {
+        <div class="editor-skeleton" aria-hidden="true">
+            <div class="editor-skeleton-tabs">
+                <Skeleton Class="skeleton-tab" Width="70px" />
+                <Skeleton Class="skeleton-tab" Width="80px" />
+            </div>
+            <Skeleton Class="skeleton-editor-block" Width="100%" />
+            <div class="editor-skeleton-fields">
+                <Skeleton Class="skeleton-field" Width="100%" />
+                <Skeleton Class="skeleton-field-lg" Width="100%" />
+            </div>
+            <div class="editor-skeleton-actions">
+                <Skeleton Class="skeleton-action" Width="90px" />
+                <Skeleton Class="skeleton-action" Width="160px" />
+            </div>
+        </div>
+    }
+    else if (_state == EditorState.Success)
+    {
+        <div class="editor-success">
+            <p>Proposal opened — <a href="@_result!.PullRequestUrl" target="_blank" rel="noreferrer">view the pull request on GitHub</a>.</p>
+            <button type="button" class="editor-btn editor-btn-primary" @onclick="Close">Done</button>
+        </div>
+    }
+    else
+    {
+        @if (IsNewFile)
+        {
+            <div class="editor-slug-field">
+                <label for="new-article-slug">URL slug</label>
+                <input id="new-article-slug" class="editor-slug-input" placeholder="my-first-post"
+                       @bind="_slug" @bind:event="oninput" maxlength="80" />
+                <span class="editor-slug-preview">→ @EffectivePath</span>
+                @if (!string.IsNullOrEmpty(_slug) && !IsSlugValid)
+                {
+                    <span class="editor-slug-error">Lowercase letters, numbers and hyphens only (e.g. "my-first-post").</span>
+                }
+            </div>
+        }
+
+        <div class="editor-tabs">
+            <button type="button" class="editor-tab @(_activeTab == EditorTab.Write ? "is-active" : "")"
+                    @onclick='() => SetTab(EditorTab.Write)'>Write</button>
+            <button type="button" class="editor-tab @(_activeTab == EditorTab.Preview ? "is-active" : "")"
+                    @onclick='() => SetTab(EditorTab.Preview)'>Preview</button>
+        </div>
+
+        <div class="editor-pane" style="@(_activeTab == EditorTab.Write ? "" : "display:none")">
+            <StandaloneCodeEditor @ref="_editor" Id="page-editor-monaco" CssClass="page-editor-monaco"
+                                   ConstructionOptions="EditorOptions" />
+        </div>
+
+        @if (_activeTab == EditorTab.Preview)
+        {
+            <div class="editor-pane editor-preview">
+                @if (_previewHtml is null)
+                {
+                    <div aria-hidden="true">
+                        <Skeleton Class="skeleton-title" Width="55%" />
+                        <Skeleton Class="skeleton-line" Width="100%" />
+                        <Skeleton Class="skeleton-line" Width="92%" />
+                        <Skeleton Class="skeleton-line" Width="97%" />
+                        <Skeleton Class="skeleton-line" Width="70%" />
+                    </div>
+                }
+                else
+                {
+                    <MdContentRenderer Html="@_previewHtml" IsJapanese="@IsJapanese" />
+                }
+            </div>
+        }
+
+        <div class="editor-fields">
+            <input class="editor-commit-input" placeholder="Commit message (required)"
+                   @bind="_commitMessage" @bind:event="oninput" maxlength="120" />
+            <textarea class="editor-description-input" placeholder="Description (optional)" rows="3"
+                      @bind="_description" @bind:event="oninput"></textarea>
+        </div>
+
+        @if (_error is not null)
+        {
+            <InfoBubble Title="@($"Could not propose changes: {_error}")" />
+        }
+
+        <div class="editor-actions">
+            <button type="button" class="editor-btn editor-btn-cancel" @onclick="Close"
+                    disabled="@(_state == EditorState.Submitting)">Cancel</button>
+            <button type="button" class="editor-btn editor-btn-primary" @onclick="Propose" disabled="@(!CanPropose)">
+                @(_state == EditorState.Submitting ? "Opening pull request…" : "Propose changes")
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string FilePath { get; set; } = string.Empty;
+    [Parameter] public bool IsJapanese { get; set; }
+    [Parameter] public bool IsNewFile { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private const string NewArticleTemplate = "---\ntitle: \"\"\ndescription: \"\"\nauthor: \"Emi (powerm1nt)\"\n---\n\n";
+    private static readonly Regex SlugPattern = new(@"^[a-z0-9]+(-[a-z0-9]+)*$");
+
+    private enum EditorState { Loading, Editing, Submitting, Success }
+    private enum EditorTab { Write, Preview }
+
+    private EditorState _state = EditorState.Loading;
+    private EditorTab _activeTab = EditorTab.Write;
+    private StandaloneCodeEditor? _editor;
+    private string _rawContent = string.Empty;
+    private string _slug = string.Empty;
+    private string _commitMessage = string.Empty;
+    private string _description = string.Empty;
+    private string? _previewHtml;
+    private string? _error;
+    private bool _loadFailed;
+    private ProposalResultDto? _result;
+
+    private string EffectivePath => IsNewFile ? $"blog/{_slug}{(IsJapanese ? ".ja" : string.Empty)}.md" : FilePath;
+    private bool IsSlugValid => SlugPattern.IsMatch(_slug);
+
+    private bool CanPropose =>
+        _state == EditorState.Editing && !_loadFailed && !string.IsNullOrWhiteSpace(_commitMessage) &&
+        (!IsNewFile || IsSlugValid);
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (IsNewFile)
+        {
+            _rawContent = NewArticleTemplate;
+            _state = EditorState.Editing;
+            return;
+        }
+
+        try
+        {
+            var raw = await Http.GetFromJsonAsync<PageRawDto>($"/api/pages/raw?path={Uri.EscapeDataString(FilePath)}");
+            _rawContent = raw?.RawContent ?? string.Empty;
+        }
+        catch (Exception ex)
+        {
+            _error = $"Could not load page content ({ex.Message}).";
+            _loadFailed = true;
+        }
+
+        _state = EditorState.Editing;
+    }
+
+    private StandaloneEditorConstructionOptions EditorOptions(StandaloneCodeEditor editor) => new()
+    {
+        AutomaticLayout = true,
+        Language = "markdown",
+        Value = _rawContent,
+        WordWrap = "on",
+        Theme = "vs-dark"
+    };
+
+    private async Task SetTab(EditorTab tab)
+    {
+        _activeTab = tab;
+        if (tab == EditorTab.Preview)
+            await RefreshPreviewAsync();
+    }
+
+    private async Task RefreshPreviewAsync()
+    {
+        _previewHtml = null;
+        StateHasChanged();
+
+        var markdown = _editor is not null ? await _editor.GetValue() : _rawContent;
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync("/api/pages/preview", new PagePreviewRequestDto { Markdown = markdown });
+            var result = await response.Content.ReadFromJsonAsync<PagePreviewResultDto>();
+            _previewHtml = result?.Html ?? string.Empty;
+        }
+        catch (Exception ex)
+        {
+            _previewHtml = $"<p class=\"editor-status\">Preview failed: {System.Net.WebUtility.HtmlEncode(ex.Message)}</p>";
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task Propose()
+    {
+        if (!CanPropose || _editor is null) return;
+
+        _state = EditorState.Submitting;
+        _error = null;
+        StateHasChanged();
+
+        try
+        {
+            var newContent = await _editor.GetValue();
+            var request = Auth.WithSession(new HttpRequestMessage(HttpMethod.Post, "/api/proposals")
+            {
+                Content = JsonContent.Create(new ProposalRequestDto
+                {
+                    Path = EffectivePath,
+                    NewContent = newContent,
+                    CommitMessage = _commitMessage.Trim(),
+                    Description = _description.Trim()
+                })
+            });
+
+            var response = await Http.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
+            {
+                var problem = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
+                _error = problem is not null && problem.TryGetValue("error", out var message)
+                    ? message
+                    : $"HTTP {(int)response.StatusCode}";
+                _state = EditorState.Editing;
+                return;
+            }
+
+            _result = await response.Content.ReadFromJsonAsync<ProposalResultDto>();
+            _state = EditorState.Success;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _state = EditorState.Editing;
+        }
+    }
+
+    private Task Close() => OnClose.InvokeAsync();
+}

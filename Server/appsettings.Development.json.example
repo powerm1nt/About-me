@@ -10,6 +10,12 @@
     "ContainerName": "static",
     "AccountKey": ""
   },
+  "GitHub": {
+    "ClientId": "",
+    "ClientSecret": "",
+    "RepoOwner": "powerm1nt",
+    "RepoName": "About-me"
+  },
   "Cors": {
     "AllowedOrigins": [
       "https://localhost:7217",
