@@ -1,0 +1,9 @@
+--- a/README.md
++++ b/README.md
+@@ -12,4 +12,6 @@
+ 
+ <img src="public/test-image.jpg" width="438" alt="cat" />
+ 
++This blog is collaborative, feel free to submit changes if you want!
++
+ You can also read my writings here: [Blog](./blog/index.mdx)
