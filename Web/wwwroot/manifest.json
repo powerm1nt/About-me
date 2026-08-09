@@ -3,7 +3,7 @@
   "name": "About me — Blog & Portfolio",
   "icons": [
     {
-      "src": "assets/pfp-Dv0TiXAn.jpg",
+      "src": "https://nwrks-cdn.public.prod.nuka.works/static/pfp.jpg",
       "sizes": "512x512",
       "type": "image/jpeg"
     }
