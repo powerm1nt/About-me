@@ -213,6 +213,7 @@ a:hover { text-decoration: underline; color: #ffffff; }
 .history-diff-header { color: #9ca3af; background: rgba(255,255,255,0.05); }
 .history-diff-added { color: #86efac; background: rgba(34,197,94,0.12); }
 .history-diff-removed { color: #fca5a5; background: rgba(239,68,68,0.12); }
+.history-diff-skeleton { display: flex; flex-direction: column; gap: 0.5em; padding: 0.8em; }
 .history-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2em; margin-bottom: 1.2em; }
 .history-compare-pane { border: 1px solid rgba(255,255,255,0.12); padding: 1em; min-width: 0; }
 .history-compare-pane h4 { margin: 0 0 0.6em; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #9ca3af; }
