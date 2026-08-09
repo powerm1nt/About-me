@@ -90,9 +90,29 @@
         </div>
     </div>
 
-    <script src="_content/BlazorMonaco/jsInterop.js"></script>
-    <script src="_content/BlazorMonaco/lib/monaco-editor/min/vs/loader.js"></script>
-    <script src="_content/BlazorMonaco/lib/monaco-editor/min/vs/editor/editor.main.js"></script>
+    <script>
+        // Monaco (BlazorMonaco) is only needed by the page editor, not by anonymous readers —
+        // load it on demand from PageEditor.razor instead of on every page load.
+        window.loadMonacoAssets = function () {
+            if (window.__monacoAssetsPromise) return window.__monacoAssetsPromise;
+
+            var load = function (src) {
+                return new Promise(function (resolve, reject) {
+                    var s = document.createElement('script');
+                    s.src = src;
+                    s.onload = resolve;
+                    s.onerror = function () { reject(new Error('Failed to load ' + src)); };
+                    document.head.appendChild(s);
+                });
+            };
+
+            window.__monacoAssetsPromise = load('_content/BlazorMonaco/jsInterop.js')
+                .then(function () { return load('_content/BlazorMonaco/lib/monaco-editor/min/vs/loader.js'); })
+                .then(function () { return load('_content/BlazorMonaco/lib/monaco-editor/min/vs/editor/editor.main.js'); });
+
+            return window.__monacoAssetsPromise;
+        };
+    </script>
     <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
 </body>
 

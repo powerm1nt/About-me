@@ -7,5 +7,19 @@
       "/assets/*",
       "*.{png,jpg,jpeg,gif,ico,svg,css,js,json,webmanifest,woff,woff2,ttf,map,txt}"
     ]
-  }
+  },
+  "routes": [
+    {
+      "route": "/_framework/*",
+      "headers": {
+        "Cache-Control": "public, max-age=31536000, immutable"
+      }
+    },
+    {
+      "route": "/_content/*",
+      "headers": {
+        "Cache-Control": "public, max-age=31536000, immutable"
+      }
+    }
+  ]
 }

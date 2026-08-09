@@ -6,6 +6,12 @@
       "runtimeExecutable": "dotnet",
       "runtimeArgs": ["run", "--project", "Web", "--urls", "http://localhost:5279"],
       "port": 5279
+    },
+    {
+      "name": "server",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "Server", "--urls", "http://localhost:5066"],
+      "port": 5066
     }
   ]
 }

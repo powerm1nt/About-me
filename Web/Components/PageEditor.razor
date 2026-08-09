@@ -1,5 +1,6 @@
 @inject HttpClient Http
 @inject Web.Services.AuthService Auth
+@inject IJSRuntime JS
 @using System.Text.RegularExpressions
 
 <div class="page-editor">
@@ -131,24 +132,29 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Kick off Monaco's script load in parallel with fetching the page content —
+        // it's only pulled in here, not on every page load, since anonymous readers never need it.
+        var monacoTask = JS.InvokeVoidAsync("loadMonacoAssets").AsTask();
+
         if (IsNewFile)
         {
             _rawContent = NewArticleTemplate;
-            _state = EditorState.Editing;
-            return;
+        }
+        else
+        {
+            try
+            {
+                var raw = await Http.GetFromJsonAsync<PageRawDto>($"/api/pages/raw?path={Uri.EscapeDataString(FilePath)}");
+                _rawContent = raw?.RawContent ?? string.Empty;
+            }
+            catch (Exception ex)
+            {
+                _error = $"Could not load page content ({ex.Message}).";
+                _loadFailed = true;
+            }
         }
 
-        try
-        {
-            var raw = await Http.GetFromJsonAsync<PageRawDto>($"/api/pages/raw?path={Uri.EscapeDataString(FilePath)}");
-            _rawContent = raw?.RawContent ?? string.Empty;
-        }
-        catch (Exception ex)
-        {
-            _error = $"Could not load page content ({ex.Message}).";
-            _loadFailed = true;
-        }
-
+        await monacoTask;
         _state = EditorState.Editing;
     }
 
