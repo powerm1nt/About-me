@@ -67,7 +67,7 @@
                 <button type="button" class="toolbar-btn" title="Numbered list" @onclick='() => PrefixLinesAsync(numbered: true)'>1. List</button>
             </div>
             <StandaloneCodeEditor @ref="_editor" Id="page-editor-monaco" CssClass="page-editor-monaco"
-                                   ConstructionOptions="EditorOptions" />
+                                   ConstructionOptions="EditorOptions" OnDidInit="RegisterShortcutsAsync" />
         </div>
 
         @if (_activeTab == EditorTab.Preview)
@@ -171,8 +171,25 @@
         _state = EditorState.Editing;
     }
 
-    // Wraps the current selection with prefix/suffix (e.g. "**bold**"); inserts placeholder text
-    // instead when nothing is selected, so the toolbar always produces valid markdown to type over.
+    private static readonly Regex NumberedListPrefix = new(@"^\d+\.\s+");
+
+    // Registers Ctrl/Cmd+B, +I and +K to trigger the same wrap actions as the toolbar buttons,
+    // once the underlying Monaco instance is actually ready (fires from StandaloneCodeEditor's
+    // OnDidInit, not construction — AddCommand needs a live editor).
+    private async Task RegisterShortcutsAsync()
+    {
+        if (_editor is null) return;
+
+        await _editor.AddCommand((int)KeyMod.CtrlCmd | (int)KeyCode.KeyB, args => { _ = WrapSelectionAsync("**", "**", "bold text"); }, null);
+        await _editor.AddCommand((int)KeyMod.CtrlCmd | (int)KeyCode.KeyI, args => { _ = WrapSelectionAsync("*", "*", "italic text"); }, null);
+        await _editor.AddCommand((int)KeyMod.CtrlCmd | (int)KeyCode.KeyK, args => { _ = WrapSelectionAsync("[", "](https://)", "link text"); }, null);
+    }
+
+    // Wraps the current selection with prefix/suffix (e.g. "**bold**"). If the selection already
+    // carries the markers — either selected along with the text ("**bold**" fully selected) or
+    // sitting immediately outside it ("bold" selected inside "**bold**") — removes them instead,
+    // so clicking the same action twice toggles the formatting off. Inserts placeholder text when
+    // nothing is selected, so the toolbar always produces valid markdown to type over.
     private async Task WrapSelectionAsync(string prefix, string suffix, string placeholder)
     {
         if (_editor is null) return;
@@ -183,15 +200,38 @@
 
         var range = new BlazorMonaco.Range(selection.StartLineNumber, selection.StartColumn, selection.EndLineNumber, selection.EndColumn);
         var hasSelection = range.StartLineNumber != range.EndLineNumber || range.StartColumn != range.EndColumn;
-        var selectedText = hasSelection ? await model.GetValueInRange(range, null) : string.Empty;
-        var newText = $"{prefix}{(hasSelection ? selectedText : placeholder)}{suffix}";
 
-        await _editor.ExecuteEdits("toolbar", [new IdentifiedSingleEditOperation { Range = range, Text = newText }], new List<Selection>());
-        await _editor.Focus();
+        if (!hasSelection)
+        {
+            await ReplaceRangeAsync(range, $"{prefix}{placeholder}{suffix}");
+            return;
+        }
+
+        var selectedText = await model.GetValueInRange(range, null);
+
+        if (selectedText.Length >= prefix.Length + suffix.Length &&
+            selectedText.StartsWith(prefix, StringComparison.Ordinal) &&
+            selectedText.EndsWith(suffix, StringComparison.Ordinal))
+        {
+            await ReplaceRangeAsync(range, selectedText[prefix.Length..^suffix.Length]);
+            return;
+        }
+
+        var before = await GetCharsBeforeAsync(model, range, prefix.Length);
+        var after = await GetCharsAfterAsync(model, range, suffix.Length);
+        if (before == prefix && after == suffix)
+        {
+            var expanded = new BlazorMonaco.Range(range.StartLineNumber, range.StartColumn - prefix.Length, range.EndLineNumber, range.EndColumn + suffix.Length);
+            await ReplaceRangeAsync(expanded, selectedText);
+            return;
+        }
+
+        await ReplaceRangeAsync(range, $"{prefix}{selectedText}{suffix}");
     }
 
     // Prefixes every line touched by the current selection (e.g. "> " for a quote). Numbered
-    // lists get a sequential "1. ", "2. ", ... prefix instead of a fixed marker.
+    // lists get a sequential "1. ", "2. ", ... prefix instead of a fixed marker. If every touched
+    // line already carries the marker, strips it instead — toggles the same way WrapSelectionAsync does.
     private async Task PrefixLinesAsync(string marker = "", bool numbered = false)
     {
         if (_editor is null) return;
@@ -203,13 +243,45 @@
         var range = new BlazorMonaco.Range(selection.StartLineNumber, 1, selection.EndLineNumber, int.MaxValue);
         var block = await model.GetValueInRange(range, null);
         var lines = block.Split('\n');
-        var newLines = numbered
-            ? lines.Select((line, i) => $"{i + 1}. {line}")
-            : lines.Select(line => $"{marker}{line}");
-        var newText = string.Join('\n', newLines);
 
-        await _editor.ExecuteEdits("toolbar", [new IdentifiedSingleEditOperation { Range = range, Text = newText }], new List<Selection>());
+        string[] newLines;
+        if (numbered)
+        {
+            var alreadyNumbered = lines.All(l => NumberedListPrefix.IsMatch(l));
+            newLines = alreadyNumbered
+                ? lines.Select(l => NumberedListPrefix.Replace(l, "")).ToArray()
+                : lines.Select((l, i) => $"{i + 1}. {l}").ToArray();
+        }
+        else
+        {
+            var alreadyMarked = lines.All(l => l.StartsWith(marker, StringComparison.Ordinal));
+            newLines = alreadyMarked
+                ? lines.Select(l => l[marker.Length..]).ToArray()
+                : lines.Select(l => $"{marker}{l}").ToArray();
+        }
+
+        await ReplaceRangeAsync(range, string.Join('\n', newLines));
+    }
+
+    private async Task ReplaceRangeAsync(BlazorMonaco.Range range, string text)
+    {
+        if (_editor is null) return;
+        await _editor.ExecuteEdits("toolbar", [new IdentifiedSingleEditOperation { Range = range, Text = text }], new List<Selection>());
         await _editor.Focus();
+    }
+
+    private static async Task<string> GetCharsBeforeAsync(TextModel model, BlazorMonaco.Range range, int count)
+    {
+        if (count == 0 || range.StartColumn - count < 1) return string.Empty;
+        var probe = new BlazorMonaco.Range(range.StartLineNumber, range.StartColumn - count, range.StartLineNumber, range.StartColumn);
+        return await model.GetValueInRange(probe, null);
+    }
+
+    private static async Task<string> GetCharsAfterAsync(TextModel model, BlazorMonaco.Range range, int count)
+    {
+        if (count == 0) return string.Empty;
+        var probe = new BlazorMonaco.Range(range.EndLineNumber, range.EndColumn, range.EndLineNumber, range.EndColumn + count);
+        return await model.GetValueInRange(probe, null);
     }
 
     private StandaloneEditorConstructionOptions EditorOptions(StandaloneCodeEditor editor) => new()
