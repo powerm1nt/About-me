@@ -21,23 +21,6 @@ public class BlobStorageService
         _container = serviceClient.GetBlobContainerClient(_config.ContainerName);
     }
 
-    public async Task<(Stream? Content, string ContentType, bool Found)> GetFileAsync(string path)
-    {
-        foreach (var candidate in Candidates(path))
-        {
-            var blob = _container.GetBlobClient(candidate.TrimStart('/'));
-            try
-            {
-                BlobDownloadStreamingResult result = await blob.DownloadStreamingAsync();
-                var contentType = result.Details.ContentType ?? "application/octet-stream";
-                return (result.Content, contentType, true);
-            }
-            catch (Azure.RequestFailedException ex) when (ex.Status == 404) { }
-        }
-
-        return (null, string.Empty, false);
-    }
-
     public async Task<string?> GetTextAsync(string path)
     {
         foreach (var candidate in Candidates(path))

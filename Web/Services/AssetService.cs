@@ -13,7 +13,7 @@ public class AssetService
         _js = js;
     }
 
-    /// <summary>Returns the Server asset proxy URL, e.g. Url("pfp.jpg") → "http://localhost:5066/assets/pfp.jpg" which the Server streams from blob.</summary>
+    /// <summary>Returns the CDN/blob URL for a static asset, e.g. Url("pfp.jpg") → "https://nwrks-cdn.public.prod.nuka.works/static/pfp.jpg".</summary>
     public string Url(string path) => $"{_baseUrl}/{path.TrimStart('/')}";
 
     /// <summary>Injects --cardboard-url and other CSS variables into :root so CSS background-image rules can reference blob assets.</summary>
