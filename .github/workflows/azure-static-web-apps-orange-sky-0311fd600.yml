@@ -45,6 +45,14 @@ jobs:
           output_location: "wwwroot" # Built app content directory - optional
           github_id_token: ${{ steps.idtoken.outputs.result }}
           ###### End of Repository/Build Configurations ######
+      - name: Purge Cloudflare cache
+        if: github.event_name == 'push'
+        run: |
+          curl -s -X POST "https://api.cloudflare.com/client/v4/zones/${{ secrets.CLOUDFLARE_ZONE_ID }}/purge_cache" \
+            -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            --data '{"purge_everything":true}' \
+            --fail
 
   close_pull_request_job:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
