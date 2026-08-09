@@ -2,6 +2,7 @@ using Markdig;
 using Microsoft.AspNetCore.Mvc;
 using Server.Services;
 using Shared.Dto;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -11,15 +12,22 @@ namespace Server.Controllers;
 [Route("api/pages")]
 public class PagesController : ControllerBase
 {
+    // Blob content only changes via merged GitHub proposals, so a short server-side cache
+    // plus a matching browser Cache-Control both meaningfully cut blob reads/renders without
+    // making edits feel stuck for long.
+    private const string BrowserCacheControl = "public, max-age=60";
+
     private readonly BlobStorageService _blob;
+    private readonly PageContentCache _cache;
 
     private static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder()
         .UseAdvancedExtensions()
         .Build();
 
-    public PagesController(BlobStorageService blob)
+    public PagesController(BlobStorageService blob, PageContentCache cache)
     {
         _blob = blob;
+        _cache = cache;
     }
 
     // GET /api/pages?path=README.md
@@ -27,23 +35,32 @@ public class PagesController : ControllerBase
     public async Task<ActionResult<PageDto>> GetPage([FromQuery] string path = "README.md")
     {
         var normalizedPath = NormalizePath(path);
-        var rawText = await _blob.GetTextAsync(normalizedPath);
+        var cacheKey = $"page:{normalizedPath}";
 
-        if (rawText is null)
-            return NotFound(new { error = $"Page '{normalizedPath}' not found." });
-
-        var (meta, html) = RenderRawText(rawText);
-        var (_, markdown) = ParseFrontmatter(rawText);
-
-        return Ok(new PageDto
+        if (!_cache.TryGet(cacheKey, out PageDto? page) || page is null)
         {
-            Path = normalizedPath,
-            Content = markdown,
-            RenderedHtml = html,
-            ContentType = "text/markdown",
-            Found = true,
-            Meta = meta
-        });
+            var rawText = await _blob.GetTextAsync(normalizedPath);
+            if (rawText is null)
+                return NotFound(new { error = $"Page '{normalizedPath}' not found." });
+
+            var (meta, html) = RenderRawText(rawText);
+            var (_, markdown) = ParseFrontmatter(rawText);
+
+            page = new PageDto
+            {
+                Path = normalizedPath,
+                Content = markdown,
+                RenderedHtml = html,
+                ContentType = "text/markdown",
+                Found = true,
+                Meta = meta
+            };
+
+            _cache.Set(cacheKey, page, Encoding.UTF8.GetByteCount(html) + Encoding.UTF8.GetByteCount(markdown));
+        }
+
+        Response.Headers.CacheControl = BrowserCacheControl;
+        return Ok(page);
     }
 
     // GET /api/pages/raw?path=blog/welcome.md — byte-for-byte blob content (frontmatter included),
@@ -87,38 +104,50 @@ public class PagesController : ControllerBase
     [HttpGet("articles")]
     public async Task<ActionResult<List<ArticleMetadataDto>>> GetArticles()
     {
-        var articles = new List<ArticleMetadataDto>();
+        const string cacheKey = "articles";
 
-        await foreach (var blobName in _blob.ListBlobsAsync("blog/"))
+        if (!_cache.TryGet(cacheKey, out List<ArticleMetadataDto>? articles) || articles is null)
         {
-            // Only process .md / .mdx files; skip index files
-            if (!blobName.EndsWith(".md", StringComparison.OrdinalIgnoreCase) &&
-                !blobName.EndsWith(".mdx", StringComparison.OrdinalIgnoreCase))
-                continue;
+            articles = new List<ArticleMetadataDto>();
 
-            var filePath = NormalizePath(blobName);
-
-            if (filePath == "blog/index.md" || filePath == "blog/index.ja.md")
-                continue;
-
-            var text = await _blob.GetTextAsync(blobName);
-            if (text is null) continue;
-
-            var (meta, _) = ParseFrontmatter(text);
-
-            articles.Add(new ArticleMetadataDto
+            await foreach (var blobName in _blob.ListBlobsAsync("blog/"))
             {
-                FilePath    = filePath,
-                Title       = string.IsNullOrEmpty(meta.Title) ? System.IO.Path.GetFileNameWithoutExtension(filePath) : meta.Title,
-                Description = meta.Description,
-                Author      = meta.Author,
-                LastEdited  = meta.LastEdited,
-            });
+                // Only process .md / .mdx files; skip index files
+                if (!blobName.EndsWith(".md", StringComparison.OrdinalIgnoreCase) &&
+                    !blobName.EndsWith(".mdx", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                var filePath = NormalizePath(blobName);
+
+                if (filePath == "blog/index.md" || filePath == "blog/index.ja.md")
+                    continue;
+
+                var text = await _blob.GetTextAsync(blobName);
+                if (text is null) continue;
+
+                var (meta, _) = ParseFrontmatter(text);
+
+                articles.Add(new ArticleMetadataDto
+                {
+                    FilePath    = filePath,
+                    Title       = string.IsNullOrEmpty(meta.Title) ? System.IO.Path.GetFileNameWithoutExtension(filePath) : meta.Title,
+                    Description = meta.Description,
+                    Author      = meta.Author,
+                    LastEdited  = meta.LastEdited,
+                });
+            }
+
+            // Sort: EN articles first within each group, then by title
+            articles.Sort((a, b) => string.Compare(a.FilePath, b.FilePath, StringComparison.Ordinal));
+
+            var sizeBytes = articles.Sum(a =>
+                Encoding.UTF8.GetByteCount(a.FilePath) + Encoding.UTF8.GetByteCount(a.Title) +
+                Encoding.UTF8.GetByteCount(a.Description) + Encoding.UTF8.GetByteCount(a.Author) +
+                Encoding.UTF8.GetByteCount(a.LastEdited));
+            _cache.Set(cacheKey, articles, sizeBytes);
         }
 
-        // Sort: EN articles first within each group, then by title
-        articles.Sort((a, b) => string.Compare(a.FilePath, b.FilePath, StringComparison.Ordinal));
-
+        Response.Headers.CacheControl = BrowserCacheControl;
         return Ok(articles);
     }
 

@@ -24,6 +24,7 @@ builder.Services.AddSingleton<BlobStorageService>();
 builder.Services.AddSingleton<AuthSessionStore>();
 builder.Services.AddSingleton<DiffService>();
 builder.Services.AddSingleton<GitHubProposalService>();
+builder.Services.AddSingleton<PageContentCache>();
 builder.Services.AddHttpClient();
 builder.Services.AddMemoryCache(opts => opts.SizeLimit = 10_000); // auth session/state cache
 builder.Services.AddControllers();
