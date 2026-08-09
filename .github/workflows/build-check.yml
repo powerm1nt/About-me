@@ -1,0 +1,33 @@
+name: Build check
+
+# Pure compile check — no Azure credentials, no deploy, no secrets. Runs on every push to develop
+# and on PRs into develop/main so breakage shows up before it ever reaches a deploy workflow.
+# Excludes patch-only PRs (the propose/* branches from the "propose changes" feature) since those
+# never touch buildable code.
+on:
+  push:
+    branches:
+      - develop
+  pull_request:
+    branches:
+      - develop
+      - main
+    paths-ignore:
+      - "patches/**"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: dotnet restore NukaWorks.Website.slnx
+
+      - name: Build
+        run: dotnet build NukaWorks.Website.slnx -c Release --no-restore
