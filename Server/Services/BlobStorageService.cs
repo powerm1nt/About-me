@@ -37,10 +37,12 @@ public class BlobStorageService
         return null;
     }
 
-    // List all blob names under an optional prefix (e.g. "blog/")
+    // List all blob names under an optional prefix (e.g. "blog/"). BlobStates.None restricts this
+    // to live blobs only — the account has soft-delete enabled, so BlobStates.All would also
+    // surface soft-deleted copies of overwritten/re-uploaded blobs as duplicate entries.
     public async IAsyncEnumerable<string> ListBlobsAsync(string prefix = "")
     {
-        await foreach (var item in _container.GetBlobsAsync(BlobTraits.None, BlobStates.All, prefix, CancellationToken.None))
+        await foreach (var item in _container.GetBlobsAsync(BlobTraits.None, BlobStates.None, prefix, CancellationToken.None))
             if (item.Properties.AccessTier == AccessTier.Hot)
                 yield return item.Name;
     }
