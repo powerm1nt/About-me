@@ -58,7 +58,8 @@ public class BlobStorageService
     public async IAsyncEnumerable<string> ListBlobsAsync(string prefix = "")
     {
         await foreach (var item in _container.GetBlobsAsync(BlobTraits.None, BlobStates.All, prefix, CancellationToken.None))
-            yield return item.Name;
+            if (item.Properties.AccessTier == AccessTier.Hot)
+                yield return item.Name;
     }
 
     // If the caller asks for .md, also try .mdx
