@@ -58,7 +58,10 @@
                         <p class="blog-card-desc">@art.Description</p>
                     }
                     <div class="blog-card-meta">
-                        <span class="blog-card-author">By @art.Author</span>
+                        @if (!string.IsNullOrEmpty(art.Author))
+                        {
+                            <span class="blog-card-author">By @art.Author</span>
+                        }
                         @if (!string.IsNullOrEmpty(art.LastEdited))
                         {
                             <span class="blog-card-last-edited" title="@($"Created: {art.Created ?? art.LastEdited}")">

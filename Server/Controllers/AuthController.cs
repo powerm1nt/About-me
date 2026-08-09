@@ -89,7 +89,7 @@ public class AuthController : ControllerBase
         if (user?.Login is null)
             return StatusCode(502, new { error = "Could not read GitHub user profile." });
 
-        var sessionId = _sessions.CreateSession(new AuthSession(token.AccessToken, user.Login, user.AvatarUrl ?? string.Empty));
+        var sessionId = _sessions.CreateSession(new AuthSession(token.AccessToken, user.Login, user.AvatarUrl ?? string.Empty, user.Name ?? string.Empty));
 
         var separator = pending.ReturnUrl.Contains('?') ? '&' : '?';
         var resumeParam = pending.Resume is not null ? $"&resume={Uri.EscapeDataString(pending.Resume)}" : string.Empty;
@@ -106,7 +106,7 @@ public class AuthController : ControllerBase
         if (session is null)
             return Unauthorized();
 
-        return Ok(new AuthUserDto { Login = session.Login, AvatarUrl = session.AvatarUrl });
+        return Ok(new AuthUserDto { Login = session.Login, AvatarUrl = session.AvatarUrl, Name = session.Name });
     }
 
     // POST /api/auth/logout
@@ -149,5 +149,9 @@ public class AuthController : ControllerBase
 
         [JsonPropertyName("avatar_url")]
         public string? AvatarUrl { get; set; }
+
+        // GitHub's display name; can be null if the user hasn't set one, in which case Login is the fallback.
+        [JsonPropertyName("name")]
+        public string? Name { get; set; }
     }
 }

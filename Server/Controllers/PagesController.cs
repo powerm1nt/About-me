@@ -2,6 +2,7 @@ using Markdig;
 using Microsoft.AspNetCore.Mvc;
 using Server.Services;
 using Shared.Dto;
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -39,12 +40,13 @@ public class PagesController : ControllerBase
 
         if (!_cache.TryGet(cacheKey, out PageDto? page) || page is null)
         {
-            var rawText = await _blob.GetTextAsync(normalizedPath);
+            var (rawText, lastModified) = await _blob.GetTextWithMetadataAsync(normalizedPath);
             if (rawText is null)
                 return NotFound(new { error = $"Page '{normalizedPath}' not found." });
 
             var (meta, html) = RenderRawText(rawText);
             var (_, markdown) = ParseFrontmatter(rawText);
+            meta.LastEdited = FormatLastEdited(lastModified);
 
             page = new PageDto
             {
@@ -122,7 +124,7 @@ public class PagesController : ControllerBase
                 if (filePath == "blog/index.md" || filePath == "blog/index.ja.md")
                     continue;
 
-                var text = await _blob.GetTextAsync(blobName);
+                var (text, lastModified) = await _blob.GetTextWithMetadataAsync(blobName);
                 if (text is null) continue;
 
                 var (meta, _) = ParseFrontmatter(text);
@@ -133,7 +135,7 @@ public class PagesController : ControllerBase
                     Title       = string.IsNullOrEmpty(meta.Title) ? System.IO.Path.GetFileNameWithoutExtension(filePath) : meta.Title,
                     Description = meta.Description,
                     Author      = meta.Author,
-                    LastEdited  = meta.LastEdited,
+                    LastEdited  = FormatLastEdited(lastModified),
                 });
             }
 
@@ -255,14 +257,19 @@ public class PagesController : ControllerBase
             data[key] = val;
         }
 
+        // LastEdited is deliberately not read from frontmatter here — it's always set by the
+        // caller from the blob's actual last-modified timestamp (see FormatLastEdited), so a
+        // lastEdited: value typed into the markdown itself can never override the real date.
         var meta = new PageMetaDto
         {
             Title = data.GetValueOrDefault("title", string.Empty),
             Description = data.GetValueOrDefault("description", string.Empty),
-            Author = data.GetValueOrDefault("author", "Emi (powerm1nt)"),
-            LastEdited = data.GetValueOrDefault("lastEdited", string.Empty),
+            Author = data.GetValueOrDefault("author", string.Empty),
         };
 
         return (meta, content);
     }
+
+    private static string FormatLastEdited(DateTimeOffset? lastModified) =>
+        lastModified?.ToString("MMM d, yyyy", CultureInfo.InvariantCulture) ?? string.Empty;
 }

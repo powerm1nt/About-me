@@ -14,6 +14,6 @@ public class PageMetaDto
 {
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
-    public string Author { get; set; } = "Emi (powerm1nt)";
+    public string Author { get; set; } = string.Empty;
     public string LastEdited { get; set; } = string.Empty;
 }
