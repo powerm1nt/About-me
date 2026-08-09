@@ -191,4 +191,33 @@ a:hover { text-decoration: underline; color: #ffffff; }
 .editor-slug-preview { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.85rem; color: #9ca3af; }
 .editor-slug-error { flex-basis: 100%; font-size: 0.8rem; color: #f87171; }
 
+/* Page history */
+.page-history { margin-bottom: 1.5em; }
+.history-header { display: flex; align-items: center; justify-content: space-between; gap: 1em; margin-bottom: 1em; }
+.history-header h3 { margin: 0; font-size: 1.1rem; color: #ffffff; }
+.history-skeleton { display: flex; flex-direction: column; gap: 0.8em; }
+.history-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.6em; }
+.history-item { border: 1px solid rgba(255,255,255,0.12); }
+.history-entry { width: 100%; display: flex; align-items: center; gap: 0.7em; background: rgba(255,255,255,0.03); border: none; padding: 0.7em 0.9em; cursor: pointer; text-align: left; font-family: inherit; color: inherit; }
+.history-entry:hover { background: rgba(255,255,255,0.08); }
+.history-entry.is-active { background: rgba(255,255,255,0.1); }
+.history-avatar { width: 28px; height: 28px; border-radius: 100%; object-fit: cover; border: 1px solid #ffffff; flex-shrink: 0; }
+.history-entry-body { display: flex; flex-direction: column; gap: 0.15em; min-width: 0; }
+.history-message { font-size: 0.92rem; color: #f1f5f9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.history-meta { font-size: 0.78rem; color: #9ca3af; }
+.history-detail { padding: 1em; border-top: 1px solid rgba(255,255,255,0.12); }
+.history-view-commit { margin-left: auto; font-size: 0.8rem; color: #9ca3af; text-decoration: none; align-self: center; }
+.history-view-commit:hover { color: #ffffff; }
+.history-diff-hunk { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.85rem; background: #000000; border: 1px solid rgba(255,255,255,0.12); margin-bottom: 1em; overflow-x: auto; }
+.history-diff-line { padding: 0.15em 0.8em; white-space: pre-wrap; word-break: break-word; }
+.history-diff-header { color: #9ca3af; background: rgba(255,255,255,0.05); }
+.history-diff-added { color: #86efac; background: rgba(34,197,94,0.12); }
+.history-diff-removed { color: #fca5a5; background: rgba(239,68,68,0.12); }
+.history-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2em; margin-bottom: 1.2em; }
+.history-compare-pane { border: 1px solid rgba(255,255,255,0.12); padding: 1em; min-width: 0; }
+.history-compare-pane h4 { margin: 0 0 0.6em; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #9ca3af; }
+@media screen and (max-width: 700px) {
+  .history-compare { grid-template-columns: 1fr; }
+}
+
 

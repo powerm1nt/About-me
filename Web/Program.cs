@@ -12,6 +12,7 @@ var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? builder.HostEnvironment.
 builder.Services.AddScoped(_ => new HttpClient { BaseAddress = new Uri(apiBaseUrl) });
 builder.Services.AddScoped<AssetService>();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<HistoryService>();
 builder.Services.AddScoped<LanguageState>();
 builder.Services.AddSingleton<MdComponentRegistry>();
 

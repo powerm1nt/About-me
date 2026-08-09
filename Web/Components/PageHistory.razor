@@ -1,0 +1,227 @@
+@inject HttpClient Http
+@inject Web.Services.HistoryService History
+@using Web.Services
+
+<div class="page-history">
+    <div class="history-header">
+        <h3>History</h3>
+        <button type="button" class="editor-btn editor-btn-cancel" @onclick="Close">Close</button>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="history-skeleton" aria-hidden="true">
+            @for (var i = 0; i < 3; i++)
+            {
+                <Skeleton Class="skeleton-card" Width="100%" />
+            }
+        </div>
+    }
+    else if (_error is not null)
+    {
+        <InfoBubble Title="@($"Could not load history: {_error}")" />
+    }
+    else if (_revisions.Count == 0)
+    {
+        <p class="loading-text">No proposed edits have been merged for this page yet.</p>
+    }
+    else
+    {
+        <ul class="history-list">
+            @foreach (var rev in _revisions)
+            {
+                <li class="history-item">
+                    <button type="button" class="history-entry @(rev.Sha == _selectedSha ? "is-active" : "")"
+                            @onclick="() => SelectAsync(rev)">
+                        @if (!string.IsNullOrEmpty(rev.AuthorAvatarUrl))
+                        {
+                            <img src="@rev.AuthorAvatarUrl" class="history-avatar" alt="@rev.AuthorLogin" />
+                        }
+                        <span class="history-entry-body">
+                            <span class="history-message">@FirstLine(rev.Message)</span>
+                            <span class="history-meta">@rev.AuthorLogin · @rev.Date.ToLocalTime().ToString("MMM d, yyyy HH:mm")</span>
+                        </span>
+                    </button>
+
+                    @if (rev.Sha == _selectedSha)
+                    {
+                        <div class="history-detail">
+                            <div class="editor-tabs">
+                                <button type="button" class="editor-tab @(_tab == HistoryTab.Text ? "is-active" : "")"
+                                        @onclick='() => SetTabAsync(HistoryTab.Text)'>Text</button>
+                                <button type="button" class="editor-tab @(_tab == HistoryTab.Preview ? "is-active" : "")"
+                                        @onclick='() => SetTabAsync(HistoryTab.Preview)'>Preview</button>
+                                <a href="@rev.HtmlUrl" target="_blank" rel="noreferrer" class="history-view-commit">View commit ↗</a>
+                            </div>
+
+                            @if (_detailLoading)
+                            {
+                                <p class="editor-status">Loading diff…</p>
+                            }
+                            else if (_hunks.Count == 0)
+                            {
+                                <p class="loading-text">No diff available for this revision.</p>
+                            }
+                            else if (_tab == HistoryTab.Text)
+                            {
+                                @foreach (var hunk in _hunks)
+                                {
+                                    <div class="history-diff-hunk">
+                                        <div class="history-diff-line history-diff-header">@hunk.Header</div>
+                                        @foreach (var line in hunk.Lines)
+                                        {
+                                            <div class="@LineClass(line.Type)">@Prefix(line.Type)@line.Text</div>
+                                        }
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                @foreach (var hunk in _hunks)
+                                {
+                                    <div class="history-compare">
+                                        <div class="history-compare-pane">
+                                            <h4>Before</h4>
+                                            @if (_previewBefore.TryGetValue(hunk, out var beforeHtml))
+                                            {
+                                                <MdContentRenderer Html="@beforeHtml" IsJapanese="@IsJapanese" />
+                                            }
+                                            else
+                                            {
+                                                <p class="editor-status">Rendering…</p>
+                                            }
+                                        </div>
+                                        <div class="history-compare-pane">
+                                            <h4>After</h4>
+                                            @if (_previewAfter.TryGetValue(hunk, out var afterHtml))
+                                            {
+                                                <MdContentRenderer Html="@afterHtml" IsJapanese="@IsJapanese" />
+                                            }
+                                            else
+                                            {
+                                                <p class="editor-status">Rendering…</p>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            }
+                        </div>
+                    }
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string FilePath { get; set; } = string.Empty;
+    [Parameter] public bool IsJapanese { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private enum HistoryTab { Text, Preview }
+
+    private bool _loading = true;
+    private string? _error;
+    private List<RevisionSummary> _revisions = [];
+    private string? _selectedSha;
+    private bool _detailLoading;
+    private List<DiffHunk> _hunks = [];
+    private HistoryTab _tab = HistoryTab.Text;
+    private readonly Dictionary<DiffHunk, string> _previewBefore = new();
+    private readonly Dictionary<DiffHunk, string> _previewAfter = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _revisions = await History.GetRevisionsAsync(FilePath);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+
+        _loading = false;
+    }
+
+    private async Task SelectAsync(RevisionSummary rev)
+    {
+        if (_selectedSha == rev.Sha)
+        {
+            _selectedSha = null;
+            return;
+        }
+
+        _selectedSha = rev.Sha;
+        _tab = HistoryTab.Text;
+        _detailLoading = true;
+        _hunks = [];
+        _previewBefore.Clear();
+        _previewAfter.Clear();
+        StateHasChanged();
+
+        try
+        {
+            _hunks = await History.GetRevisionDiffAsync(rev.Sha, FilePath);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+
+        _detailLoading = false;
+        StateHasChanged();
+    }
+
+    private async Task SetTabAsync(HistoryTab tab)
+    {
+        _tab = tab;
+        if (tab == HistoryTab.Preview)
+            await EnsurePreviewsLoadedAsync();
+    }
+
+    private async Task EnsurePreviewsLoadedAsync()
+    {
+        foreach (var hunk in _hunks)
+        {
+            if (!_previewBefore.ContainsKey(hunk))
+                _previewBefore[hunk] = await RenderMarkdownAsync(hunk.OldText);
+            if (!_previewAfter.ContainsKey(hunk))
+                _previewAfter[hunk] = await RenderMarkdownAsync(hunk.NewText);
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task<string> RenderMarkdownAsync(string markdown)
+    {
+        try
+        {
+            var response = await Http.PostAsJsonAsync("/api/pages/preview", new PagePreviewRequestDto { Markdown = markdown });
+            var result = await response.Content.ReadFromJsonAsync<PagePreviewResultDto>();
+            return result?.Html ?? string.Empty;
+        }
+        catch
+        {
+            return "<p class=\"editor-status\">Preview unavailable.</p>";
+        }
+    }
+
+    private static string FirstLine(string message) => message.Split('\n')[0];
+
+    private static string LineClass(DiffLineType type) => type switch
+    {
+        DiffLineType.Added => "history-diff-line history-diff-added",
+        DiffLineType.Removed => "history-diff-line history-diff-removed",
+        _ => "history-diff-line"
+    };
+
+    private static string Prefix(DiffLineType type) => type switch
+    {
+        DiffLineType.Added => "+ ",
+        DiffLineType.Removed => "- ",
+        _ => "  "
+    };
+
+    private Task Close() => OnClose.InvokeAsync();
+}
