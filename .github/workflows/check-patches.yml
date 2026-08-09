@@ -77,6 +77,11 @@ jobs:
             fi
             rm -f "$dl_err"
 
+            # The diff is always generated LF-only (Server normalizes both sides before diffing),
+            # but older blobs may still carry CRLF from earlier Windows-authored uploads — normalize
+            # before patching so unchanged context lines actually match byte-for-byte.
+            sed -i 's/\r$//' "$tmp"
+
             if ! patch --fuzz=3 --dry-run "$tmp" < "$file"; then
               echo "::error file=$file::Patch no longer applies cleanly to the current content of '$target' — the page was likely edited since this proposal was opened."
               fail=1
