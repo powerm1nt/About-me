@@ -23,18 +23,27 @@ public class BlobStorageService
 
     public async Task<string?> GetTextAsync(string path)
     {
+        var (content, _) = await GetTextWithMetadataAsync(path);
+        return content;
+    }
+
+    // Same as GetTextAsync, but also returns the blob's actual last-modified timestamp — the
+    // authoritative "last edited" date. It can't be spoofed via a lastEdited: field in the
+    // markdown's own frontmatter the way GetTextAsync's plain content can.
+    public async Task<(string? Content, DateTimeOffset? LastModified)> GetTextWithMetadataAsync(string path)
+    {
         foreach (var candidate in Candidates(path))
         {
             var blob = _container.GetBlobClient(candidate.TrimStart('/'));
             try
             {
                 BlobDownloadResult result = await blob.DownloadContentAsync();
-                return result.Content.ToString();
+                return (result.Content.ToString(), result.Details.LastModified);
             }
             catch (Azure.RequestFailedException ex) when (ex.Status == 404) { }
         }
 
-        return null;
+        return (null, null);
     }
 
     // List all blob names under an optional prefix (e.g. "blog/"). BlobStates.None restricts this
