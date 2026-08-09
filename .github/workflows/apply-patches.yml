@@ -47,16 +47,27 @@ jobs:
             echo "::group::Applying $file -> $target"
 
             tmp=$(mktemp)
+            dl_err=$(mktemp)
             if ! az storage blob download \
               --account-name "$STORAGE_ACCOUNT" --container-name "$CONTAINER_NAME" \
               --account-key "$BLOB_STORAGE_ACCOUNT_KEY" \
-              --name "$target" --file "$tmp" --only-show-errors 2>/dev/null; then
-              # No existing blob at this path — only valid for a "new article" proposal, whose
-              # patch is a pure-insertion hunk (@@ -1,0 ...) that applies cleanly to an empty file.
-              # An edit patch against a genuinely-missing target will just fail at the next step.
-              echo "No existing blob at '$target' — treating as a new file."
-              : > "$tmp"
+              --name "$target" --file "$tmp" --only-show-errors 2>"$dl_err"; then
+              if grep -qi "BlobNotFound" "$dl_err"; then
+                # No existing blob at this path — only valid for a "new article" proposal, whose
+                # patch is a pure-insertion hunk (@@ -1,0 ...) that applies cleanly to an empty file.
+                # An edit patch against a genuinely-missing target will just fail at the next step.
+                echo "No existing blob at '$target' — treating as a new file."
+                : > "$tmp"
+              else
+                # Any other failure (network/auth/throttling/...) must NOT be treated as "new file" —
+                # doing so would silently overwrite an existing page with just the diff's insertions.
+                echo "::error file=$file::Could not download '$target' from Blob Storage (not a not-found error — see log)."
+                cat "$dl_err"
+                rm -f "$tmp" "$dl_err"
+                exit 1
+              fi
             fi
+            rm -f "$dl_err"
 
             patch --fuzz=3 "$tmp" < "$file"
 
