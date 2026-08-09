@@ -171,8 +171,8 @@
     {
         Auth.OnChange += OnAuthChanged;
 
-        var resumeEdit = await Auth.InitializeAsync();
-        if (resumeEdit) _isEditing = true;
+        var resumeAction = await Auth.InitializeAsync();
+        if (resumeAction == "edit") _isEditing = true;
 
         await LoadArticlesAsync();
         await LoadPageAsync();
@@ -182,7 +182,7 @@
     {
         if (!Auth.IsSignedIn)
         {
-            Auth.RedirectToLogin(true);
+            Auth.RedirectToLogin("edit");
             return;
         }
 

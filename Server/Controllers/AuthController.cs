@@ -32,15 +32,15 @@ public class AuthController : ControllerBase
         _allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
     }
 
-    // GET /api/auth/github/login?returnUrl=https://blog.nuka.works/blog/welcome&edit=1
+    // GET /api/auth/github/login?returnUrl=https://blog.nuka.works/blog/welcome&resume=edit
     [HttpGet("login")]
-    public IActionResult Login([FromQuery] string returnUrl, [FromQuery] bool edit = false)
+    public IActionResult Login([FromQuery] string returnUrl, [FromQuery] string? resume = null)
     {
         if (!IsAllowedReturnUrl(returnUrl))
             return BadRequest(new { error = "Invalid returnUrl." });
 
         var state = Guid.NewGuid().ToString("N");
-        _cache.Set(StateCacheKey(state), new PendingLogin(returnUrl, edit), new MemoryCacheEntryOptions
+        _cache.Set(StateCacheKey(state), new PendingLogin(returnUrl, resume), new MemoryCacheEntryOptions
         {
             AbsoluteExpirationRelativeToNow = StateDuration,
             Size = 1
@@ -92,7 +92,8 @@ public class AuthController : ControllerBase
         var sessionId = _sessions.CreateSession(new AuthSession(token.AccessToken, user.Login, user.AvatarUrl ?? string.Empty));
 
         var separator = pending.ReturnUrl.Contains('?') ? '&' : '?';
-        var redirectTo = $"{pending.ReturnUrl}{separator}session={sessionId}{(pending.Edit ? "&edit=1" : string.Empty)}";
+        var resumeParam = pending.Resume is not null ? $"&resume={Uri.EscapeDataString(pending.Resume)}" : string.Empty;
+        var redirectTo = $"{pending.ReturnUrl}{separator}session={sessionId}{resumeParam}";
         return Redirect(redirectTo);
     }
 
@@ -133,7 +134,7 @@ public class AuthController : ControllerBase
 
     private static string StateCacheKey(string state) => $"oauth-state:{state}";
 
-    private record PendingLogin(string ReturnUrl, bool Edit);
+    private record PendingLogin(string ReturnUrl, string? Resume);
 
     private class GitHubTokenResponse
     {

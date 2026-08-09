@@ -89,6 +89,12 @@
     protected override async Task OnInitializedAsync()
     {
         Auth.OnChange += OnAuthChanged;
+
+        // FileViewer already called Auth.InitializeAsync() once for this page load (it mounts
+        // before this component does) — read what it found instead of consuming the URL again.
+        if (Auth.PendingResumeAction == "create")
+            _isCreating = true;
+
         await LoadArticlesAsync();
     }
 
@@ -96,7 +102,7 @@
     {
         if (!Auth.IsSignedIn)
         {
-            Auth.RedirectToLogin(resumeEdit: false);
+            Auth.RedirectToLogin("create");
             return;
         }
 

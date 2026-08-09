@@ -106,9 +106,23 @@
                 });
             };
 
+            // editor.main.js's onload only means the file executed, not that Monaco is ready —
+            // it kicks off its own async AMD require() chain that defines window.monaco later.
+            // Poll for that before resolving, or BlazorMonaco tries to create the editor against
+            // an undefined `monaco` and the editor comes up non-interactive.
+            var waitForMonacoGlobal = function () {
+                return new Promise(function (resolve) {
+                    (function check() {
+                        if (window.monaco) resolve();
+                        else setTimeout(check, 30);
+                    })();
+                });
+            };
+
             window.__monacoAssetsPromise = load('_content/BlazorMonaco/jsInterop.js')
                 .then(function () { return load('_content/BlazorMonaco/lib/monaco-editor/min/vs/loader.js'); })
-                .then(function () { return load('_content/BlazorMonaco/lib/monaco-editor/min/vs/editor/editor.main.js'); });
+                .then(function () { return load('_content/BlazorMonaco/lib/monaco-editor/min/vs/editor/editor.main.js'); })
+                .then(waitForMonacoGlobal);
 
             return window.__monacoAssetsPromise;
         };
