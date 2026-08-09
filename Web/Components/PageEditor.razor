@@ -281,7 +281,9 @@
     private async Task ReplaceRangeAsync(BlazorMonaco.Range range, string text)
     {
         if (_editor is null) return;
-        await _editor.ExecuteEdits("toolbar", [new IdentifiedSingleEditOperation { Range = range, Text = text }], new List<Selection>());
+        // Monaco throws internally ("Cannot read properties of undefined (reading 'modelState')")
+        // if endCursorState is an empty array — it must be null/omitted or a non-empty selection list.
+        await _editor.ExecuteEdits("toolbar", [new IdentifiedSingleEditOperation { Range = range, Text = text }], (List<Selection>?)null);
         await _editor.Focus();
     }
 
