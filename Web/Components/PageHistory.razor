@@ -56,7 +56,14 @@
 
                             @if (_detailLoading)
                             {
-                                <p class="editor-status">Loading diff…</p>
+                                <div class="history-diff-hunk history-diff-skeleton" aria-hidden="true">
+                                    <Skeleton Class="skeleton-line" Width="40%" />
+                                    <Skeleton Class="skeleton-line" Width="85%" />
+                                    <Skeleton Class="skeleton-line" Width="65%" />
+                                    <Skeleton Class="skeleton-line" Width="90%" />
+                                    <Skeleton Class="skeleton-line" Width="55%" />
+                                    <Skeleton Class="skeleton-line" Width="75%" />
+                                </div>
                             }
                             else if (_hunks.Count == 0)
                             {
