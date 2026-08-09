@@ -163,6 +163,13 @@ a:hover { text-decoration: underline; color: #ffffff; }
 .editor-tab { background: rgba(255,255,255,0.05); border: 1px solid #ffffff; border-radius: 0; color: #cbd5e1; padding: 0.4em 1em; font-size: 0.85rem; cursor: pointer; font-family: inherit; }
 .editor-tab.is-active { background: #ffffff; color: #121212; font-weight: 700; }
 .editor-pane { border: 1px solid #ffffff; border-left: 4px solid #ffffff; margin-bottom: 1em; }
+.editor-toolbar { display: flex; flex-wrap: wrap; align-items: stretch; gap: 0.3em; padding: 0.5em; background: rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.25); }
+.toolbar-btn { background: transparent; border: 1px solid rgba(255,255,255,0.3); border-radius: 0; color: #cbd5e1; font-family: inherit; font-size: 0.8rem; padding: 0.3em 0.7em; cursor: pointer; line-height: 1.3; }
+.toolbar-btn:hover { background: rgba(255,255,255,0.1); color: #ffffff; }
+.toolbar-btn-bold { font-weight: 700; }
+.toolbar-btn-italic { font-style: italic; }
+.toolbar-btn-code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+.toolbar-sep { width: 1px; background: rgba(255,255,255,0.2); margin: 0 0.2em; }
 .editor-preview { padding: 1.5em; background: #0a0a0a; max-height: 480px; overflow-y: auto; }
 .page-editor-monaco { height: 420px; }
 .editor-fields { display: flex; flex-direction: column; gap: 0.6em; margin-bottom: 1em; }
