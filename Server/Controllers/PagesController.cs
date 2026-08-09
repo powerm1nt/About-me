@@ -12,17 +12,14 @@ namespace Server.Controllers;
 public class PagesController : ControllerBase
 {
     private readonly BlobStorageService _blob;
-    private readonly string _assetBase;
 
     private static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder()
         .UseAdvancedExtensions()
         .Build();
 
-    public PagesController(BlobStorageService blob, IConfiguration config)
+    public PagesController(BlobStorageService blob)
     {
         _blob = blob;
-        // Base URL the browser uses to reach the Server asset proxy
-        _assetBase = (config["AssetProxyBase"] ?? "http://localhost:5066").TrimEnd('/');
     }
 
     // GET /api/pages?path=README.md
@@ -82,7 +79,7 @@ public class PagesController : ControllerBase
         var (meta, markdown) = ParseFrontmatter(rawText);
         var preprocessed = InjectComponentSentinels(markdown);
         var html = Markdown.ToHtml(preprocessed, Pipeline);
-        html = RewriteAssetPaths(html, _assetBase);
+        html = RewriteAssetPaths(html, _blob.ContainerBaseUrl);
         return (meta, html);
     }
 
@@ -177,14 +174,13 @@ public class PagesController : ControllerBase
         return markdown;
     }
 
-    // Rewrite asset paths in rendered HTML so they go through the Server asset proxy.
-    // - src="public/foo.jpg" → src="http://localhost:5066/assets/foo.jpg"
+    // Rewrite asset paths in rendered HTML so they resolve straight to the CDN/blob container.
+    // - src="public/foo.jpg" → src="https://nwrks-cdn.public.prod.nuka.works/static/foo.jpg"
     // - href="./blog/foo.mdx" → href="/blog/foo"
     private static string RewriteAssetPaths(string html, string assetBase)
     {
-        // src="public/foo.jpg" → src="http://localhost:5066/assets/foo.jpg"
         html = Regex.Replace(html, @"src=""public/([^""]+)""",
-            m => $"src=\"{assetBase}/assets/{m.Groups[1].Value}\"");
+            m => $"src=\"{assetBase}/{m.Groups[1].Value}\"");
 
         // href="./blog/slug.mdx" → href="/blog/slug" or "/blog/slug/ja"
         html = Regex.Replace(html, @"href=""\./(blog/[^""]+\.(?:mdx?))""", m =>
