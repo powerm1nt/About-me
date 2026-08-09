@@ -51,7 +51,14 @@ public class ProposalsController : ControllerBase
             currentContent = string.Empty;
         }
 
-        var patch = _diff.CreateUnifiedDiff(currentContent, request.NewContent ?? string.Empty, request.Path);
+        // Normalize before diffing: blob content can carry CRLF from earlier Windows-authored
+        // uploads while the browser editor yields LF, and diffing across mismatched EOL styles
+        // flags unrelated context lines as changed too — GNU patch then rejects the hunk with
+        // "different line endings" even though the intended edit itself applies cleanly.
+        var normalizedOld = NormalizeLineEndings(currentContent);
+        var normalizedNew = NormalizeLineEndings(request.NewContent ?? string.Empty);
+
+        var patch = _diff.CreateUnifiedDiff(normalizedOld, normalizedNew, request.Path);
         if (string.IsNullOrEmpty(patch))
             return BadRequest(new { error = "No changes to propose." });
 
@@ -66,4 +73,6 @@ public class ProposalsController : ControllerBase
             return StatusCode(502, new { error = $"GitHub rejected the proposal: {ex.Message}" });
         }
     }
+
+    private static string NormalizeLineEndings(string text) => text.Replace("\r\n", "\n").Replace("\r", "\n");
 }

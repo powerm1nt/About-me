@@ -6,6 +6,12 @@ on:
       - main
     paths:
       - "patches/**/*.patch"
+  workflow_dispatch:
+    inputs:
+      patch_path:
+        description: "Re-apply one already-merged patch (e.g. patches/README.md/20260809-023932.patch). Leave empty for normal newly-added-file detection."
+        required: false
+        type: string
 
 env:
   STORAGE_ACCOUNT: nwrks
@@ -22,7 +28,11 @@ jobs:
       - name: Find newly added patch files
         id: find
         run: |
-          added=$(git diff --name-status "${{ github.event.before }}" "${{ github.sha }}" -- 'patches/**/*.patch' | awk '$1 == "A" { print $2 }')
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.patch_path }}" ]; then
+            added="${{ inputs.patch_path }}"
+          else
+            added=$(git diff --name-status "${{ github.event.before }}" "${{ github.sha }}" -- 'patches/**/*.patch' | awk '$1 == "A" { print $2 }')
+          fi
           if [ -z "$added" ]; then
             echo "No newly added patch files in this push."
           fi
@@ -68,6 +78,11 @@ jobs:
               fi
             fi
             rm -f "$dl_err"
+
+            # The diff is always generated LF-only (Server normalizes both sides before diffing),
+            # but older blobs may still carry CRLF from earlier Windows-authored uploads — normalize
+            # before patching so unchanged context lines actually match byte-for-byte.
+            sed -i 's/\r$//' "$tmp"
 
             patch --fuzz=3 "$tmp" < "$file"
 
