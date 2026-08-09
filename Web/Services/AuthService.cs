@@ -24,6 +24,12 @@ public class AuthService
     public AuthUserDto? CurrentUser { get; private set; }
     public bool IsSignedIn => CurrentUser is not null;
 
+    // Set by InitializeAsync() from the OAuth callback's ?resume= param (e.g. "edit", "create").
+    // Read-only after that single call, so any component mounted after FileViewer's initial
+    // InitializeAsync() call (which runs first, on every page) can check what to resume without
+    // re-consuming the URL itself.
+    public string? PendingResumeAction { get; private set; }
+
     public event Action? OnChange;
 
     public AuthService(HttpClient http, IJSRuntime js, NavigationManager nav, IConfiguration config)
@@ -34,19 +40,21 @@ public class AuthService
         _apiBaseUrl = (config["ApiBaseUrl"] ?? string.Empty).TrimEnd('/');
     }
 
-    // Call once at startup. Picks up a `?session=` param left by the OAuth callback redirect
-    // (saving it to localStorage and stripping it from the URL), otherwise restores a previously
-    // saved session. Returns true if the URL asked to resume edit mode (`?edit=1`).
-    public async Task<bool> InitializeAsync()
+    // Call once at startup (FileViewer does this on every page). Picks up a `?session=` param left
+    // by the OAuth callback redirect (saving it to localStorage and stripping it from the URL),
+    // otherwise restores a previously saved session. Returns the action the URL asked to resume
+    // (`?resume=edit` / `?resume=create`), also cached on PendingResumeAction for components that
+    // mount later in the same page load (they shouldn't call this again — the URL's already stripped).
+    public async Task<string?> InitializeAsync()
     {
         var uri = new Uri(_nav.Uri);
         var query = QueryHelpers.ParseQuery(uri.Query);
-        var resumeEdit = false;
+        string? resumeAction = null;
 
         if (query.TryGetValue("session", out var sessionFromUrl))
         {
             _sessionId = sessionFromUrl.ToString();
-            resumeEdit = query.TryGetValue("edit", out var editFlag) && editFlag == "1";
+            resumeAction = query.TryGetValue("resume", out var resume) ? resume.ToString() : null;
             await _js.InvokeVoidAsync("localStorage.setItem", StorageKey, _sessionId);
             _nav.NavigateTo(uri.GetLeftPart(UriPartial.Path), replace: true);
         }
@@ -55,16 +63,17 @@ public class AuthService
             _sessionId = await _js.InvokeAsync<string?>("localStorage.getItem", StorageKey);
         }
 
+        PendingResumeAction = resumeAction;
         await RefreshUserAsync();
-        return resumeEdit;
+        return resumeAction;
     }
 
-    // Redirects the whole page to the Server's GitHub OAuth login; `resumeEdit` tells the callback
-    // to resume edit mode automatically once the user lands back on this page. The Server model-binds
-    // this as a bool, which only accepts the literals "true"/"false" (not "1"/"0").
-    public void RedirectToLogin(bool resumeEdit) =>
+    // Redirects the whole page to the Server's GitHub OAuth login; `resume` tells the callback which
+    // action to resume automatically once the user lands back on this page (e.g. "edit", "create").
+    public void RedirectToLogin(string? resume) =>
         _nav.NavigateTo(
-            $"{_apiBaseUrl}/api/auth/github/login?returnUrl={Uri.EscapeDataString(_nav.Uri)}&edit={(resumeEdit ? "true" : "false")}",
+            $"{_apiBaseUrl}/api/auth/github/login?returnUrl={Uri.EscapeDataString(_nav.Uri)}" +
+            (resume is not null ? $"&resume={Uri.EscapeDataString(resume)}" : string.Empty),
             forceLoad: true);
 
     public async Task LogoutAsync()
