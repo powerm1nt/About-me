@@ -25,7 +25,7 @@
     else if (_state == EditorState.Success)
     {
         <div class="editor-success">
-            <p>Proposal opened — <a href="@_result!.PullRequestUrl" target="_blank" rel="noreferrer">view the pull request on GitHub</a>.</p>
+            <p>Proposal opened — <ExternalLink Href="@_result!.PullRequestUrl" Label="Pull Request on GitHub">view the pull request on GitHub</ExternalLink>.</p>
             <button type="button" class="editor-btn editor-btn-primary" @onclick="Close">Done</button>
         </div>
     }
