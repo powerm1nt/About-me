@@ -2,44 +2,26 @@
 @inject Web.Services.LanguageState LangState
 @implements IDisposable
 
-<header class="main-header">
-    <div class="header-container">
-        <div class="header-left">
-            <a href="/" class="logo-link">
-                <HeadlineLogo />
-            </a>
-        </div>
-
-        <nav class="header-nav">
-            <a href="/" class="nav-item @(IsHomeActive ? "is-active" : "")">
+<header class="metro-header">
+    <div class="metro-header-row">
+        <nav class="metro-pivot" aria-label="Primary">
+            <a href="/" class="pivot-item @(IsHomeActive ? "is-active" : "")">
                 @(LangState.IsJapanese ? "ホーム" : "Home")
             </a>
-            <a href="/blog" class="nav-item @(IsBlogActive ? "is-active" : "")">
+            <a href="/blog" class="pivot-item @(IsBlogActive ? "is-active" : "")">
                 @(LangState.IsJapanese ? "ブログ" : "Blog")
             </a>
-            <a href="https://github.com/powerm1nt"
-               target="_blank" rel="noreferrer"
-               class="nav-item external-link">
-                GitHub ↗
-            </a>
-            <a href="https://www.linkedin.com/in/lchab1440/"
-               target="_blank" rel="noreferrer"
-               class="nav-item external-link">
-                LinkedIn ↗
-            </a>
-
-            <div class="language-selector" style="display:flex; gap:0.5rem; margin-left:1rem;">
-                <button @onclick="() => LangState.SetLanguage(false)"
-                        style="font-weight:@(!LangState.IsJapanese ? "bold" : "normal"); cursor:pointer; background:none; border:none; color:inherit;">
-                    EN
-                </button>
-                <span>|</span>
-                <button @onclick="() => LangState.SetLanguage(true)"
-                        style="font-weight:@(LangState.IsJapanese ? "bold" : "normal"); cursor:pointer; background:none; border:none; color:inherit;">
-                    JA
-                </button>
-            </div>
+            <ExternalLink Href="https://github.com/powerm1nt" Label="GitHub" Class="pivot-item pivot-item-external">
+                GitHub
+            </ExternalLink>
+            <ExternalLink Href="https://www.linkedin.com/in/lchab1440/" Label="LinkedIn" Class="pivot-item pivot-item-external">
+                LinkedIn
+            </ExternalLink>
         </nav>
+
+        <a href="/" class="metro-avatar-tile" aria-label="Home" title="Emi">
+            <HeadlineLogo />
+        </a>
     </div>
 </header>
 
