@@ -1,6 +1,24 @@
 ﻿/* NukaWorks - Global Styles - Converted from About-me SCSS */
 *, *::before, *::after { box-sizing: border-box; }
 
+/* ── Segoe UI — self-hosted, matching Microsoft's Fluent/Metro HIG type
+   ramp. Only the six real static weights Segoe UI ships (Light 300,
+   Semilight 350, Regular 400, Semibold 600, Bold 700, Black 900) — no
+   synthetic 200/500 faces, so the browser's own nearest-weight matching
+   picks the correct real face instead of faking bold/thin. */
+@font-face { font-family: "Segoe UI"; src: url("/fonts/Segoe UI Light 300.ttf") format("truetype"); font-weight: 300; font-style: normal; font-display: swap; }
+@font-face { font-family: "Segoe UI"; src: url("/fonts/Segoe UI Light Italic 300.ttf") format("truetype"); font-weight: 300; font-style: italic; font-display: swap; }
+@font-face { font-family: "Segoe UI"; src: url("/fonts/Segoe UI Semilight 350.ttf") format("truetype"); font-weight: 350; font-style: normal; font-display: swap; }
+@font-face { font-family: "Segoe UI"; src: url("/fonts/Segoe UI Semilight Italic 350.ttf") format("truetype"); font-weight: 350; font-style: italic; font-display: swap; }
+@font-face { font-family: "Segoe UI"; src: url("/fonts/Segoe UI 400.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Segoe UI"; src: url("/fonts/Segoe UI Italique 400.ttf") format("truetype"); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: "Segoe UI"; src: url("/fonts/Segoe UI Semibold 600.ttf") format("truetype"); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: "Segoe UI"; src: url("/fonts/Segoe UI Semibold Italic 600.ttf") format("truetype"); font-weight: 600; font-style: italic; font-display: swap; }
+@font-face { font-family: "Segoe UI"; src: url("/fonts/Segoe UI Gras 700.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Segoe UI"; src: url("/fonts/Segoe UI Gras Italique 700.ttf") format("truetype"); font-weight: 700; font-style: italic; font-display: swap; }
+@font-face { font-family: "Segoe UI"; src: url("/fonts/Segoe UI Black 900.ttf") format("truetype"); font-weight: 900; font-style: normal; font-display: swap; }
+@font-face { font-family: "Segoe UI"; src: url("/fonts/Segoe UI Black Italic 900.ttf") format("truetype"); font-weight: 900; font-style: italic; font-display: swap; }
+
 /* ── Color system ────────────────────────────────────────────────────────
    Adaptive palette drawn from the background artwork's dominant blue-violet
    rather than a stock neutral gray scale — text-muted/faint tiers carry a
@@ -33,7 +51,7 @@
 html, body {
   padding: 0; margin: 0;
   background-color: #322c58;
-  background-image: url("/assets/default.jpg");
+  background-image: url("/assets/default2.png");
   background-repeat: no-repeat;
   background-position: center;
   background-size: cover;
@@ -48,7 +66,7 @@ html, body {
 ::-webkit-scrollbar-track { background: #121212; border-radius: 0; }
 ::-webkit-scrollbar-thumb { background: var(--color-accent-strong); border-radius: 0; }
 ::selection { background: var(--color-accent); color: #ffffff !important; }
-#app { font-size: clamp(12px, 3vw, 16px); color: #ffffff; display: flex; min-height: 100vh; flex-direction: column; font-family: "Outfit", sans-serif; font-weight: 300; background-color: transparent; width: 100%; }
+#app { font-size: clamp(12px, 3vw, 16px); color: #ffffff; display: flex; min-height: 100vh; flex-direction: column; font-family: "Segoe UI", system-ui, -apple-system, sans-serif; font-weight: 300; background-color: transparent; width: 100%; }
 h1 { letter-spacing: 2px; font-weight: 900; }
 a { color: inherit; transition: color 0.15s ease-in-out; text-decoration: underline dotted; }
 a:hover { text-decoration: underline; color: var(--color-accent-strong); }
@@ -69,7 +87,7 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 .metro-header {
   background: transparent;
   width: 100%;
-  font-family: "Selawik", "Segoe UI Variable Display", "Segoe UI", "Outfit", system-ui, -apple-system, sans-serif;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
 }
 /* Metro entrance: content slides in from the right, moving left into place —
    the direction used by Windows Phone's Pivot/page "Continuum" transition
@@ -159,7 +177,7 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   background: #1b1b1b;
   border: 1px solid rgba(255,255,255,0.15);
   padding: 1.8em 1.7em 1.4em;
-  font-family: "Selawik", "Segoe UI Variable Display", "Segoe UI", "Outfit", system-ui, -apple-system, sans-serif;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
   animation: app-modal-rise-in 0.18s ease-out;
 }
 .app-modal.is-closing { animation: app-modal-rise-out 0.18s ease-in forwards; }
@@ -190,14 +208,14 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 /* ── FileViewer — flat Metro reading pane ───────────────────────────────
    No card chrome: no border, no boxed background, no dividers/shadows.
    Content aligns to the same clamp() column as the header/footer, with
-   Selawik/Segoe type carrying the hierarchy instead of borders. */
+   Segoe UI type carrying the hierarchy instead of borders. */
 .file-content {
   position: relative;
   width: clamp(280px, 85%, 1200px);
   min-height: 700px;
   padding: 0 0 3em;
   background: transparent;
-  font-family: "Selawik", "Segoe UI Variable Display", "Segoe UI", "Outfit", system-ui, -apple-system, sans-serif;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
   animation: metro-enter 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
   animation-delay: 0.08s;
 }
@@ -351,7 +369,7 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 }
 
 /* WASM boot skeleton — mirrors real app chrome */
-.sk-shell { display: flex; flex-direction: column; min-height: 100vh; font-family: "Selawik", "Segoe UI Variable Display", "Segoe UI", "Outfit", system-ui, -apple-system, sans-serif; background-color: #121212; }
+.sk-shell { display: flex; flex-direction: column; min-height: 100vh; font-family: "Segoe UI", system-ui, -apple-system, sans-serif; background-color: #121212; }
 .sk-header { background: transparent; }
 .sk-header-inner { width: clamp(280px,85%,1200px); margin: 0 auto; display: flex; align-items: center; gap: 1.5em; padding: 2em 0 0.6em; overflow: hidden; }
 .sk-pivot { flex: 1 1 auto; min-width: 0; display: flex; align-items: baseline; gap: 2.4em; overflow: hidden; }
