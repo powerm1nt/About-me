@@ -6,10 +6,10 @@
 
 <main class="main-content">
     <div class="main-content-container">
-        <div class="file-content">
+        <div class="file-content" @key="FilePath">
             @if (_error is not null)
             {
-                <InfoBubble Title="@($"Error: {_error}")" />
+                <InfoBubble Title="@($"Error: {_error}")" Class="md-component-danger" />
             }
             else if (_page is null)
             {

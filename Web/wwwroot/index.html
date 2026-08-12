@@ -55,12 +55,13 @@
         <div class="sk-shell">
             <header class="sk-header">
                 <div class="sk-header-inner">
-                    <span class="skeleton sk-logo"></span>
-                    <div class="sk-nav">
-                        <span class="skeleton sk-nav-item"></span>
-                        <span class="skeleton sk-nav-item"></span>
-                        <span class="skeleton sk-nav-item"></span>
+                    <div class="sk-pivot">
+                        <span class="skeleton sk-nav-item" style="width:5.5rem"></span>
+                        <span class="skeleton sk-nav-item" style="width:5rem"></span>
+                        <span class="skeleton sk-nav-item" style="width:7.5rem"></span>
+                        <span class="skeleton sk-nav-item" style="width:8.5rem"></span>
                     </div>
+                    <span class="skeleton sk-avatar-tile"></span>
                 </div>
             </header>
 
@@ -83,8 +84,10 @@
 
             <footer class="sk-footer">
                 <div class="sk-footer-inner">
-                    <span class="skeleton sk-footer-logo"></span>
-                    <span class="skeleton sk-footer-copy"></span>
+                    <div class="sk-footer-left">
+                        <span class="skeleton sk-footer-logo"></span>
+                        <span class="skeleton sk-footer-copy"></span>
+                    </div>
                 </div>
             </footer>
         </div>
@@ -125,6 +128,65 @@
                 .then(waitForMonacoGlobal);
 
             return window.__monacoAssetsPromise;
+        };
+
+        // Focus trap for AppModal — keeps Tab/Shift+Tab cycling within the
+        // dialog's own focusable elements instead of escaping into the page
+        // behind the overlay.
+        window.attachFocusTrap = function (containerEl) {
+            function isTabbable(el) {
+                return el instanceof HTMLElement && !el.disabled && el.tabIndex !== -1;
+            }
+            function handler(e) {
+                if (e.key !== 'Tab') return;
+                var focusables = Array.prototype.filter.call(
+                    containerEl.querySelectorAll('button, a[href], [tabindex]'), isTabbable);
+                if (focusables.length === 0) return;
+                var first = focusables[0];
+                var last = focusables[focusables.length - 1];
+                if (e.shiftKey && document.activeElement === first) {
+                    e.preventDefault();
+                    last.focus();
+                } else if (!e.shiftKey && document.activeElement === last) {
+                    e.preventDefault();
+                    first.focus();
+                }
+            }
+            containerEl.addEventListener('keydown', handler);
+            containerEl.__focusTrapHandler = handler;
+        };
+        window.detachFocusTrap = function (containerEl) {
+            if (containerEl && containerEl.__focusTrapHandler) {
+                containerEl.removeEventListener('keydown', containerEl.__focusTrapHandler);
+                delete containerEl.__focusTrapHandler;
+            }
+        };
+
+        // Markdown-rendered article bodies are injected as raw HTML (MarkupString),
+        // so their <a> tags carry no Blazor @onclick — this delegated listener is
+        // the only way to route them through the same AppModal confirmation that
+        // the ExternalLink component gives Razor-authored links (header, footer, etc).
+        window.attachExternalLinkInterceptor = function (containerEl, dotNetRef) {
+            if (!containerEl || containerEl.__externalLinkHandler) return;
+            function handler(e) {
+                var a = e.target.closest('a[href]');
+                if (!a || !containerEl.contains(a)) return;
+                var url;
+                try { url = new URL(a.getAttribute('href'), window.location.href); }
+                catch (err) { return; }
+                if (url.origin === window.location.origin) return; // internal link — let it navigate normally
+                e.preventDefault();
+                var label = (a.textContent || '').trim() || url.hostname;
+                dotNetRef.invokeMethodAsync('RequestExternalConfirm', url.href, label);
+            }
+            containerEl.addEventListener('click', handler);
+            containerEl.__externalLinkHandler = handler;
+        };
+        window.detachExternalLinkInterceptor = function (containerEl) {
+            if (containerEl && containerEl.__externalLinkHandler) {
+                containerEl.removeEventListener('click', containerEl.__externalLinkHandler);
+                delete containerEl.__externalLinkHandler;
+            }
         };
     </script>
     <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
