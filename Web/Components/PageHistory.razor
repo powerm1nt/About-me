@@ -51,7 +51,7 @@
                                         @onclick='() => SetTabAsync(HistoryTab.Text)'>Text</button>
                                 <button type="button" class="editor-tab @(_tab == HistoryTab.Preview ? "is-active" : "")"
                                         @onclick='() => SetTabAsync(HistoryTab.Preview)'>Preview</button>
-                                <a href="@rev.HtmlUrl" target="_blank" rel="noreferrer" class="history-view-commit">View commit ↗</a>
+                                <ExternalLink Href="@rev.HtmlUrl" Label="Commit on GitHub" Class="history-view-commit">View commit ↗</ExternalLink>
                             </div>
 
                             @if (_detailLoading)

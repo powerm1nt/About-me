@@ -2,27 +2,22 @@
 
 <footer class="main-footer">
     <div class="footer-container">
-        <a class="sunproj-logo"
-           href="https://nuka.works/"
-           rel="noreferrer"
-           target="_blank">
-            <SmartImage Src="@Assets.Url("logo_nwrks.png")"
-                        Alt="NukaWorks Logo"
-                        Width="40px"
-                        Height="40px"
-                        Style="border-radius:50%;" />
-            <p><span class="logo-bold">Nuka</span><span class="logo-light">Works</span></p>
-        </a>
+        <div class="footer-left">
+            <ExternalLink Href="https://nuka.works/" Label="NukaWorks" Class="sunproj-logo">
+                <SmartImage Src="@Assets.Url("logo_nwrks.png")"
+                            Alt="NukaWorks Logo"
+                            Width="40px"
+                            Height="40px"
+                            Style="border-radius:50%;" />
+                <p><span class="logo-bold">Nuka</span><span class="logo-light">Works</span></p>
+            </ExternalLink>
 
-        <div class="projAbout">
-            <p>&copy; @(DateTime.UtcNow.Year) NukaWorks Solutions - All rights reserved.</p>
-            <a href="https://github.com/powerm1nt/About-me"
-               rel="noreferrer"
-               target="_blank"
-               class="buildinfo"
-               title="Go to About me...">
-                about-me<span>@@</span>2.0
-            </a>
+            <div class="projAbout">
+                <p>&copy; @(DateTime.UtcNow.Year) NukaWorks Solutions - All rights reserved.</p>
+                <ExternalLink Href="https://github.com/powerm1nt/About-me" Label="About Me on GitHub" Class="buildinfo">
+                    about-me<span>@@</span>2.0
+                </ExternalLink>
+            </div>
         </div>
     </div>
 </footer>
