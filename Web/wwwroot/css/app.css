@@ -1,12 +1,43 @@
 ﻿/* NukaWorks - Global Styles - Converted from About-me SCSS */
 *, *::before, *::after { box-sizing: border-box; }
 
+/* ── Segoe UI — self-hosted, matching Microsoft's Fluent/Metro HIG type
+   ramp. Only the six real static weights Segoe UI ships (Light 300,
+   Semilight 350, Regular 400, Semibold 600, Bold 700, Black 900) — no
+   synthetic 200/500 faces, so the browser's own nearest-weight matching
+   picks the correct real face instead of faking bold/thin. */
+@font-face { font-family: "Segoe UI"; src: url("/fonts/Segoe UI Light 300.ttf") format("truetype"); font-weight: 300; font-style: normal; font-display: swap; }
+@font-face { font-family: "Segoe UI"; src: url("/fonts/Segoe UI Light Italic 300.ttf") format("truetype"); font-weight: 300; font-style: italic; font-display: swap; }
+@font-face { font-family: "Segoe UI"; src: url("/fonts/Segoe UI Semilight 350.ttf") format("truetype"); font-weight: 350; font-style: normal; font-display: swap; }
+@font-face { font-family: "Segoe UI"; src: url("/fonts/Segoe UI Semilight Italic 350.ttf") format("truetype"); font-weight: 350; font-style: italic; font-display: swap; }
+@font-face { font-family: "Segoe UI"; src: url("/fonts/Segoe UI 400.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Segoe UI"; src: url("/fonts/Segoe UI Italique 400.ttf") format("truetype"); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: "Segoe UI"; src: url("/fonts/Segoe UI Semibold 600.ttf") format("truetype"); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: "Segoe UI"; src: url("/fonts/Segoe UI Semibold Italic 600.ttf") format("truetype"); font-weight: 600; font-style: italic; font-display: swap; }
+@font-face { font-family: "Segoe UI"; src: url("/fonts/Segoe UI Gras 700.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Segoe UI"; src: url("/fonts/Segoe UI Gras Italique 700.ttf") format("truetype"); font-weight: 700; font-style: italic; font-display: swap; }
+@font-face { font-family: "Segoe UI"; src: url("/fonts/Segoe UI Black 900.ttf") format("truetype"); font-weight: 900; font-style: normal; font-display: swap; }
+@font-face { font-family: "Segoe UI"; src: url("/fonts/Segoe UI Black Italic 900.ttf") format("truetype"); font-weight: 900; font-style: italic; font-display: swap; }
+
 /* ── Color system ────────────────────────────────────────────────────────
    Adaptive palette drawn from the background artwork's dominant blue-violet
-   rather than a stock neutral gray scale — text-muted/faint tiers carry a
-   deliberate blue tint instead of being achromatic, so chrome, banners and
-   the wallpaper read as one family of color. */
+   rather than a stock neutral gray scale — text-muted/faint tiers (and now
+   --color-surface, the modal/scrollbar "gray") carry a deliberate blue tint
+   instead of being achromatic, so chrome, banners and the wallpaper read as
+   one family of color. Everything below is only the pre-JS fallback:
+   Web.Services.WallpaperPaletteService (wired up from MainLayout.razor)
+   samples the actual wallpaper on load and overwrites these
+   --color-accent*/--color-text-secondary/-muted/-faint/--color-surface,
+   --wallpaper-url and --wallpaper-scrim-opacity values on :root's inline
+   style, so the palette stays in sync if the wallpaper is ever swapped at
+   runtime — every derived color is also checked against WCAG contrast
+   minimums there and nudged lighter if a given hue falls short, and the
+   scrim opacity is computed from the wallpaper's own brightness so a
+   too-bright photo gets darkened instead of washing out text laid directly
+   on top of it. */
 :root {
+  --wallpaper-url: url("/assets/default2.png");
+  --wallpaper-scrim-opacity: 0;
   --color-accent: #5468e0;
   --color-accent-strong: #7688ea;
   --color-accent-soft: rgba(84, 104, 224, 0.16);
@@ -16,6 +47,7 @@
   --color-text-secondary: #c9cdf0;
   --color-text-muted: #9aa0d4;
   --color-text-faint: #6f76ab;
+  --color-surface: #1b1b1b;
 
   --color-tip: #4fb389;
   --color-tip-bg: rgba(79, 179, 137, 0.14);
@@ -29,26 +61,42 @@
    background-size:cover + center keeps it responsive across viewports.
    background-blend-mode with background-color mutes the artwork's blue
    instead of filter (filter on html/body would also wash out the page's
-   own text/content sitting on top of it). */
+   own text/content sitting on top of it). The flat black layer on top of
+   the image is the auto-darken scrim: WallpaperPaletteService dims it
+   further still if today's photo is too bright for legible text laid
+   directly over it, but a flat +0.15 is always applied on top of that even
+   for a dark photo — the dynamic scrim is tuned against the wallpaper's own
+   luminance, not the low-contrast secondary/muted/faint text tiers sitting
+   on it, which need a bit of headroom regardless. */
 html, body {
   padding: 0; margin: 0;
   background-color: #322c58;
-  background-image: url("/assets/default.jpg");
+  background-image:
+    linear-gradient(rgba(0, 0, 0, calc(var(--wallpaper-scrim-opacity) + 0.15)), rgba(0, 0, 0, calc(var(--wallpaper-scrim-opacity) + 0.15))),
+    var(--wallpaper-url);
   background-repeat: no-repeat;
   background-position: center;
   background-size: cover;
   background-attachment: fixed;
-  background-blend-mode: screen;
+  background-blend-mode: normal, screen;
 }
 @media screen and (max-width: 768px) {
   /* iOS Safari mishandles background-attachment:fixed (jank/repaint bugs) */
   html, body { background-attachment: scroll; }
 }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-track { background: #121212; border-radius: 0; }
+::-webkit-scrollbar-track { background: var(--color-surface); border-radius: 0; }
 ::-webkit-scrollbar-thumb { background: var(--color-accent-strong); border-radius: 0; }
 ::selection { background: var(--color-accent); color: #ffffff !important; }
-#app { font-size: clamp(12px, 3vw, 16px); color: #ffffff; display: flex; min-height: 100vh; flex-direction: column; font-family: "Outfit", sans-serif; font-weight: 300; background-color: transparent; width: 100%; }
+/* text-shadow inherits to every descendant, so it's a blanket safety net for
+   text sitting directly on the wallpaper (header, article meta, blog cards —
+   anywhere without an opaque panel behind it): a single low-blur dark shadow
+   holds up regardless of what today's photo looks like, unlike the
+   luminance-average-driven scrim above which can miss a photo that's bright
+   in the specific spot chrome sits (e.g. sky behind the header) while
+   averaging dark overall. Invisible on already-opaque dark panels (modal,
+   editor, footer), so no cost there. */
+#app { font-size: clamp(12px, 3vw, 16px); color: #ffffff; display: flex; min-height: 100vh; flex-direction: column; font-family: "Segoe UI", system-ui, -apple-system, sans-serif; font-weight: 300; background-color: transparent; width: 100%; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6); }
 h1 { letter-spacing: 2px; font-weight: 900; }
 a { color: inherit; transition: color 0.15s ease-in-out; text-decoration: underline dotted; }
 a:hover { text-decoration: underline; color: var(--color-accent-strong); }
@@ -67,9 +115,13 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
    Flat solid chrome, Segoe UI type ramp, huge lowercase pivot labels in
    a horizontally scrollable strip (Windows Phone Panorama/Pivot pattern). */
 .metro-header {
-  background: transparent;
+  /* Fixed top-fade scrim, not driven by wallpaper stats: the header always
+     sits directly on the photo (no panel), so it needs a guaranteed dark
+     base under its ultra-thin (font-weight 200) pivot labels regardless of
+     how bright that day's wallpaper happens to be up top. */
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.42), rgba(0, 0, 0, 0) 100%);
   width: 100%;
-  font-family: "Selawik", "Segoe UI Variable Display", "Segoe UI", "Outfit", system-ui, -apple-system, sans-serif;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
 }
 /* Metro entrance: content slides in from the right, moving left into place —
    the direction used by Windows Phone's Pivot/page "Continuum" transition
@@ -156,10 +208,10 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 .app-modal-overlay.is-closing { animation: app-modal-fade-out 0.18s ease-in forwards; }
 .app-modal {
   width: 100%; max-width: 420px;
-  background: #1b1b1b;
+  background: var(--color-surface);
   border: 1px solid rgba(255,255,255,0.15);
   padding: 1.8em 1.7em 1.4em;
-  font-family: "Selawik", "Segoe UI Variable Display", "Segoe UI", "Outfit", system-ui, -apple-system, sans-serif;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
   animation: app-modal-rise-in 0.18s ease-out;
 }
 .app-modal.is-closing { animation: app-modal-rise-out 0.18s ease-in forwards; }
@@ -190,14 +242,14 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 /* ── FileViewer — flat Metro reading pane ───────────────────────────────
    No card chrome: no border, no boxed background, no dividers/shadows.
    Content aligns to the same clamp() column as the header/footer, with
-   Selawik/Segoe type carrying the hierarchy instead of borders. */
+   Segoe UI type carrying the hierarchy instead of borders. */
 .file-content {
   position: relative;
   width: clamp(280px, 85%, 1200px);
   min-height: 700px;
   padding: 0 0 3em;
   background: transparent;
-  font-family: "Selawik", "Segoe UI Variable Display", "Segoe UI", "Outfit", system-ui, -apple-system, sans-serif;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
   animation: metro-enter 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
   animation-delay: 0.08s;
 }
@@ -206,7 +258,7 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 .article-header-meta { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1em; margin-bottom: 1.6em; }
 .article-meta-info { display: flex; align-items: center; gap: 1.2em; flex-wrap: wrap; }
 .article-meta-author { color: var(--color-text-secondary); font-size: 0.9rem; font-weight: 300; }
-.article-last-edited-badge { font-size: 0.85rem; color: var(--color-text-faint); display: inline-flex; align-items: center; gap: 0.4em; }
+.article-last-edited-badge { font-size: 0.85rem; color: var(--color-text-secondary); display: inline-flex; align-items: center; gap: 0.4em; }
 .article-last-edited-badge svg { opacity: 0.8; }
 .github-edit-btn { display: inline-flex; align-items: center; gap: 0.5em; padding: 0.3em 0.2em; font-size: 0.9rem; font-weight: 600; text-transform: lowercase; letter-spacing: 0.01em; color: var(--color-text-muted); background: none; border: none; text-decoration: none; transition: color 0.15s; }
 .github-edit-btn:hover { color: #ffffff; }
@@ -258,7 +310,7 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 .blog-card-desc { color: var(--color-text-secondary); font-size: 0.95rem; line-height: 1.5; margin: 0 0 0.6em 0; }
 .blog-card-meta { display: flex; align-items: center; gap: 1em; flex-wrap: wrap; font-size: 0.85rem; color: var(--color-text-muted); }
 .blog-card-author { font-weight: 500; color: var(--color-text-secondary); }
-.blog-card-last-edited { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.85rem; color: var(--color-text-faint); display: inline-flex; align-items: center; gap: 0.4em; }
+.blog-card-last-edited { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.85rem; color: var(--color-text-secondary); display: inline-flex; align-items: center; gap: 0.4em; }
 /* Info/warning/tip/danger banners — flat Metro "flag" treatment: no boxed
    border, just a thin accent-colored edge and a soft tint of that same
    color, matching the rest of the borderless chrome. Info (the default,
@@ -351,7 +403,7 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 }
 
 /* WASM boot skeleton — mirrors real app chrome */
-.sk-shell { display: flex; flex-direction: column; min-height: 100vh; font-family: "Selawik", "Segoe UI Variable Display", "Segoe UI", "Outfit", system-ui, -apple-system, sans-serif; background-color: #121212; }
+.sk-shell { display: flex; flex-direction: column; min-height: 100vh; font-family: "Segoe UI", system-ui, -apple-system, sans-serif; background-color: #121212; }
 .sk-header { background: transparent; }
 .sk-header-inner { width: clamp(280px,85%,1200px); margin: 0 auto; display: flex; align-items: center; gap: 1.5em; padding: 2em 0 0.6em; overflow: hidden; }
 .sk-pivot { flex: 1 1 auto; min-width: 0; display: flex; align-items: baseline; gap: 2.4em; overflow: hidden; }
