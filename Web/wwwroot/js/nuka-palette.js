@@ -1,9 +1,15 @@
 // Wallpaper -> accent palette interop for Web.Services.WallpaperPaletteService.
 // extractDominant() draws the wallpaper into an offscreen canvas and returns the
-// saturation-weighted circular-mean hue of its pixels (never rejects — resolves
-// null on any failure: 404, decode error, or a CORS-tainted canvas blocking
-// getImageData, so the caller can fall back to the static CSS palette).
+// saturation-weighted circular-mean hue of its pixels plus its overall WCAG relative
+// luminance (used to auto-darken a too-bright wallpaper — see ComputeScrimOpacity in
+// WallpaperPaletteService.cs). Never rejects — resolves null on any failure: 404,
+// decode error, or a CORS-tainted canvas blocking getImageData, so the caller can fall
+// back to the static CSS palette.
 window.nukaPalette = (function () {
+    function relativeLuminanceChannel(c) {
+        return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    }
+
     function extractDominant(imageUrl, sampleSize) {
         sampleSize = sampleSize || 48;
         return new Promise(function (resolve) {
@@ -20,9 +26,19 @@ window.nukaPalette = (function () {
                     var data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
 
                     var sumSin = 0, sumCos = 0, weight = 0;
+                    var sumLuminance = 0, opaqueCount = 0;
                     for (var i = 0; i < data.length; i += 4) {
                         if (data[i + 3] < 128) continue; // skip transparent pixels
                         var r = data[i] / 255, g = data[i + 1] / 255, b = data[i + 2] / 255;
+
+                        // Overall brightness drives the auto-darken decision, so — unlike the
+                        // hue vote below — every opaque pixel counts here, including the
+                        // near-black/near-white/near-neutral ones that hue deliberately skips.
+                        sumLuminance += 0.2126 * relativeLuminanceChannel(r) +
+                            0.7152 * relativeLuminanceChannel(g) +
+                            0.0722 * relativeLuminanceChannel(b);
+                        opaqueCount++;
+
                         var max = Math.max(r, g, b), min = Math.min(r, g, b);
                         var l = (max + min) / 2;
                         if (l < 0.08 || l > 0.92) continue; // skip near-black/near-white
@@ -43,10 +59,19 @@ window.nukaPalette = (function () {
                         weight += s;
                     }
 
-                    if (weight === 0) { resolve(null); return; }
+                    if (opaqueCount === 0) { resolve(null); return; }
+                    var luminance = sumLuminance / opaqueCount;
+
+                    if (weight === 0) {
+                        // No pixel was saturated enough to vote on a hue (greyscale/near-mono
+                        // photo) — still report luminance so the caller can darken it if it's
+                        // too bright, just with an arbitrary (unused-looking) hue.
+                        resolve({ hue: 0, saturation: 0, luminance: luminance });
+                        return;
+                    }
                     var hue = Math.atan2(sumSin, sumCos) * 180 / Math.PI;
                     if (hue < 0) hue += 360;
-                    resolve({ hue: hue, saturation: Math.min(1, weight / (data.length / 4)) });
+                    resolve({ hue: hue, saturation: Math.min(1, weight / (data.length / 4)), luminance: luminance });
                 } catch (err) {
                     // getImageData throws SecurityError on a CORS-tainted canvas
                     resolve(null);
