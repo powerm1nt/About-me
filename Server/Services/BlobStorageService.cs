@@ -27,7 +27,7 @@ public class BlobStorageService
         return content;
     }
 
-    // Same as GetTextAsync, but also returns the blob's actual last-modified timestamp — the
+    // Same as GetTextAsync, but also returns the blob's actual last-modified timestamp, the
     // authoritative "last edited" date. It can't be spoofed via a lastEdited: field in the
     // markdown's own frontmatter the way GetTextAsync's plain content can.
     public async Task<(string? Content, DateTimeOffset? LastModified)> GetTextWithMetadataAsync(string path)
@@ -47,7 +47,7 @@ public class BlobStorageService
     }
 
     // List all blob names under an optional prefix (e.g. "blog/"). BlobStates.None restricts this
-    // to live blobs only — the account has soft-delete enabled, so BlobStates.All would also
+    // to live blobs only, if the account has soft-delete enabled, so BlobStates.All would also
     // surface soft-deleted copies of overwritten/re-uploaded blobs as duplicate entries.
     public async IAsyncEnumerable<string> ListBlobsAsync(string prefix = "")
     {
