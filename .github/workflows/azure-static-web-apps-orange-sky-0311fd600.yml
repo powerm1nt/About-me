@@ -20,12 +20,24 @@ jobs:
     name: Build and Deploy Job
     permissions:
        id-token: write
-       contents: read
+       contents: write
     steps:
       - uses: actions/checkout@v3
         with:
           submodules: true
           lfs: false
+      - name: Bump build number
+        if: github.event_name == 'push'
+        run: |
+          FILE=Web/wwwroot/version.json
+          VERSION=$(jq -r '.version' "$FILE")
+          BUILD=$(( $(jq -r '.build' "$FILE") + 1 ))
+          jq --arg v "$VERSION" --argjson b "$BUILD" '.version = $v | .build = $b' "$FILE" > "$FILE.tmp"
+          mv "$FILE.tmp" "$FILE"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -am "chore: bump build number to $BUILD [skip ci]"
+          git push
       - name: Install OIDC Client from Core Package
         run: npm install @actions/core@1.6.0 @actions/http-client
       - name: Get Id Token

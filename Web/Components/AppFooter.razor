@@ -1,4 +1,5 @@
 @inject Web.Services.AssetService Assets
+@inject HttpClient Http
 
 <footer class="main-footer">
     <div class="footer-container">
@@ -15,11 +16,34 @@
             <div class="projAbout">
                 <p>&copy; @(DateTime.UtcNow.Year) NukaWorks Solutions - All rights reserved.</p>
                 <ExternalLink Href="https://github.com/powerm1nt/About-me" Label="About Me on GitHub" Class="buildinfo">
-                    about-me<span>@@</span>2.0
+                    about-me<span>@@</span>@_version
                 </ExternalLink>
             </div>
         </div>
     </div>
 </footer>
 
-@code { }
+@code {
+    // wwwroot/version.json's "build" is bumped automatically by the deploy
+    // workflow (see azure-static-web-apps-*.yml) on every push to main, so
+    // this always reflects the actual deployed build rather than a value
+    // that has to be remembered and hand-edited on every release.
+    private string _version = "2.1";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var info = await Http.GetFromJsonAsync<VersionInfo>("version.json");
+            if (info is not null) _version = $"{info.Version}.{info.Build}";
+        }
+        catch
+        {
+            // Keep the static fallback above (404, offline, malformed file, etc.)
+        }
+    }
+
+    private sealed record VersionInfo(
+        [property: System.Text.Json.Serialization.JsonPropertyName("version")] string Version,
+        [property: System.Text.Json.Serialization.JsonPropertyName("build")] int Build);
+}
