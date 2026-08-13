@@ -1,5 +1,6 @@
 @inject Web.Services.AssetService Assets
 @inject HttpClient Http
+@inject NavigationManager Nav
 
 <footer class="main-footer">
     <div class="footer-container">
@@ -34,7 +35,11 @@
     {
         try
         {
-            var info = await Http.GetFromJsonAsync<VersionInfo>("version.json");
+            // Http's BaseAddress is ApiBaseUrl (the Server API origin, see Program.cs),
+            // not this site — version.json is a static wwwroot file served from here,
+            // so it needs an absolute URL built off the app's own base URI instead.
+            var url = new Uri(new Uri(Nav.BaseUri), "version.json");
+            var info = await Http.GetFromJsonAsync<VersionInfo>(url);
             if (info is not null) _version = $"{info.Version}.{info.Build}";
         }
         catch
