@@ -64,7 +64,7 @@
    own text/content sitting on top of it). The flat black layer on top of
    the image is the auto-darken scrim: WallpaperPaletteService dims it
    further still if today's photo is too bright for legible text laid
-   directly over it, but a flat +0.15 is always applied on top of that even
+   directly over it, but a flat +0.20 is always applied on top of that even
    for a dark photo — the dynamic scrim is tuned against the wallpaper's own
    luminance, not the low-contrast secondary/muted/faint text tiers sitting
    on it, which need a bit of headroom regardless. */
@@ -72,7 +72,7 @@ html, body {
   padding: 0; margin: 0;
   background-color: #322c58;
   background-image:
-    linear-gradient(rgba(0, 0, 0, calc(var(--wallpaper-scrim-opacity) + 0.15)), rgba(0, 0, 0, calc(var(--wallpaper-scrim-opacity) + 0.15))),
+    linear-gradient(rgba(0, 0, 0, calc(var(--wallpaper-scrim-opacity) + 0.20)), rgba(0, 0, 0, calc(var(--wallpaper-scrim-opacity) + 0.20))),
     var(--wallpaper-url);
   background-repeat: no-repeat;
   background-position: center;
@@ -98,6 +98,10 @@ html, body {
    editor, footer), so no cost there. */
 #app { font-size: clamp(12px, 3vw, 16px); color: #ffffff; display: flex; min-height: 100vh; flex-direction: column; font-family: "Segoe UI", system-ui, -apple-system, sans-serif; font-weight: 300; background-color: transparent; width: 100%; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6); }
 h1 { letter-spacing: 2px; font-weight: 900; }
+/* Large bold titles are already high-contrast on their own — the inherited
+   #app text-shadow was tuned for thin/small/muted text and just looks like
+   an unwanted blur halo at title size, so titles opt back out of it. */
+h1, h2, h3, h4, h5, h6 { text-shadow: none; }
 a { color: inherit; transition: color 0.15s ease-in-out; text-decoration: underline dotted; }
 a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 
@@ -122,6 +126,11 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   background: linear-gradient(to bottom, rgba(0, 0, 0, 0.42), rgba(0, 0, 0, 0) 100%);
   width: 100%;
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  /* Opts back out of #app's inherited text-shadow — at the pivot labels'
+     huge, ultra-thin (font-weight 200) size the blur reads as a smudge
+     rather than added contrast; the gradient above already guarantees a
+     dark base here regardless of the wallpaper. */
+  text-shadow: none;
 }
 /* Metro entrance: content slides in from the right, moving left into place —
    the direction used by Windows Phone's Pivot/page "Continuum" transition
