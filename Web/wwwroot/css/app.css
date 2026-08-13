@@ -62,15 +62,17 @@
    background-blend-mode with background-color mutes the artwork's blue
    instead of filter (filter on html/body would also wash out the page's
    own text/content sitting on top of it). The flat black layer on top of
-   the image is the auto-darken scrim: transparent (0 opacity) unless
-   WallpaperPaletteService decided today's photo is too bright for legible
-   text laid directly over it, in which case it dims the image without
-   touching any actual site content underneath. */
+   the image is the auto-darken scrim: WallpaperPaletteService dims it
+   further still if today's photo is too bright for legible text laid
+   directly over it, but a flat +0.15 is always applied on top of that even
+   for a dark photo — the dynamic scrim is tuned against the wallpaper's own
+   luminance, not the low-contrast secondary/muted/faint text tiers sitting
+   on it, which need a bit of headroom regardless. */
 html, body {
   padding: 0; margin: 0;
   background-color: #322c58;
   background-image:
-    linear-gradient(rgba(0, 0, 0, var(--wallpaper-scrim-opacity)), rgba(0, 0, 0, var(--wallpaper-scrim-opacity))),
+    linear-gradient(rgba(0, 0, 0, calc(var(--wallpaper-scrim-opacity) + 0.15)), rgba(0, 0, 0, calc(var(--wallpaper-scrim-opacity) + 0.15))),
     var(--wallpaper-url);
   background-repeat: no-repeat;
   background-position: center;
@@ -86,7 +88,15 @@ html, body {
 ::-webkit-scrollbar-track { background: var(--color-surface); border-radius: 0; }
 ::-webkit-scrollbar-thumb { background: var(--color-accent-strong); border-radius: 0; }
 ::selection { background: var(--color-accent); color: #ffffff !important; }
-#app { font-size: clamp(12px, 3vw, 16px); color: #ffffff; display: flex; min-height: 100vh; flex-direction: column; font-family: "Segoe UI", system-ui, -apple-system, sans-serif; font-weight: 300; background-color: transparent; width: 100%; }
+/* text-shadow inherits to every descendant, so it's a blanket safety net for
+   text sitting directly on the wallpaper (header, article meta, blog cards —
+   anywhere without an opaque panel behind it): a single low-blur dark shadow
+   holds up regardless of what today's photo looks like, unlike the
+   luminance-average-driven scrim above which can miss a photo that's bright
+   in the specific spot chrome sits (e.g. sky behind the header) while
+   averaging dark overall. Invisible on already-opaque dark panels (modal,
+   editor, footer), so no cost there. */
+#app { font-size: clamp(12px, 3vw, 16px); color: #ffffff; display: flex; min-height: 100vh; flex-direction: column; font-family: "Segoe UI", system-ui, -apple-system, sans-serif; font-weight: 300; background-color: transparent; width: 100%; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6); }
 h1 { letter-spacing: 2px; font-weight: 900; }
 a { color: inherit; transition: color 0.15s ease-in-out; text-decoration: underline dotted; }
 a:hover { text-decoration: underline; color: var(--color-accent-strong); }
@@ -105,7 +115,11 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
    Flat solid chrome, Segoe UI type ramp, huge lowercase pivot labels in
    a horizontally scrollable strip (Windows Phone Panorama/Pivot pattern). */
 .metro-header {
-  background: transparent;
+  /* Fixed top-fade scrim, not driven by wallpaper stats: the header always
+     sits directly on the photo (no panel), so it needs a guaranteed dark
+     base under its ultra-thin (font-weight 200) pivot labels regardless of
+     how bright that day's wallpaper happens to be up top. */
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.42), rgba(0, 0, 0, 0) 100%);
   width: 100%;
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
 }
@@ -244,7 +258,7 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 .article-header-meta { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1em; margin-bottom: 1.6em; }
 .article-meta-info { display: flex; align-items: center; gap: 1.2em; flex-wrap: wrap; }
 .article-meta-author { color: var(--color-text-secondary); font-size: 0.9rem; font-weight: 300; }
-.article-last-edited-badge { font-size: 0.85rem; color: var(--color-text-faint); display: inline-flex; align-items: center; gap: 0.4em; }
+.article-last-edited-badge { font-size: 0.85rem; color: var(--color-text-secondary); display: inline-flex; align-items: center; gap: 0.4em; }
 .article-last-edited-badge svg { opacity: 0.8; }
 .github-edit-btn { display: inline-flex; align-items: center; gap: 0.5em; padding: 0.3em 0.2em; font-size: 0.9rem; font-weight: 600; text-transform: lowercase; letter-spacing: 0.01em; color: var(--color-text-muted); background: none; border: none; text-decoration: none; transition: color 0.15s; }
 .github-edit-btn:hover { color: #ffffff; }
@@ -296,7 +310,7 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 .blog-card-desc { color: var(--color-text-secondary); font-size: 0.95rem; line-height: 1.5; margin: 0 0 0.6em 0; }
 .blog-card-meta { display: flex; align-items: center; gap: 1em; flex-wrap: wrap; font-size: 0.85rem; color: var(--color-text-muted); }
 .blog-card-author { font-weight: 500; color: var(--color-text-secondary); }
-.blog-card-last-edited { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.85rem; color: var(--color-text-faint); display: inline-flex; align-items: center; gap: 0.4em; }
+.blog-card-last-edited { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.85rem; color: var(--color-text-secondary); display: inline-flex; align-items: center; gap: 0.4em; }
 /* Info/warning/tip/danger banners — flat Metro "flag" treatment: no boxed
    border, just a thin accent-colored edge and a soft tint of that same
    color, matching the rest of the borderless chrome. Info (the default,
