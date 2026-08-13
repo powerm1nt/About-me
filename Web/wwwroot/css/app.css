@@ -23,8 +23,14 @@
    Adaptive palette drawn from the background artwork's dominant blue-violet
    rather than a stock neutral gray scale — text-muted/faint tiers carry a
    deliberate blue tint instead of being achromatic, so chrome, banners and
-   the wallpaper read as one family of color. */
+   the wallpaper read as one family of color. Everything below is only the
+   pre-JS fallback: Web.Services.WallpaperPaletteService (wired up from
+   MainLayout.razor) samples the actual wallpaper on load and overwrites
+   these --color-accent*/--color-text-secondary/-muted/-faint and
+   --wallpaper-url values on :root's inline style, so the palette stays in
+   sync if the wallpaper is ever swapped at runtime. */
 :root {
+  --wallpaper-url: url("/assets/default2.png");
   --color-accent: #5468e0;
   --color-accent-strong: #7688ea;
   --color-accent-soft: rgba(84, 104, 224, 0.16);
@@ -51,7 +57,7 @@
 html, body {
   padding: 0; margin: 0;
   background-color: #322c58;
-  background-image: url("/assets/default2.png");
+  background-image: var(--wallpaper-url);
   background-repeat: no-repeat;
   background-position: center;
   background-size: cover;

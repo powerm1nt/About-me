@@ -15,6 +15,7 @@ builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<HistoryService>();
 builder.Services.AddScoped<LanguageState>();
 builder.Services.AddScoped<ExternalLinkState>();
+builder.Services.AddScoped<WallpaperPaletteService>();
 builder.Services.AddSingleton<MdComponentRegistry>();
 
 await builder.Build().RunAsync();
