@@ -22,18 +22,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # The bump has to happen before the build, since version.json is baked into the bundle — so a
+      # run that fails later has still pushed a bump. That is harmless, but it means the branch can
+      # have moved on by the time this step runs again (a re-run starts from the original commit,
+      # and two pushes in quick succession overlap). Rebasing onto the current branch before pushing
+      # makes the step idempotent instead of failing the whole deploy on a non-fast-forward.
       - name: Bump build number
         if: github.event_name == 'push'
         run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+
           FILE=public/version.json
           VERSION=$(jq -r '.version' "$FILE")
           BUILD=$(( $(jq -r '.build' "$FILE") + 1 ))
           jq --arg v "$VERSION" --argjson b "$BUILD" '.version = $v | .build = $b' "$FILE" > "$FILE.tmp"
           mv "$FILE.tmp" "$FILE"
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+
           git commit -am "chore: bump build number to $BUILD [skip ci]"
-          git push
+          git push origin "HEAD:${GITHUB_REF_NAME}"
 
       - uses: pnpm/action-setup@v4
 
