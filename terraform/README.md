@@ -1,69 +1,136 @@
-# Terraform — NukaWorks infra
+# Terraform — NukaWorks infra (Google Cloud)
 
-Describes the Azure resources currently live for this project:
+Everything the site runs on, in one project:
 
-- **`Default` resource group**: storage account `nwrks` (`static` container, public blob read) +
-  Front Door Standard profile `nwrks-cdn` with two routes:
-  - `default-route` → blob storage, custom domain `nwrks-cdn.public.prod.nuka.works`
-  - `blog-route` → the Static Web App hosting `Web/` (Blazor WASM), custom domain `blog.nuka.works`
-- **`blog-api_group` resource group**: Linux App Service `blog-api` (ASP.NET Core `Server/`), currently on the **F1 Free** plan.
+| Resource                                | What it does                                                    |
+| --------------------------------------- | --------------------------------------------------------------- |
+| `google_storage_bucket.assets`          | The site's markdown and images, under the `static/` prefix       |
+| `google_storage_bucket.web`             | The built React frontend                                         |
+| Global external ALB + Cloud CDN         | Serves both buckets, one hostname each, with managed TLS         |
+| `google_cloud_run_v2_service.api`       | The Express/TypeScript `server/` API                             |
+| Secret Manager                          | Holds the GitHub OAuth client secret                             |
+| Workload Identity Federation            | Lets GitHub Actions deploy without a service-account key         |
 
-## Not managed here
+Host routing:
 
-- **DNS** — `nuka.works` is on Cloudflare (`hank.ns.cloudflare.com` / `meadow.ns.cloudflare.com`), DNS-only
-  (grey-clouded) for the Front Door hostnames. Required records, already in place:
-  - `nwrks-cdn.public.prod.nuka.works` → CNAME → `nwrks-cdn-ebfnb4hdfdc3bag9.z02.azurefd.net`
-  - `blog.nuka.works` → CNAME → `nwrks-cdn-ebfnb4hdfdc3bag9.z02.azurefd.net`
-  - `_dnsauth.<host>` TXT records for Front Door domain ownership validation (token per domain,
-    see `azurerm_cdn_frontdoor_custom_domain.*` validation output after apply)
-- **The Static Web App itself** (`orange-sky-0311fd600`) — deployed via
-  `.github/workflows/azure-static-web-apps-orange-sky-0311fd600.yml`, not provisioned here.
-- **App Service secrets** (`BlobStorage__AccountKey`, `GitHub__ClientSecret`, etc.) — injected by
-  `.github/workflows/deploy-server.yml` via `az webapp config appsettings set`; `app_settings` is
-  excluded from Terraform's plan via `lifecycle.ignore_changes`.
+- `nwrks-cdn.public.prod.nuka.works` → assets bucket
+- `blog.nuka.works` → web bucket
+- The API is reached at its own Cloud Run URL (`api_url` output), called cross-origin by the
+  frontend. CORS is configured from `CORS_ALLOWED_ORIGINS` on the service, which doubles as the
+  OAuth returnUrl allow-list.
+
+## Why objects sit under `static/`
+
+The Azure setup this replaced served content from a blob container named `static`, so its public
+path was `/static/blog/welcome.md`. GCS has no containers, so the container name became an object
+prefix — which reproduces that path byte-for-byte. That is the reason every image and link inside
+already-published markdown survived the migration untouched. Changing `assets_prefix` would break
+all of them.
+
+## Remote state
+
+State lives in `gs://nwrks-tfstate-prod` (prefix `site`), configured in `backend.tf`. That bucket is
+intentionally not a resource here — Terraform cannot hold the state describing the bucket its own
+state lives in — so it was created once, by hand:
+
+```bash
+gcloud storage buckets create gs://nwrks-tfstate-prod --location=US --uniform-bucket-level-access
+gcloud storage buckets update gs://nwrks-tfstate-prod --versioning
+```
+
+Object versioning is on, so a bad state push can be rolled back to the previous generation instead
+of being rebuilt by hand from the live project.
 
 ## Getting started
 
 ```bash
 cd terraform
 terraform init
+terraform apply -var project_id=<your-project-id>
 ```
 
-Set the subscription either via `-var subscription_id=...` or the `ARM_SUBSCRIPTION_ID` env var.
-
-## Importing the existing resources
-
-Nothing has been created by Terraform yet — these resources already exist in Azure. Run
-`terraform plan` first; it will show every resource as "to be created." Before applying, import
-each one so Terraform adopts the real infra instead of trying to create duplicates:
+The provider needs Application Default Credentials (`gcloud auth application-default login`). If you
+would rather not leave a credential file on disk, a short-lived token works for a single run:
 
 ```bash
-terraform import azurerm_resource_group.assets /subscriptions/<sub>/resourceGroups/Default
-terraform import azurerm_storage_account.assets /subscriptions/<sub>/resourceGroups/Default/providers/Microsoft.Storage/storageAccounts/nwrks
-terraform import azurerm_storage_container.static https://nwrks.blob.core.windows.net/static
-
-terraform import azurerm_cdn_frontdoor_profile.this /subscriptions/<sub>/resourceGroups/Default/providers/Microsoft.Cdn/profiles/nwrks-cdn
-terraform import azurerm_cdn_frontdoor_endpoint.this /subscriptions/<sub>/resourceGroups/Default/providers/Microsoft.Cdn/profiles/nwrks-cdn/afdEndpoints/nwrks-cdn
-terraform import azurerm_cdn_frontdoor_custom_domain.cdn /subscriptions/<sub>/resourceGroups/Default/providers/Microsoft.Cdn/profiles/nwrks-cdn/customDomains/nwrks-cdn-public-prod
-terraform import azurerm_cdn_frontdoor_custom_domain.site /subscriptions/<sub>/resourceGroups/Default/providers/Microsoft.Cdn/profiles/nwrks-cdn/customDomains/blog-nuka-works
-terraform import azurerm_cdn_frontdoor_origin_group.assets /subscriptions/<sub>/resourceGroups/Default/providers/Microsoft.Cdn/profiles/nwrks-cdn/originGroups/default-origin-group-56eb63dc
-terraform import azurerm_cdn_frontdoor_origin_group.site /subscriptions/<sub>/resourceGroups/Default/providers/Microsoft.Cdn/profiles/nwrks-cdn/originGroups/blog-origin-group
-terraform import azurerm_cdn_frontdoor_origin.assets /subscriptions/<sub>/resourceGroups/Default/providers/Microsoft.Cdn/profiles/nwrks-cdn/originGroups/default-origin-group-56eb63dc/origins/default-origin
-terraform import azurerm_cdn_frontdoor_origin.site /subscriptions/<sub>/resourceGroups/Default/providers/Microsoft.Cdn/profiles/nwrks-cdn/originGroups/blog-origin-group/origins/blog-static-webapp
-terraform import azurerm_cdn_frontdoor_route.assets /subscriptions/<sub>/resourceGroups/Default/providers/Microsoft.Cdn/profiles/nwrks-cdn/afdEndpoints/nwrks-cdn/routes/default-route
-terraform import azurerm_cdn_frontdoor_route.site /subscriptions/<sub>/resourceGroups/Default/providers/Microsoft.Cdn/profiles/nwrks-cdn/afdEndpoints/nwrks-cdn/routes/blog-route
-
-terraform import azurerm_resource_group.api /subscriptions/<sub>/resourceGroups/blog-api_group
-terraform import azurerm_service_plan.api /subscriptions/<sub>/resourceGroups/blog-api_group/providers/Microsoft.Web/serverfarms/ASP-blogapigroup-b00d
-terraform import azurerm_linux_web_app.api /subscriptions/<sub>/resourceGroups/blog-api_group/providers/Microsoft.Web/sites/blog-api
+export GOOGLE_OAUTH_ACCESS_TOKEN="$(gcloud auth print-access-token)"
 ```
 
-Then run `terraform plan` again — it should come back clean (or close to it; a few computed/
-default fields may show drift on first plan, which is normal after import).
+Enable the APIs the first apply needs, if they aren't already:
 
-## Known perf-relevant knob
+```bash
+gcloud services enable \
+  compute.googleapis.com run.googleapis.com storage.googleapis.com \
+  artifactregistry.googleapis.com secretmanager.googleapis.com \
+  iamcredentials.googleapis.com
+```
 
-`api_app_service_plan_sku` defaults to `"F1"` to match what's live today. F1 (Free) cannot enable
-`always_on`, so the API cold-starts after ~20 minutes of inactivity. Set it to `"B1"` (~$13/mo) and
-apply to remove that cold start — `always_on` flips on automatically in `appservice.tf` for any
-non-F1 SKU.
+## After the first apply
+
+1. **DNS.** Point both hostnames at the `load_balancer_ip` output with A records. `nuka.works` is on
+   Cloudflare and these must stay **DNS-only (grey cloud)** — an orange-clouded record proxies the
+   request and Google's managed certificate can never complete its HTTP-01 challenge. The
+   certificate sits in `PROVISIONING` until DNS resolves; that can take up to an hour after it does.
+
+   ```bash
+   gcloud compute ssl-certificates describe nwrks-cert --global \
+     --format="value(managed.status, managed.domainStatus)"
+   ```
+
+2. **The OAuth client secret.** Terraform creates the secret container, never its value — putting a
+   secret's contents in Terraform would write it to the state file in plaintext.
+
+   ```bash
+   gcloud secrets versions add github-oauth-client-secret --data-file=-
+   ```
+
+   Ordering gotcha: the Cloud Run service mounts this secret at `latest`, and Cloud Run resolves
+   that mount at *deploy* time. On a from-scratch apply the container exists but has no version
+   yet, so creating the service fails with `secret_key_ref ... versions/latest was not found`. That
+   is not a broken configuration — add the version as above and re-run `terraform apply`, which
+   creates the service on the second pass. Everything else in the apply is unaffected.
+
+3. **Repository secrets and variables** for the deploy workflows:
+
+   | GitHub secret                     | Value                                    |
+   | --------------------------------- | ---------------------------------------- |
+   | `GCP_WORKLOAD_IDENTITY_PROVIDER`  | `workload_identity_provider` output       |
+   | `GCP_DEPLOY_SERVICE_ACCOUNT`      | `deployer_service_account` output         |
+   | `GH_OAUTH_CLIENT_ID`              | GitHub OAuth app client id                |
+   | `CLOUDFLARE_ZONE_ID`              | Cloudflare zone for `nuka.works`          |
+   | `CLOUDFLARE_API_TOKEN`            | Token with cache-purge permission         |
+
+   | GitHub variable        | Value                                        |
+   | ---------------------- | -------------------------------------------- |
+   | `GCP_PROJECT_ID`       | Project id                                    |
+   | `GCP_REGION`           | `northamerica-northeast1` (or your `region`)  |
+   | `GCP_WEB_BUCKET`       | `web_bucket` output                           |
+   | `GCP_ASSETS_BUCKET`    | `assets_bucket` output                        |
+   | `GCP_ASSETS_PREFIX`    | `static`                                      |
+   | `GCP_URL_MAP`          | `nwrks-url-map`                               |
+   | `API_BASE_URL`         | `api_url` output                              |
+   | `ASSET_BASE_URL`       | `cdn_asset_base_url` output                   |
+
+4. **Migrate the old content** (once), then decommission Azure:
+
+   ```bash
+   az login
+   gcloud auth login && gcloud config set project <project-id>
+   scripts/migrate-azure-to-gcp.sh --dry-run   # inspect first
+   scripts/migrate-azure-to-gcp.sh
+   ```
+
+## What Terraform deliberately doesn't own
+
+- **The deployed API image.** `deploy-server.yml` pushes a new digest per release, so
+  `template[0].containers[0].image` is in `ignore_changes` — otherwise every `terraform apply`
+  would roll the service back to `var.api_image` and undo the latest deploy.
+- **Secret values.** Only the container, per above.
+- **Bucket contents.** Frontend builds and merged content patches are written by CI.
+- **DNS.** `nuka.works` lives on Cloudflare (`hank.ns.cloudflare.com` / `meadow.ns.cloudflare.com`).
+
+## Cost knob
+
+`api_min_instances` defaults to `0`: nothing is billed while the API is idle, but the first request
+after a quiet period pays a cold start — the same trade the old F1 App Service plan forced. Set it
+to `1` to keep one instance warm and remove that latency.

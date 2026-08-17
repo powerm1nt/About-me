@@ -1,3 +1,12 @@
+## Node / Vite
+node_modules/
+dist/
+.vite/
+*.local
+.env
+.env.*
+!.env.example
+
 ## .NET / Visual Studio
 bin/
 obj/
@@ -13,6 +22,13 @@ publish/
 
 ## Rider
 .idea/
+
+## Terraform
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/*.tfvars
+!terraform/*.tfvars.example
 
 ## OS
 .DS_Store

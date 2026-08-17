@@ -1,6 +1,6 @@
 name: Build check
 
-# Pure compile check — no Azure credentials, no deploy, no secrets. Runs on every push to develop
+# Pure compile check — no cloud credentials, no deploy, no secrets. Runs on every push to develop
 # and on PRs into develop/main so breakage shows up before it ever reaches a deploy workflow.
 # Excludes patch-only PRs (the propose/* branches from the "propose changes" feature) since those
 # never touch buildable code.
@@ -17,17 +17,32 @@ on:
 
 jobs:
   build:
+    name: Frontend + API
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
         with:
-          dotnet-version: "10.0.x"
+          node-version: 24
+          cache: pnpm
 
-      - name: Restore
-        run: dotnet restore NukaWorks.Website.slnx
+      # One install covers both packages: the frontend is the workspace root and the API is the
+      # "server" package (see pnpm-workspace.yaml).
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
-      - name: Build
-        run: dotnet build NukaWorks.Website.slnx -c Release --no-restore
+      - name: Lint
+        run: pnpm lint
+
+      # `pnpm build` runs tsc --noEmit first, so this covers frontend typechecking too.
+      - name: Build frontend
+        run: pnpm build
+
+      - name: Typecheck API
+        run: pnpm --filter aboutme-server typecheck
+
+      - name: Build API
+        run: pnpm --filter aboutme-server build

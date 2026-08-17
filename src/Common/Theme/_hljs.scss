@@ -1,0 +1,69 @@
+/* highlight.js token colors.
+   Deliberately built out of the same custom properties as the rest of the palette (which follow
+   the wallpaper — see palette.ts) rather than a stock hljs theme, so code blocks re-tint along
+   with everything else instead of sitting in a fixed colour scheme of their own. Layout is left
+   entirely to app.scss's `.file-content pre` / `pre code` rules — this file only sets colour. */
+
+.hljs-comment,
+.hljs-quote {
+  color: var(--color-text-faint);
+  font-style: italic;
+}
+
+.hljs-punctuation,
+.hljs-tag {
+  color: var(--color-text-muted);
+}
+
+.hljs-attribute,
+.hljs-doctag,
+.hljs-keyword,
+.hljs-meta .hljs-keyword,
+.hljs-name,
+.hljs-selector-tag {
+  color: var(--color-accent-strong);
+  font-weight: 600;
+}
+
+.hljs-deletion,
+.hljs-number,
+.hljs-quote,
+.hljs-selector-class,
+.hljs-selector-id,
+.hljs-string,
+.hljs-template-tag,
+.hljs-type {
+  color: var(--color-text-secondary);
+}
+
+.hljs-section,
+.hljs-title {
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+.hljs-link,
+.hljs-operator,
+.hljs-regexp,
+.hljs-selector-attr,
+.hljs-selector-pseudo,
+.hljs-symbol,
+.hljs-template-variable,
+.hljs-variable {
+  color: var(--color-accent-muted);
+}
+
+.hljs-literal,
+.hljs-built_in,
+.hljs-bullet,
+.hljs-code,
+.hljs-addition {
+  color: var(--color-accent);
+}
+
+.hljs-meta {
+  color: var(--color-text-faint);
+}
+
+.hljs-emphasis { font-style: italic; }
+.hljs-strong { font-weight: 700; }
