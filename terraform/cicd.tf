@@ -50,6 +50,23 @@ resource "google_storage_bucket_iam_member" "deployer_assets" {
   member = "serviceAccount:${google_service_account.deployer.email}"
 }
 
+# objectAdmin grants everything at the *object* level but nothing at the bucket level, and
+# `gcloud storage rsync` reads the bucket's own metadata before it transfers anything — so without
+# this the deploy fails on storage.buckets.get with the objects themselves perfectly writable.
+# legacyBucketReader is the narrowest role that carries it; the alternative, storage.admin, would
+# also hand CI the ability to rewrite the buckets' IAM.
+resource "google_storage_bucket_iam_member" "deployer_web_bucket" {
+  bucket = google_storage_bucket.web.name
+  role   = "roles/storage.legacyBucketReader"
+  member = "serviceAccount:${google_service_account.deployer.email}"
+}
+
+resource "google_storage_bucket_iam_member" "deployer_assets_bucket" {
+  bucket = google_storage_bucket.assets.name
+  role   = "roles/storage.legacyBucketReader"
+  member = "serviceAccount:${google_service_account.deployer.email}"
+}
+
 # Push API images and deploy new Cloud Run revisions.
 resource "google_artifact_registry_repository" "containers" {
   location      = var.region
