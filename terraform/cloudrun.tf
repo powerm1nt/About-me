@@ -76,6 +76,11 @@ resource "google_cloud_run_v2_service" "api" {
       }
 
       env {
+        name  = "GITHUB_CLIENT_ID"
+        value = var.github_client_id
+      }
+
+      env {
         name = "GITHUB_CLIENT_SECRET"
         value_source {
           secret_key_ref {
@@ -95,9 +100,9 @@ resource "google_cloud_run_v2_service" "api" {
   }
 
   lifecycle {
-    # deploy-api.yml owns the deployed image and the OAuth client id; Terraform owns the shape of
-    # the service. Without this, every `terraform apply` would roll the service back to
-    # var.api_image and undo the most recent deploy.
+    # deploy-api.yml owns the deployed image; Terraform owns everything else about the service.
+    # Without this, every `terraform apply` would roll the service back to var.api_image and undo
+    # the most recent deploy.
     ignore_changes = [
       template[0].containers[0].image,
       client,

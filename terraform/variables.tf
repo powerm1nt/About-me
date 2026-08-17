@@ -75,6 +75,29 @@ variable "api_min_instances" {
   default     = 0
 }
 
+variable "cert_version" {
+  description = <<-EOT
+    Suffix on the managed certificate's name. Bump it to force a reissue — the certificate is
+    replaced before the old one is removed, so the load balancer never sits without one.
+  EOT
+  type        = number
+  default     = 1
+}
+
+variable "github_client_id" {
+  description = <<-EOT
+    Client id of the GitHub OAuth app behind the "propose changes" sign-in.
+
+    Terraform owns this rather than the deploy workflow. The Cloud Run service definition lists the
+    container's environment in full, so anything set out-of-band with `gcloud run deploy
+    --update-env-vars` is removed by the next `terraform apply` — which silently broke sign-in until
+    the next deploy re-added it. An OAuth client id is public (it travels in the authorize URL the
+    browser follows), so unlike the client secret there is no reason to keep it out of the config.
+  EOT
+  type        = string
+  default     = "Ov23libBcHbgZHkrxg6D"
+}
+
 variable "github_repository" {
   description = "owner/name of the GitHub repository allowed to deploy via Workload Identity Federation."
   type        = string

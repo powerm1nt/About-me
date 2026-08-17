@@ -42,13 +42,13 @@ jobs:
           docker push "$IMAGE"
           echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
 
-      # Only the non-secret settings are passed here. The GitHub OAuth client secret is mounted
-      # from Secret Manager by the service definition (see terraform/cloudrun.tf), so it never
-      # passes through CI at all.
+      # Only the image is set here. Every environment variable — including the OAuth client id, and
+      # the client secret mounted from Secret Manager — belongs to the service definition in
+      # terraform/cloudrun.tf. Setting one here with --update-env-vars would work until the next
+      # `terraform apply`, which rewrites the container's environment in full and would drop it.
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy blog-api \
             --image "${{ steps.image.outputs.image }}" \
             --region "${{ vars.GCP_REGION }}" \
-            --update-env-vars "GITHUB_CLIENT_ID=${{ secrets.GH_OAUTH_CLIENT_ID }}" \
             --quiet

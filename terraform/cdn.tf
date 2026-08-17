@@ -67,8 +67,16 @@ resource "google_compute_url_map" "this" {
   }
 }
 
+# The name carries a version suffix because a managed certificate cannot be updated in place and
+# create_before_destroy needs a free name to build the replacement under — with a fixed name the
+# replacement collides with the certificate it is meant to replace and the apply fails with a 409.
+#
+# Bump var.cert_version to force a reissue. That is the remedy when a certificate is stuck in
+# FAILED_NOT_VISIBLE, which is what happens when it first tried to validate before the domains'
+# DNS pointed at the load balancer: Google's own retry is slow to clear that state, and a fresh
+# certificate validates immediately once DNS is correct.
 resource "google_compute_managed_ssl_certificate" "this" {
-  name = "nwrks-cert"
+  name = "nwrks-cert-v${var.cert_version}"
 
   managed {
     domains = [var.cdn_custom_domain_host, var.site_custom_domain_host]
