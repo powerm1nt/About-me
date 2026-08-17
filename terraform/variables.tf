@@ -1,43 +1,40 @@
-variable "subscription_id" {
-  description = "Azure subscription ID. Can also be supplied via ARM_SUBSCRIPTION_ID."
+variable "project_id" {
+  description = "Google Cloud project ID hosting the whole site."
   type        = string
-  default     = null
 }
 
-variable "location" {
-  description = "Region for the storage/Front Door resource group."
+variable "region" {
+  description = "Region for Cloud Run and other regional resources."
   type        = string
-  default     = "japaneast"
+  default     = "northamerica-northeast1"
 }
 
-variable "resource_group_name" {
-  description = "Resource group holding storage + Front Door (matches the existing 'Default' RG)."
+variable "bucket_location" {
+  description = "Location for the GCS buckets. Multi-region ('US', 'EU') or a single region."
   type        = string
-  default     = "Default"
+  default     = "US"
 }
 
-variable "storage_account_name" {
-  description = "Globally-unique blob storage account name serving static assets."
+variable "assets_bucket_name" {
+  description = "Globally-unique bucket holding the site's markdown and static assets."
   type        = string
-  default     = "nwrks"
+  default     = "nwrks-assets-prod"
 }
 
-variable "storage_container_name" {
-  description = "Blob container name holding public static assets."
+variable "assets_prefix" {
+  description = <<-EOT
+    Object-name prefix all content sits under. Matches the old Azure container name so every
+    published asset URL (https://<cdn host>/static/...) stays byte-identical after the migration —
+    changing it would break links inside already-published markdown.
+  EOT
   type        = string
   default     = "static"
 }
 
-variable "front_door_profile_name" {
-  description = "Azure Front Door (Standard) profile name."
+variable "web_bucket_name" {
+  description = "Globally-unique bucket serving the built React frontend."
   type        = string
-  default     = "nwrks-cdn"
-}
-
-variable "front_door_endpoint_name" {
-  description = "Front Door endpoint name (hostname prefix on *.azurefd.net)."
-  type        = string
-  default     = "nwrks-cdn"
+  default     = "nwrks-web-prod"
 }
 
 variable "cdn_custom_domain_host" {
@@ -47,31 +44,62 @@ variable "cdn_custom_domain_host" {
 }
 
 variable "site_custom_domain_host" {
-  description = "Custom domain that serves the Blazor WASM frontend (Static Web App origin)."
+  description = "Custom domain that serves the React frontend."
   type        = string
   default     = "blog.nuka.works"
 }
 
-variable "static_web_app_hostname" {
-  description = "Default hostname of the Azure Static Web App hosting the Web frontend."
-  type        = string
-  default     = "orange-sky-0311fd600.7.azurestaticapps.net"
-}
-
-variable "api_resource_group_name" {
-  description = "Resource group holding the Server API App Service."
-  type        = string
-  default     = "blog-api_group"
-}
-
-variable "api_app_name" {
-  description = "App Service name for the Server API."
+variable "api_service_name" {
+  description = "Cloud Run service name for the Server API."
   type        = string
   default     = "blog-api"
 }
 
-variable "api_app_service_plan_sku" {
-  description = "App Service Plan SKU for the API. F1 (free) has no Always On, so the API cold-starts after ~20min idle; B1 removes that at a small monthly cost."
+variable "api_image" {
+  description = <<-EOT
+    Container image for the API. Terraform only sets the initial value: deploy-server.yml pushes a
+    new digest on every release and Cloud Run's own revision history owns it from then on, which is
+    why the image field is ignored below.
+  EOT
   type        = string
-  default     = "F1"
+  default     = "us-docker.pkg.dev/cloudrun/container/hello"
+}
+
+variable "api_min_instances" {
+  description = <<-EOT
+    Minimum warm Cloud Run instances. 0 costs nothing while idle but cold-starts the first request
+    after a quiet period (the same trade the old F1 App Service plan forced); 1 removes cold starts
+    for a small monthly cost.
+  EOT
+  type        = number
+  default     = 0
+}
+
+variable "cert_version" {
+  description = <<-EOT
+    Suffix on the managed certificate's name. Bump it to force a reissue — the certificate is
+    replaced before the old one is removed, so the load balancer never sits without one.
+  EOT
+  type        = number
+  default     = 1
+}
+
+variable "github_client_id" {
+  description = <<-EOT
+    Client id of the GitHub OAuth app behind the "propose changes" sign-in.
+
+    Terraform owns this rather than the deploy workflow. The Cloud Run service definition lists the
+    container's environment in full, so anything set out-of-band with `gcloud run deploy
+    --update-env-vars` is removed by the next `terraform apply` — which silently broke sign-in until
+    the next deploy re-added it. An OAuth client id is public (it travels in the authorize URL the
+    browser follows), so unlike the client secret there is no reason to keep it out of the config.
+  EOT
+  type        = string
+  default     = "Ov23libBcHbgZHkrxg6D"
+}
+
+variable "github_repository" {
+  description = "owner/name of the GitHub repository allowed to deploy via Workload Identity Federation."
+  type        = string
+  default     = "powerm1nt/About-me"
 }

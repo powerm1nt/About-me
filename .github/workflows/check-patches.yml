@@ -1,11 +1,12 @@
 name: Check proposed content patches
 
 # Proposal PRs always come from a fork of a visitor's own account (see ProposalsController /
-# GitHubProposalService), so a plain `pull_request` trigger would run with no secrets at all —
+# GitHubProposalService), so a plain `pull_request` trigger would run with no credentials at all —
 # GitHub withholds them from fork-triggered `pull_request` runs. `pull_request_target` runs this
 # workflow file from the BASE repo (an attacker can't alter what this job does by editing their
-# fork's copy) and does have secrets. The only fork-supplied content we touch is the `.patch` text
-# itself, and it's only ever read as inert data and handed to `patch`/`az` — never executed as code.
+# fork's copy) and can mint an OIDC token. The only fork-supplied content we touch is the `.patch`
+# text itself, and it's only ever read as inert data and handed to `patch`/`gcloud` — never
+# executed as code.
 on:
   pull_request_target:
     types: [opened, synchronize, reopened]
@@ -16,19 +17,27 @@ on:
 
 permissions:
   contents: read
-
-env:
-  STORAGE_ACCOUNT: nwrks
-  CONTAINER_NAME: static
+  id-token: write
 
 jobs:
   check-patches:
     runs-on: ubuntu-latest
+    env:
+      BUCKET: ${{ vars.GCP_ASSETS_BUCKET }}
+      PREFIX: ${{ vars.GCP_ASSETS_PREFIX }}
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v2
 
       - name: Find patch files changed in this PR
         id: find
@@ -40,10 +49,10 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-      # Dry-run each patch against the *current* live blob content — this is the check that
-      # actually matters: it catches a proposal that's gone stale because the page was edited
-      # (by another merged proposal, or manually) since this PR was opened.
-      - name: Dry-run apply each patch against the live blob
+      # Dry-run each patch against the *current* live content — this is the check that actually
+      # matters: it catches a proposal that's gone stale because the page was edited (by another
+      # merged proposal, or manually) since this PR was opened.
+      - name: Dry-run apply each patch against the live object
         if: steps.find.outputs.files != ''
         run: |
           fail=0
@@ -52,34 +61,33 @@ jobs:
 
             rel="${file#patches/}"
             target="${rel%/*}"
-            echo "::group::Checking $file -> $target"
+            object="gs://$BUCKET/$PREFIX/$target"
+            echo "::group::Checking $file -> $object"
 
             tmp=$(mktemp)
-            dl_err=$(mktemp)
-            if ! az storage blob download \
-              --account-name "$STORAGE_ACCOUNT" --container-name "$CONTAINER_NAME" \
-              --account-key "$BLOB_STORAGE_ACCOUNT_KEY" \
-              --name "$target" --file "$tmp" --only-show-errors 2>"$dl_err"; then
-              if grep -qi "BlobNotFound" "$dl_err"; then
-                # No existing blob — valid for a "new article" proposal (pure-insertion patch applies
-                # cleanly to an empty file); an edit patch against a genuinely-missing target will
-                # simply fail the dry-run apply below instead.
-                echo "No existing blob at '$target' — checking as a new file."
-                : > "$tmp"
-              else
-                echo "::error file=$file::Could not download '$target' from Blob Storage (not a not-found error — see log)."
-                cat "$dl_err"
-                fail=1
-                rm -f "$tmp" "$dl_err"
-                echo "::endgroup::"
-                continue
-              fi
+            err=$(mktemp)
+
+            if gcloud storage objects describe "$object" --format='value(name)' >/dev/null 2>"$err"; then
+              gcloud storage cp "$object" "$tmp"
+            elif grep -qiE 'not found|404' "$err"; then
+              # No existing object — valid for a "new article" proposal (pure-insertion patch
+              # applies cleanly to an empty file); an edit patch against a genuinely-missing target
+              # will simply fail the dry-run apply below instead.
+              echo "No existing object at '$object' — checking as a new file."
+              : > "$tmp"
+            else
+              echo "::error file=$file::Could not read '$object' (not a not-found error — see log)."
+              cat "$err"
+              fail=1
+              rm -f "$tmp" "$err"
+              echo "::endgroup::"
+              continue
             fi
-            rm -f "$dl_err"
+            rm -f "$err"
 
             # The diff is always generated LF-only (Server normalizes both sides before diffing),
-            # but older blobs may still carry CRLF from earlier Windows-authored uploads — normalize
-            # before patching so unchanged context lines actually match byte-for-byte.
+            # but older content may still carry CRLF from earlier Windows-authored uploads —
+            # normalize before patching so unchanged context lines match byte-for-byte.
             sed -i 's/\r$//' "$tmp"
 
             if ! patch --fuzz=3 --dry-run "$tmp" < "$file"; then
@@ -91,5 +99,3 @@ jobs:
             echo "::endgroup::"
           done <<< "${{ steps.find.outputs.files }}"
           exit $fail
-        env:
-          BLOB_STORAGE_ACCOUNT_KEY: ${{ secrets.BLOB_STORAGE_ACCOUNT_KEY }}

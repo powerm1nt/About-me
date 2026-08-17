@@ -1,0 +1,88 @@
+name: Deploy frontend to Cloud Storage
+
+# Builds the React app and publishes it to the GCS bucket the load balancer serves
+# blog.nuka.works from.
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "patches/**"
+      - "server/**"
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bump build number
+        if: github.event_name == 'push'
+        run: |
+          FILE=public/version.json
+          VERSION=$(jq -r '.version' "$FILE")
+          BUILD=$(( $(jq -r '.build' "$FILE") + 1 ))
+          jq --arg v "$VERSION" --argjson b "$BUILD" '.version = $v | .build = $b' "$FILE" > "$FILE.tmp"
+          mv "$FILE.tmp" "$FILE"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -am "chore: bump build number to $BUILD [skip ci]"
+          git push
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+        env:
+          VITE_API_BASE_URL: ${{ vars.API_BASE_URL }}
+          VITE_ASSET_BASE_URL: ${{ vars.ASSET_BASE_URL }}
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      # Hashed assets first, then index.html: uploading the shell last means it never points at
+      # files that haven't finished uploading yet.
+      - name: Upload hashed assets
+        run: |
+          gcloud storage rsync dist gs://${{ vars.GCP_WEB_BUCKET }} \
+            --recursive --exclude '^index\.html$' \
+            --cache-control="public, max-age=31536000, immutable"
+
+      - name: Upload index.html
+        run: |
+          gcloud storage cp dist/index.html gs://${{ vars.GCP_WEB_BUCKET }}/index.html \
+            --cache-control="no-cache, max-age=0"
+
+      # Everything except index.html is content-hashed, so only the shell can actually be stale
+      # at the edge — invalidating just that path keeps the invalidation quota free for content.
+      - name: Invalidate CDN cache
+        run: |
+          gcloud compute url-maps invalidate-cdn-cache ${{ vars.GCP_URL_MAP }} \
+            --path "/index.html" --async
+
+      - name: Purge Cloudflare cache
+        run: |
+          curl -s -X POST "https://api.cloudflare.com/client/v4/zones/${{ secrets.CLOUDFLARE_ZONE_ID }}/purge_cache" \
+            -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            --data '{"purge_everything":true}' \
+            --fail

@@ -1,0 +1,11 @@
+# pnpm blocks dependency install scripts by default. esbuild's is not optional — it's what puts
+# the platform binary in place, and vite cannot bundle without it — so both build tools are
+# allowed explicitly here rather than being approved interactively on every fresh clone and in CI.
+allowBuilds:
+  "@parcel/watcher": true
+  esbuild: true
+
+# The frontend is the root package; the API is its own package so its runtime dependencies
+# (express, @google-cloud/storage, octokit) never end up in the browser bundle's dependency graph.
+packages:
+  - "server"

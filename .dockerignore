@@ -1,0 +1,26 @@
+# Keep the build context small, and — more importantly — keep host build output from overwriting
+# what the image builds for itself. The previous .NET image had no .dockerignore, so `COPY Server/`
+# dropped the host's obj/ on top of the container's freshly restored one, whose project.assets.json
+# pointed at a NuGet path that doesn't exist in the image. The build failed with NETSDK1064.
+
+node_modules
+**/node_modules
+dist
+**/dist
+
+.git
+.github
+.idea
+.vscode
+
+terraform
+patches
+deploy
+scripts
+public
+src
+
+*.md
+.env
+.env.*
+!.env.example

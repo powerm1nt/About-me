@@ -1,89 +1,56 @@
-# Azure Deployment — NukaWorks Static Assets CDN
+# Content upload — NukaWorks static assets
 
-Provisions the following Azure infrastructure and uploads all static assets:
+Infrastructure is provisioned by Terraform (see [`../terraform`](../terraform)). This folder holds
+only the manual content-upload escape hatch.
 
-| Resource | Value |
-|---|---|
-| Resource Group | `Default` |
-| Storage Account | `nwrks` |
-| Blob Container | `static` (public read) |
-| Front Door Profile | `nwrks-fd` (Standard SKU) |
-| Front Door Endpoint | `nwrks-cdn` |
-| Source folder | `C:\Users\Emi\Developer\About-me\public` |
+## When you need this
 
----
+You normally don't. Pages are edited through the site's own **Propose changes** flow: the editor
+opens a pull request, and merging it runs `apply-patches.yml`, which writes the result straight to
+the bucket. Reach for this script when there is no proposal to merge:
+
+- seeding a brand-new bucket
+- pushing a file that was never authored through the site
+- restoring content after a bucket-level mistake
 
 ## Prerequisites
 
-- **Windows 10/11** or Windows Server 2019+
-- **PowerShell 7+** — [Download](https://aka.ms/powershell)
-- **Azure CLI** — installed automatically by the script via `winget` if missing, or manually from [aka.ms/installazurecliwindows](https://aka.ms/installazurecliwindows)
-- An active **Azure subscription**
+- [Google Cloud CLI](https://cloud.google.com/sdk/docs/install)
+- `gcloud auth login` and `gcloud config set project <project-id>`
+- Write access to the assets bucket (`roles/storage.objectAdmin`)
 
----
+There is no key to pass in — the script uses your own logged-in credentials, which is why it
+replaced the shared-key PowerShell scripts that lived here before.
 
 ## Usage
 
-Open a PowerShell 7 terminal and run:
-
-```powershell
-cd deploy
-.\Deploy-Azure.ps1
+```bash
+deploy/upload-content.sh              # uploads from the repo root
+deploy/upload-content.sh ~/some/dir   # or from somewhere else
 ```
 
-### Override defaults
+Overridable through the environment:
 
-```powershell
-.\Deploy-Azure.ps1 `
-	-SubscriptionId   "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" `
-	-ResourceGroup    "Default" `
-	-Location         "japaneast" `
-	-StorageAccount   "nwrks" `
-	-ContainerName    "static" `
-	-FrontDoorProfile "nwrks-fd" `
-	-FrontDoorEndpoint "nwrks-cdn" `
-	-SourcePath       "C:\Users\Emi\Developer\About-me\public"
-```
+| Variable       | Default            | Meaning                              |
+| -------------- | ------------------ | ------------------------------------ |
+| `GCS_BUCKET`   | `nwrks-assets-prod` | Bucket holding the site's content    |
+| `GCS_PREFIX`   | `static`           | Object-name prefix (see below)       |
+| `GCP_URL_MAP`  | `nwrks-url-map`    | Load balancer URL map to invalidate  |
 
----
+## Why the `static/` prefix
 
-## What the script does
+Objects live at `static/blog/welcome.md`, not `blog/welcome.md`. The old Azure setup served this
+content from a container named `static`, making its public path `/static/blog/welcome.md`. Keeping
+the name as a GCS object prefix reproduces that path exactly, so every image and link inside
+already-published markdown kept resolving through the migration with no rewriting.
 
-1. **Installs Azure CLI** via `winget` if not already present
-2. **Logs you in** (`az login`) if not already authenticated
-3. **Creates resource group** `nwrks-rg` in `eastus`
-4. **Creates storage account** `nwrksassets` (Standard LRS, blob public access on)
-5. **Creates container** `jade` with public blob read access
-6. **Uploads every file** from `About-me/public` preserving the folder structure and setting correct `Content-Type` headers per extension
-7. **Creates Front Door Standard** profile `nwrks-fd`
-8. **Creates CDN endpoint** `nwrks-cdn.azurefd.net`
-9. **Wires origin** → `nwrksassets.blob.core.windows.net`
-10. **Creates catch-all route** `/*` with HTTPS redirect enabled
+## What lands where
 
----
+| What        | URL                                                        |
+| ----------- | ---------------------------------------------------------- |
+| Blog page   | `https://nwrks-cdn.public.prod.nuka.works/static/blog/index.md` |
+| Static image| `https://nwrks-cdn.public.prod.nuka.works/static/cardboard.png` |
+| Avatar      | `https://nwrks-cdn.public.prod.nuka.works/static/pfp.jpg`   |
 
-## After deployment
-
-| What | URL pattern |
-|---|---|
-| Static image | `https://nwrks-cdn.azurefd.net/static/cardboard.png` |
-| Blog index | `https://nwrks-cdn.azurefd.net/static/blog/index.md` |
-| Favicon | `https://nwrks-cdn.azurefd.net/static/favicon.ico` |
-
-> **Note:** Front Door global propagation takes **5–10 minutes** after first deploy.
-
----
-
-## Re-uploading assets
-
-The script is idempotent — re-running it will overwrite existing blobs and skip already-existing Azure resources without errors.
-
----
-
-## Connecting to the Blazor app
-
-Update `appsettings` or a constant in the Blazor project to point asset URLs at the CDN:
-
-```
-https://nwrks-cdn.azurefd.net/static/
-```
+Markdown is uploaded with `Cache-Control: public, max-age=60` and images with `max-age=86400`; the
+script invalidates the CDN afterwards, so edits show up without waiting out either TTL.
