@@ -28,8 +28,8 @@
 
    Everything below is only the pre-JS fallback. src/Services/palette.ts
    samples the actual wallpaper on load and overwrites the accent, text
-   secondary/muted/faint, surface, wallpaper-loaded-url/-opacity and
-   wallpaper-scrim-opacity custom properties on the root element's inline style — so the palette
+   secondary/muted/faint and surface custom properties on the root element's
+   inline style — so the palette
    stays in sync if the wallpaper is ever swapped at runtime. Every derived
    color is checked there against WCAG contrast minimums and nudged lighter
    if a given hue falls short, and the scrim opacity is computed from the
@@ -37,12 +37,7 @@
    washing out text laid directly on top of it. */
 :root {
   --wallpaper-url: url("/assets/default2.png");
-  --wallpaper-scrim-opacity: 0;
-  /* The decoded wallpaper's own layer (body::after). Both stay at these values until
-     palette.ts has a complete frame to show: that is what makes the photo fade in
-     instead of painting as it downloads. */
-  --wallpaper-loaded-url: none;
-  --wallpaper-loaded-opacity: 0;
+
   --color-accent: #5468e0;
   --color-accent-strong: #7688ea;
   --color-accent-soft: rgba(84, 104, 224, 0.16);
@@ -69,15 +64,12 @@
    instead of filter (filter on html/body would also wash out the page's
    own text/content sitting on top of it).
 
-   The wallpaper is built from three stacked layers, described at each rule
-   below: the bundled fallback photo on html, the loaded photo on
-   body::before fading in over it, and the auto-darken scrim on body::after
-   covering whichever of the two is showing. */
-/* Layer 1 of 3: the bundled fallback photo, showing until a real one has decoded.
-   The scrim deliberately is NOT here: it lives on its own layer below so that it
-   darkens whichever photo is currently visible exactly once. Applying it here as
-   well as over the loaded photo multiplied the two together and turned a bright
-   wallpaper black. */
+   This rule paints the bundled fallback only. Today's wallpaper is an <img>
+   rendered by Wallpaper.tsx into .wallpaper-layer below, which fades in over
+   this one and carries the auto-darken scrim for both. */
+/* The scrim deliberately is NOT here: .wallpaper-scrim below darkens whichever photo
+   is currently showing, exactly once. Applying it in both places multiplied the two
+   together and turned a bright wallpaper black. */
 html {
   padding: 0; margin: 0;
   background-color: #322c58;
@@ -96,53 +88,51 @@ body { padding: 0; margin: 0; background-color: transparent; }
   /* iOS Safari mishandles background-attachment:fixed (jank/repaint bugs) */
   html { background-attachment: scroll; }
 }
-/* Layer 2 of 3: the loaded wallpaper, on its own layer rather than replacing --wallpaper-url
-   above. background-image is not an animatable property, and swapping the URL in place makes the
-   browser paint the photo as its bytes arrive, which reads as the image being drawn onto the
-   page. palette.ts decodes the photo in full first and only then sets the two properties below,
-   so this layer cross-fades one complete frame in over the fallback. If the photo never loads,
-   neither property is ever set and the fallback simply stays. Same background-color and blend as
-   html, so a revealed photo is treated identically to the fallback it replaces.
+/* ── Wallpaper ──────────────────────────────────────────────────────────
+   Today's photo is a real <img> (Wallpaper.tsx) rather than a background-image, because
+   background-image is not an animatable property: swapping its URL in place makes the browser
+   paint the photo as its bytes arrive, which reads as the image being drawn onto the page. An
+   <img> announces its own readiness through onLoad, so the fade is a plain class toggle on a
+   known-complete image.
 
-   Both pseudo-elements sit at z-index -1: that keeps them above the canvas background painted
-   from html and below every in-flow element in body. Among equal z-index they paint in tree
-   order, so ::after (the scrim) lands on top of ::before (this photo). position:fixed also
-   sidesteps the iOS background-attachment bug worked around above. */
-body::before {
-  content: "";
+   The layer sits at z-index 0 and the three content blocks are lifted to z-index 1 below. That
+   is deliberately explicit rather than parking the wallpaper at z-index -1: a negative layer
+   depends on nothing in the page painting an opaque background over it, which is a fragile thing
+   to rely on. */
+.wallpaper-layer {
   position: fixed;
   inset: 0;
-  z-index: -1;
+  z-index: 0;
   pointer-events: none;
-  background-color: #322c58;
-  background-image: var(--wallpaper-loaded-url);
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: cover;
-  background-blend-mode: screen;
-  opacity: var(--wallpaper-loaded-opacity);
+  overflow: hidden;
+}
+.wallpaper-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  /* Matches the fallback's background-size: cover / center, so the fade does not shift the
+     composition as one photo replaces the other. */
+  object-fit: cover;
+  object-position: center;
+  opacity: 0;
   transition: opacity 0.6s ease-in-out;
 }
-/* Layer 3 of 3: the auto-darken scrim, applied once, over whichever photo is showing. The flat
-   +0.20 is always present even for a dark photo: the dynamic part is tuned against the
-   wallpaper's own luminance, not against the low-contrast secondary/muted/faint text tiers
-   sitting on it, which need headroom regardless. Capped below 1 so that no photo, however
-   bright, can drive this to solid black: computeScrimOpacity already stops at 0.82 on the
-   grounds that some of the photo should stay visible, and the flat addition must not undo
-   that promise. Transitioned so the darkening arrives with the photo it belongs to. */
-body::after {
-  content: "";
-  position: fixed;
+.wallpaper-image.is-visible { opacity: 1; }
+/* Above the photo, below the content: the auto-darken scrim, its alpha set inline by
+   Wallpaper.tsx from the sampled brightness. It covers the fallback too, so the page is never
+   left with unscrimmed text no matter which photo is showing. */
+.wallpaper-scrim {
+  position: absolute;
   inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background-color: rgba(0, 0, 0, min(calc(var(--wallpaper-scrim-opacity) + 0.20), 0.85));
   transition: background-color 0.6s ease-in-out;
 }
 @media (prefers-reduced-motion: reduce) {
-  /* Still no partial paint: the photo is decoded either way, it just appears without the fade. */
-  body::before, body::after { transition: none; }
+  .wallpaper-image, .wallpaper-scrim { transition: none; }
 }
+/* Lifted above .wallpaper-layer. Without this the fixed, positioned wallpaper would paint over
+   in-flow content, which is not positioned and therefore paints earlier. */
+.metro-header, .main-content, .main-footer { position: relative; z-index: 1; }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: var(--color-surface); border-radius: 0; }
 ::-webkit-scrollbar-thumb { background: var(--color-accent-strong); border-radius: 0; }
