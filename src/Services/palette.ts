@@ -235,26 +235,70 @@ export function extractDominant(imageUrl: string, sampleSize = 48): Promise<Pale
   });
 }
 
+/**
+ * Resolves once `imageUrl` has downloaded *and* decoded, or false if it never loaded at all.
+ * decode() is what separates "the bytes arrived" from "there is a bitmap ready to paint", and
+ * only the second is safe to reveal: a large photo revealed on load alone can still be caught
+ * mid-decode and paint in bands.
+ */
+function preloadImage(imageUrl: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    // Same request mode as extractDominant below. A response cached without CORS headers cannot
+    // be reused for a CORS-mode request, so mismatched modes would fetch the photo twice.
+    img.crossOrigin = "anonymous";
+    img.decoding = "async";
+
+    img.onerror = () => resolve(false);
+    img.onload = () => {
+      if (typeof img.decode !== "function") return resolve(true);
+      // decode() can reject on an image that is nonetheless perfectly paintable, so a rejection
+      // here is not treated as a load failure.
+      img.decode().then(
+        () => resolve(true),
+        () => resolve(true)
+      );
+    };
+
+    img.src = imageUrl;
+  });
+}
+
 // Guards against a slow sample from an older applyWallpaper call overwriting the palette of a
 // wallpaper that was swapped in after it, if calls overlap.
 let generation = 0;
 
 /**
- * Points the CSS background at `imageUrl` immediately, then samples it and re-derives the
- * accent/text/surface palette and scrim strength from it. Safe to call repeatedly/concurrently —
- * only the most recent call's sample is ever applied. On sample failure the static app.scss
- * palette is left in place rather than being reset to some default.
+ * Loads `imageUrl`, derives the accent/text/surface palette and scrim strength from it, and fades
+ * it in over the bundled fallback. Safe to call repeatedly/concurrently — only the most recent
+ * call's result is ever applied. On sample failure the static app.scss palette is left in place
+ * rather than being reset to some default, and on load failure the fallback wallpaper simply
+ * stays up.
+ *
+ * Nothing is revealed until the photo is fully decoded. Pointing the CSS at the URL first (as
+ * this used to) makes the browser paint the image as it streams in, so the visitor watches it
+ * being drawn; holding the fallback until there is a complete frame turns that into a fade.
  */
 export async function applyWallpaper(imageUrl: string): Promise<void> {
   const current = ++generation;
 
-  setCssVars({ "--wallpaper-url": `url("${imageUrl}")` });
+  if (!(await preloadImage(imageUrl)) || current !== generation) return;
 
+  // Already decoded and cached by the preload above, so this costs no second network trip.
   const sample = await extractDominant(imageUrl);
-  if (!sample || current !== generation) return;
+  if (current !== generation) return;
 
   setCssVars({
-    ...buildPaletteVars(sample.hue, sample.saturation),
-    "--wallpaper-scrim-opacity": String(computeScrimOpacity(sample.luminance)),
+    // A tainted canvas or a decode failure leaves `sample` null: show the photo regardless, just
+    // on the static palette. The scrim is part of the same style change as the reveal, so the
+    // darkening the photo needs arrives with it instead of snapping in a moment later.
+    ...(sample
+      ? {
+          ...buildPaletteVars(sample.hue, sample.saturation),
+          "--wallpaper-scrim-opacity": String(computeScrimOpacity(sample.luminance)),
+        }
+      : {}),
+    "--wallpaper-loaded-url": `url("${imageUrl}")`,
+    "--wallpaper-loaded-opacity": "1",
   });
 }
