@@ -48,6 +48,7 @@
   --color-text-muted: #9aa0d4;
   --color-text-faint: #6f76ab;
   --color-surface: #1b1b1b;
+  --color-surface-veil: rgba(16, 12, 48, 0.55);
 
   --color-tip: #4fb389;
   --color-tip-bg: rgba(79, 179, 137, 0.14);
@@ -287,9 +288,12 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 /* Translucent, accent-tinted "acrylic" panel instead of a solid gray bar —
    lets the wallpaper read through faintly (unlike the fully transparent
    header) since the footer sits low enough to overlap the corner motifs,
-   where flat text would otherwise lose legibility. */
+   where flat text would otherwise lose legibility. The tint follows the
+   wallpaper hue through --color-surface-veil, so the panel and the accent
+   border above it stay the same color family on any photo; the value here
+   is the static fallback for when sampling fails. */
 .main-footer {
-  background-color: rgba(16, 12, 48, 0.55);
+  background-color: var(--color-surface-veil);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   width: 100%;
