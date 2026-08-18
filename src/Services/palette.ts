@@ -130,6 +130,11 @@ function buildPaletteVars(hue: number, intensity: number): Record<string, string
     // The "gray" chrome (modal background, scrollbar track) — desaturated and dark, but still
     // hue-tinted like everything else instead of being flat achromatic gray.
     "--color-surface": hsl(hue, clamp(scale(0.2), 0.05, 0.22), 0.1),
+    // The footer's translucent "acrylic" panel. Deliberately more saturated than Surface: it sits
+    // over the wallpaper rather than over the chrome, so it reads as a tinted veil on the photo
+    // instead of a flat gray slab. Alpha matches the static value it replaces, keeping the
+    // wallpaper's read-through — and the footer text's contrast — exactly as before.
+    "--color-surface-veil": toRgba(hsl(hue, scale(0.6), 0.118), 0.55),
   };
 }
 
