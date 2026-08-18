@@ -3,15 +3,18 @@
   "configurations": [
     {
       "name": "web",
-      "runtimeExecutable": "dotnet",
-      "runtimeArgs": ["run", "--project", "Web", "--urls", "http://localhost:5279"],
-      "port": 5279
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["dev"],
+      "port": 5173
     },
     {
       "name": "server",
-      "runtimeExecutable": "dotnet",
-      "runtimeArgs": ["run", "--project", "Server", "--urls", "http://localhost:5066"],
-      "port": 5066
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "aboutme-server", "dev"],
+      "port": 5066,
+      "env": {
+        "PORT": "5066"
+      }
     }
   ]
 }
