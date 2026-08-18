@@ -21,9 +21,9 @@ const LUMINANCE_GRID = 6;
 // clear the ratio but still read washed out under the low-contrast text tiers.
 const SCRIM_BOOST = 0.1;
 
-// Which cell to design for, sorted dark to bright. The brightest single cell would let one
-// specular highlight dim the whole photo.
-const LUMINANCE_PERCENTILE = 0.9;
+// Which cell to design for, sorted dark to bright. Short of the brightest, so a lone specular
+// highlight can't dim the whole photo, but high enough to see a genuinely bright quadrant.
+const LUMINANCE_PERCENTILE = 0.97;
 
 export interface PaletteSample {
   hue: number;
