@@ -1,9 +1,7 @@
 name: Build check
 
-# Pure compile check — no cloud credentials, no deploy, no secrets. Runs on every push to develop
-# and on PRs into develop/main so breakage shows up before it ever reaches a deploy workflow.
-# Excludes patch-only PRs (the propose/* branches from the "propose changes" feature) since those
-# never touch buildable code.
+# Compile check only: no credentials, no deploy, no secrets. Skips propose/* branches, which carry
+# patches rather than code.
 on:
   push:
     branches:
@@ -29,15 +27,14 @@ jobs:
           node-version: 24
           cache: pnpm
 
-      # One install covers both packages: the frontend is the workspace root and the API is the
-      # "server" package (see pnpm-workspace.yaml).
+      # One install covers both workspace packages.
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Lint
         run: pnpm lint
 
-      # `pnpm build` runs tsc --noEmit first, so this covers frontend typechecking too.
+      # `pnpm build` runs tsc --noEmit first, so this typechecks the frontend too.
       - name: Build frontend
         run: pnpm build
 

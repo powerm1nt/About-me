@@ -1,11 +1,6 @@
 /**
  * The markdown pipeline, shared by the live page route and the editor's Preview tab so the two
- * always agree.
- *
- * Ported from the Markdig pipeline the C# server used. `marked` is configured for GFM, which is
- * the closest equivalent to Markdig's UseAdvancedExtensions for the feature set this content
- * actually relies on (tables, fenced code, autolinks, strikethrough). Raw HTML passes through
- * untouched in both, which is what makes the component sentinels below survive rendering.
+ * agree. GFM, with raw HTML passed through so the component sentinels below survive rendering.
  */
 import { Marked } from "marked";
 
@@ -32,13 +27,9 @@ const SELF_CLOSING_TAGS: Record<string, string> = {
 };
 
 /**
- * Frontmatter is parsed with a deliberately simple `key: value` scan rather than a YAML parser:
- * the only fields consumed are title/description/author, all plain scalars, and a real parser
- * would start accepting nested structures the renderer has no way to display.
- *
- * `lastEdited` is intentionally NOT read here — callers always set it from the object's actual
- * last-modified timestamp, so a `lastEdited:` typed into the markdown can never override the real
- * date.
+ * A plain `key: value` scan rather than a YAML parser: only title/description/author are consumed,
+ * and a real parser would accept nested structures the renderer cannot display. `lastEdited` is
+ * deliberately not read — callers take it from the object's own timestamp so it cannot be spoofed.
  */
 export function parseFrontmatter(text: string): { meta: PageMeta; content: string } {
   const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(text);
@@ -114,8 +105,7 @@ function rewriteAssetPaths(html: string, assetBase: string): string {
     return `href="${isJa ? `/blog/${name}/ja` : `/blog/${name}`}"`;
   });
 
-  // Broken images get a transparent 1×1 placeholder and a class the stylesheet can mark up,
-  // rather than the browser's default broken-image glyph.
+  // A 1×1 placeholder and a class to style, rather than the browser's broken-image glyph.
   const errorHandler =
     "this.onerror=null;" +
     "this.classList.add('img-error');" +

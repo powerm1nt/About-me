@@ -50,9 +50,8 @@ async function renderMarkdown(markdown: string): Promise<string> {
 }
 
 /**
- * A page's edit history, read straight from the repo's patches/ folder on GitHub. Every merged
- * proposal left one patch file behind, so the list of commits touching patches/{page}/ *is* the
- * revision list, and each patch is the diff.
+ * A page's edit history, read from the repo's patches/ folder: every merged proposal left one patch
+ * file, so the commits touching patches/{page}/ are the revision list.
  */
 export default function PageHistory({ filePath, isJapanese = false, onClose }: PageHistoryProps) {
   const [loading, setLoading] = useState(true);

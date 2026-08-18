@@ -4,18 +4,15 @@ import { getToday } from "../services/bing.js";
 export const wallpaperRouter = Router();
 
 /**
- * `no-store`, deliberately: these routes are also reachable by a direct top-level navigation (no
- * Origin header), and a shared/public cache entry created from that request would be replayed for
- * later cross-origin fetches — without an Access-Control-Allow-Origin header, since CORS only adds
- * one when the request actually carries an Origin. The 1h server-side cache in the Bing service
- * already covers freshness, so browser caching isn't needed and isn't worth that risk.
+ * `no-store`: these routes are also reachable by top-level navigation, which carries no Origin and
+ * so gets no CORS headers — a cache entry from one would be replayed for later cross-origin
+ * fetches without them. The Bing service's own 1h cache already covers freshness.
  */
 const CACHE_CONTROL = "no-store";
 
 /**
- * GET /api/wallpaper/bing — today's Bing "picture of the day" metadata. `imageUrl` points back at
- * the route below rather than bing.com directly, so the client can sample it into a canvas without
- * a cross-origin taint.
+ * GET /api/wallpaper/bing — today's picture-of-the-day metadata. `imageUrl` points at the route
+ * below, not bing.com, so the client can sample it into a canvas without tainting it.
  */
 wallpaperRouter.get("/bing", async (req, res, next) => {
   try {

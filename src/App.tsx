@@ -55,8 +55,7 @@ function Shell() {
 }
 
 export default function App() {
-  // Today's Bing wallpaper is fetched and shown by <Wallpaper /> itself, which also re-derives
-  // the palette from it. Only the CDN asset paths are left to set up here.
+  // <Wallpaper /> fetches and shows the photo itself; only the asset paths are left here.
   useEffect(() => {
     injectAssetCssVariables();
   }, []);

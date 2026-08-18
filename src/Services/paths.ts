@@ -1,8 +1,4 @@
-/**
- * Blob file paths ("blog/welcome.ja.md") and site routes ("/blog/welcome/ja") are two views of
- * the same article. Everything that converts between them lives here so the header, the blog
- * index, the article footer nav and the router can't drift apart on the rules.
- */
+/** Conversions between blob file paths ("blog/welcome.ja.md") and routes ("/blog/welcome/ja"). */
 
 export const JA_SUFFIX = ".ja.md";
 

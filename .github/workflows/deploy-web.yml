@@ -22,11 +22,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # The bump has to happen before the build, since version.json is baked into the bundle — so a
-      # run that fails later has still pushed a bump. That is harmless, but it means the branch can
-      # have moved on by the time this step runs again (a re-run starts from the original commit,
-      # and two pushes in quick succession overlap). Rebasing onto the current branch before pushing
-      # makes the step idempotent instead of failing the whole deploy on a non-fast-forward.
+      # version.json is baked into the bundle, so the bump must precede the build and a later
+      # failure still leaves one pushed. Rebase before pushing so a re-run or an overlapping push
+      # doesn't fail the deploy on a non-fast-forward.
       - name: Bump build number
         if: github.event_name == 'push'
         run: |
@@ -67,12 +65,9 @@ jobs:
 
       - uses: google-github-actions/setup-gcloud@v2
 
-      # Hashed assets first, then index.html: uploading the shell last means it never points at
-      # files that haven't finished uploading yet.
-      # version.json is excluded alongside index.html because it is NOT content-hashed: it keeps
-      # one fixed path and its contents change on every deploy. Uploaded with the immutable
-      # year-long cache below, it pins at the edge, which is why the footer kept reporting an old
-      # build number long after newer ones had shipped.
+      # Hashed assets first so the shell never points at files still uploading. version.json is
+      # excluded with index.html: it is not content-hashed, and the immutable cache below would pin
+      # it at the edge.
       - name: Upload hashed assets
         run: |
           gcloud storage rsync dist gs://${{ vars.GCP_WEB_BUCKET }} \
@@ -86,9 +81,7 @@ jobs:
           gcloud storage cp dist/version.json gs://${{ vars.GCP_WEB_BUCKET }}/version.json \
             --cache-control="no-cache, max-age=0"
 
-      # index.html and version.json are the only paths that are not content-hashed, so they are
-      # the only ones that can go stale at the edge — invalidating just those keeps the
-      # invalidation quota free for content.
+      # The only paths that aren't content-hashed, so the only ones that can go stale at the edge.
       - name: Invalidate CDN cache
         run: |
           gcloud compute url-maps invalidate-cdn-cache ${{ vars.GCP_URL_MAP }} \

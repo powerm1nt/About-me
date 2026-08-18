@@ -1,7 +1,6 @@
 /**
- * Opens a proposal PR against the upstream repo using the *caller's own* GitHub token: forks (if
- * needed), commits a unified-diff patch file to a branch on that fork, and opens a
- * fork-branch → upstream-main pull request. The commit and PR are authored as the caller, not a bot.
+ * Opens a proposal PR using the caller's own GitHub token: forks if needed, commits a patch file to
+ * a branch on that fork, and opens a PR against upstream. Authored as the caller, not a bot.
  */
 import { Octokit } from "@octokit/rest";
 import { config } from "../config.js";
@@ -102,7 +101,7 @@ async function createBranchWithRetry(
       await octokit.git.createRef({ owner, repo, ref: `refs/heads/${branchName}`, sha });
       return;
     } catch (error) {
-      // A freshly created fork can take a few seconds before git data operations succeed.
+      // A fresh fork takes a few seconds before git data operations succeed.
       if (attempt === maxAttempts) throw error;
       await new Promise((resolve) => setTimeout(resolve, 2000));
     }

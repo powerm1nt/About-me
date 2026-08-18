@@ -1,7 +1,4 @@
-/**
- * Maps an opaque session id (handed to the browser) to the caller's GitHub access token, which
- * never leaves the server. Session lookup happens via the X-Proposal-Session header.
- */
+/** Maps the opaque session id in X-Proposal-Session to a GitHub token that never leaves the server. */
 import { randomBytes } from "node:crypto";
 import { TtlCache } from "./cache.js";
 
@@ -26,8 +23,7 @@ const STATE_TTL_MS = 5 * 60 * 1000;
 const sessions = new TtlCache<AuthSession>(SESSION_TTL_MS, 10_000);
 const states = new TtlCache<PendingLogin>(STATE_TTL_MS, 10_000);
 
-/** 32 hex chars from a CSPRNG — the session id is the only thing standing between a caller and
- *  someone else's GitHub token, so it must not come from Math.random or a counter. */
+/** CSPRNG, not Math.random: this id is all that guards someone else's GitHub token. */
 const newId = (): string => randomBytes(16).toString("hex");
 
 export function createSession(session: AuthSession): string {

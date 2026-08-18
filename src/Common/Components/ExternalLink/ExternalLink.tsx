@@ -9,9 +9,8 @@ export interface ExternalLinkProps {
 }
 
 /**
- * An outbound link that routes through the confirm-before-leaving dialog instead of navigating
- * straight away. The real href stays on the element so hovering, copying the link and opening it
- * in a new tab all behave normally — only the plain click is intercepted.
+ * An outbound link routed through the confirm-before-leaving dialog. The real href stays on the
+ * element so hover, copy and open-in-new-tab behave normally; only the plain click is intercepted.
  */
 export default function ExternalLink({ href, label, className, children }: ExternalLinkProps) {
   const { request } = useExternalLink();

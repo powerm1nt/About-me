@@ -1,10 +1,5 @@
-// Build-time configuration. Both values are baked in by Vite from the environment at build time
-// (see .env.example / the deploy workflow) rather than fetched at runtime, so the very first API
-// call doesn't have to wait on a config round-trip.
-//
-// API_BASE_URL is deliberately empty in dev: vite's /api proxy (vite.config.ts) forwards to the
-// local Server, keeping the browser same-origin so CORS and the OAuth returnUrl allow-list don't
-// need a dev-specific entry.
+// Baked in by Vite at build time. API_BASE_URL is empty in dev so vite's /api proxy keeps the
+// browser same-origin, which keeps CORS and the OAuth returnUrl allow-list free of dev entries.
 export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/+$/, "");
 
 export const ASSET_BASE_URL = (

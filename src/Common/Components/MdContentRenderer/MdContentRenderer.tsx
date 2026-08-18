@@ -1,7 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef } from "react";
-// The "common" bundle, not the default one: highlight.js's full build registers ~190 languages
-// and is by itself several times the size of everything else this app ships. The common subset
-// covers every language that actually appears in these articles.
+// The "common" bundle: the full build registers ~190 languages and dwarfs the rest of the app.
 import hljs from "highlight.js/lib/common";
 import InfoBubble from "../InfoBubble/InfoBubble";
 import BlogIndex from "../BlogIndex/BlogIndex";
@@ -9,15 +7,12 @@ import { useExternalLink } from "../../../Services/externalLink";
 import { useRouter } from "../../../Services/router";
 
 /**
- * Renders the HTML Server produces for a markdown page.
- *
- * Server can't emit React components, so custom markdown tags (`<Info>`, `<BlogIndex />`, ...)
- * come back as HTML comment sentinels:
+ * Renders the HTML the API produces for a markdown page. Custom tags (`<Info>`, `<BlogIndex />`)
+ * arrive as HTML comment sentinels:
  *
  *     <!--md-component:info:Some title-->…rendered body html…<!--/md-component-->
  *
- * This splits the document on those sentinels and renders the real component in place, with the
- * plain HTML either side injected as-is.
+ * which are split out and replaced with the real component, the plain HTML either side injected.
  */
 
 // Type may contain hyphens (e.g. "blog-index"); title ends at -->
@@ -62,8 +57,7 @@ function renderComponent(segment: Segment, isJapanese: boolean) {
     case "blog-index":
       return <BlogIndex isJapanese={isJapanese} />;
     default:
-      // Unknown sentinel (Server gained a component this build doesn't know yet) — drop it
-      // rather than dumping the raw comment markers into the article.
+      // A component this build doesn't know yet — drop it rather than showing the markers.
       return null;
   }
 }
@@ -80,9 +74,8 @@ export default function MdContentRenderer({ html, isJapanese = false }: MdConten
 
   const segments = useMemo(() => parse(html), [html]);
 
-  // Article bodies are injected as raw HTML, so their <a> tags carry no React handler — one
-  // delegated listener on the container routes internal links through the client-side router and
-  // external ones through the same confirm-before-leaving dialog as <ExternalLink>.
+  // Article <a> tags are raw HTML with no React handler, so one delegated listener routes them
+  // through the client-side router or the confirm-before-leaving dialog.
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -116,8 +109,7 @@ export default function MdContentRenderer({ html, isJapanese = false }: MdConten
     return () => container.removeEventListener("click", onClick);
   }, [request, navigate]);
 
-  // Server renders code fences to plain <pre><code class="language-x">; highlight.js turns those
-  // into the token spans app.scss styles.
+  // Code fences arrive as plain <pre><code class="language-x">; this adds the token spans.
   useEffect(() => {
     containerRef.current
       ?.querySelectorAll<HTMLElement>("pre code:not([data-highlighted])")

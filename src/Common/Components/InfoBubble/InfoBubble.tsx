@@ -10,9 +10,8 @@ export interface InfoBubbleProps {
 }
 
 /**
- * The `<Info>` / `<Warning>` / `<Tip>` / `<Danger>` callout that markdown articles can use, and
- * the site's generic error surface. A body mentioning a TypeError gets the `is-type-error`
- * treatment, which app.scss styles as a stack-trace panel rather than a prose callout.
+ * The `<Info>` / `<Warning>` / `<Tip>` / `<Danger>` callout, and the site's generic error surface.
+ * A body mentioning a TypeError is styled as a stack-trace panel rather than a prose callout.
  */
 export default function InfoBubble({ title, text, className = "", children, html }: InfoBubbleProps) {
   const hasTypeError = /TypeError:/i.test(

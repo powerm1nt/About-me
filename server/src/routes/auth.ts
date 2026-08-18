@@ -13,10 +13,7 @@ export const authRouter = Router();
 
 const USER_AGENT = "About-me-Server/1.0";
 
-/**
- * Only allow redirecting back to an origin this API already trusts, to stop the OAuth flow being
- * used as an open redirect that leaks the session id to an attacker-controlled host.
- */
+/** Trusted origins only, so the OAuth flow can't be used as an open redirect. */
 function isAllowedReturnUrl(returnUrl: string | undefined): boolean {
   if (!returnUrl?.trim()) return false;
 
@@ -37,11 +34,9 @@ function isAllowedReturnUrl(returnUrl: string | undefined): boolean {
   });
 }
 
-/** The callback URL registered with the GitHub OAuth app, derived from the incoming request so a
- *  local run and the deployed service each send GitHub their own origin. */
+/** Derived from the request so a local run and the deployed service each send their own origin. */
 function callbackUrl(req: { protocol: string; get(name: string): string | undefined }): string {
-  // Cloud Run terminates TLS at the edge and forwards over plain HTTP; express derives `protocol`
-  // from X-Forwarded-Proto only when `trust proxy` is enabled (it is, in index.ts).
+  // Correct only because `trust proxy` is enabled in index.ts.
   return `${req.protocol}://${req.get("host")}/api/auth/github/callback`;
 }
 

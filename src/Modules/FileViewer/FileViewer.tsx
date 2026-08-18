@@ -16,23 +16,21 @@ export interface FileViewerProps {
   isJapanese?: boolean;
 }
 
-/** The reading pane: one markdown page, its metadata header, and the article footer nav. */
+/** The reading pane: one markdown page, its metadata header, and the footer nav. */
 export default function FileViewer({ filePath, isJapanese = false }: FileViewerProps) {
   const auth = useAuth();
 
   const [articles, setArticles] = useState<ArticleMetadata[]>([]);
 
-  // Both of these are tagged with the path they belong to, and read back through a match against
-  // the current `filePath`. That way navigating to another page shows the loading skeleton and
-  // closes whatever pane was open purely by derivation — no effect has to write state to undo
-  // the previous page's, and the OAuth resume below can't be clobbered by such a reset.
+  // Both are tagged with the path they belong to and matched against the current `filePath`, so
+  // navigation resets them by derivation rather than through an effect that could clobber the
+  // OAuth resume below.
   const [loaded, setLoaded] = useState<{ path: string; page: Page | null; error: string | null }>({
     path: filePath,
     page: null,
     error: null,
   });
-  // Coming back from the OAuth round-trip with ?resume=edit means the visitor clicked
-  // "Edit this page" while signed out — reopen the editor rather than making them click twice.
+  // ?resume=edit means they clicked "Edit this page" while signed out — reopen it.
   const [pane, setPane] = useState<{ path: string; mode: "read" | "edit" | "history" }>({
     path: filePath,
     mode: auth.resumeAction === "edit" ? "edit" : "read",
@@ -91,10 +89,8 @@ export default function FileViewer({ filePath, isJapanese = false }: FileViewerP
     };
   }, [articles, japanese, filePath]);
 
-  // The Metro entrance animation on .file-content is a mount-time CSS animation, so it only
-  // replays if the node is actually remounted. Keying it on the path *and* the load phase gives
-  // the pane two passes: once as the skeleton appears, then again as the real content slides in
-  // over it — and one more on every navigation, which is what the Blazor @key used to buy us.
+  // .file-content's entrance is a mount-time CSS animation, so it only replays on a remount.
+  // Keying on the path and the load phase replays it for the skeleton, the content, and each nav.
   const phase = error !== null ? "error" : page === null ? "loading" : "ready";
 
   const showPane = (next: "read" | "edit" | "history") => setPane({ path: filePath, mode: next });

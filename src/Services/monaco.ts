@@ -1,10 +1,4 @@
-/**
- * Loads the Monaco editor on demand from a CDN rather than bundling it.
- *
- * Monaco is only needed by the page editor, never by anonymous readers, and it is by far the
- * heaviest thing the site could ship — keeping it out of the bundle entirely means the reading
- * path stays small, and the editor pays for it only when someone actually opens it.
- */
+/** Loads Monaco on demand from a CDN, so the reading path never pays for the editor. */
 
 const MONACO_VERSION = "0.54.0";
 const MONACO_BASE = `https://cdn.jsdelivr.net/npm/monaco-editor@${MONACO_VERSION}/min`;
@@ -75,8 +69,7 @@ export function loadMonaco(): Promise<MonacoApi> {
 
     amdRequire.config({ paths: { vs: `${MONACO_BASE}/vs` } });
 
-    // Monaco's workers can't be loaded straight from another origin, so they're started from a
-    // same-origin bootstrap blob that immediately importScripts() the CDN copy.
+    // Workers can't load cross-origin, so a same-origin blob importScripts() the CDN copy.
     window.MonacoEnvironment = {
       getWorkerUrl() {
         const bootstrap = `self.MonacoEnvironment = { baseUrl: '${MONACO_BASE}/' };

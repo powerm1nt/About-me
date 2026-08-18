@@ -1,8 +1,5 @@
-/* highlight.js token colors.
-   Deliberately built out of the same custom properties as the rest of the palette (which follow
-   the wallpaper — see palette.ts) rather than a stock hljs theme, so code blocks re-tint along
-   with everything else instead of sitting in a fixed colour scheme of their own. Layout is left
-   entirely to app.scss's `.file-content pre` / `pre code` rules — this file only sets colour. */
+/* highlight.js token colors, built from the palette's own custom properties so code blocks
+   re-tint with the wallpaper. Colour only; layout lives in app.scss. */
 
 .hljs-comment,
 .hljs-quote {

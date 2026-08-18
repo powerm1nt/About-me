@@ -1,40 +1,24 @@
 /**
- * Recolors the accent/text-tint/surface CSS custom properties to match whatever wallpaper is
- * currently set, so the palette stays coherent if the wallpaper is ever swapped at runtime
- * (settings page, per-user background, daily rotation, ...). Every derived color is checked
- * against WCAG's relative-luminance contrast formula and nudged lighter until it clears its
- * role's minimum ratio, and a wallpaper bright enough to wash out text sitting directly on it
- * gets a dark scrim layered under it — so legibility never depends on what today's photo happens
- * to look like.
+ * Recolors the accent/text/surface CSS custom properties from the current wallpaper, holding every
+ * derived color to its WCAG minimum and reporting the scrim a too-bright photo needs.
  */
 
-// Approximates --color-surface / the site's near-black chrome — text/UI roles are checked
-// against this rather than the wallpaper itself, since that's what they actually sit on.
+// Roles are checked against the near-black chrome they sit on, not against the wallpaper.
 const DARK_CHROME_LUMINANCE = 0.02;
 
-// Max background luminance for white text to still clear WCAG AA (4.5:1): solving
-// (1.0 + 0.05) / (L + 0.05) = 4.5 for L. Anything brighter and content sitting directly on the
-// wallpaper (no panel behind it) needs the scrim below.
+// Brightest background white text can sit on and still clear AA: (1.05) / (L + 0.05) = 4.5.
 const MAX_UNSCRIMMED_LUMINANCE = 0.1833;
 
-// The same solve at WCAG's 3:1 bar, applied to the brightest region rather than the average:
-// (1.0 + 0.05) / (L + 0.05) = 3. Holding a bright patch to AA outright would darken the other
-// nine tenths of a photo to protect a sky, so the peak is held to the lower bar and the
-// text-shadow in app.scss carries the remainder. The average still has to clear AA above.
+// The same solve at 3:1, applied to the brightest region. Holding a bright patch to full AA would
+// darken the rest of the photo to protect a sky; app.scss's text-shadow carries the remainder.
 const MAX_PEAK_LUMINANCE = 0.3;
 
-// The scrim is driven by how bright the wallpaper gets *somewhere*, not by its average, so the
-// sample is divided into this many cells per axis and each cell's own luminance is measured. A
-// photo that is dark overall but bright exactly where chrome sits — sky behind the pivot header
-// is the usual one — averages out to "no scrim needed" while washing out the text that actually
-// sits on it.
+// Cells per axis for the regional luminance measurement. A mean alone cannot see a photo that is
+// dark overall but bright exactly where the chrome sits.
 const LUMINANCE_GRID = 6;
 
-// Which cell to design for, as a fraction through the cells sorted dark to bright. The brightest
-// single cell would let one specular highlight dim the whole photo; the 90th percentile answers
-// "bright across a region large enough to hold text" instead — with a 6x6 grid that is the
-// fourth-brightest cell, so roughly a ninth of the frame. The text-shadow in app.scss remains the
-// safety net for whatever falls above it.
+// Which cell to design for, sorted dark to bright. The brightest single cell would let one
+// specular highlight dim the whole photo.
 const LUMINANCE_PERCENTILE = 0.9;
 
 export interface PaletteSample {
@@ -96,10 +80,8 @@ const hsl = (hue: number, saturation: number, lightness: number): string =>
   hslToRgb(hue, saturation, lightness).hex;
 
 /**
- * Nudges `lightness` up until the rendered color clears `minContrast` against `backgroundLuminance`.
- * The site's S/L ramp was tuned against one specific hue, and not every hue reaches the same
- * luminance at a given lightness (blues read darker than yellows at equal L) — so the ramp alone
- * can't guarantee legibility once the hue follows the wallpaper.
+ * Nudges `lightness` up until the color clears `minContrast`. Needed because hues do not reach the
+ * same luminance at equal lightness — blues read darker than yellows.
  */
 function ensureContrast(
   hue: number,
@@ -126,54 +108,37 @@ function toRgba(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-// Every accent/tint in the site's palette shares one hue and only varies in saturation/lightness
-// (see app.scss's :root comment), so recoloring for a new wallpaper only ever needs to swap the
-// hue through this same S/L ramp.
+// The whole palette shares one hue and varies only in saturation/lightness, so recoloring is a
+// matter of swapping the hue through this same ramp.
 function buildPaletteVars(hue: number, intensity: number): Record<string, string> {
   const scale = (base: number) => clamp(base * (0.6 + 0.4 * intensity), 0.15, 0.85);
 
-  // Accent: non-text usage only (borders, icon fills, selection/hover backgrounds) — WCAG's 3:1
-  // UI-component minimum applies, not the stricter 4.5:1 for text.
+  // Non-text usage only, so the 3:1 UI-component minimum applies rather than 4.5:1.
   const accent = ensureContrast(hue, scale(0.68), 0.6, DARK_CHROME_LUMINANCE, 3.0);
-  // AccentStrong doubles as literal link-hover text color, so it needs the 4.5:1 text minimum.
+  // Doubles as link-hover text, so it needs the 4.5:1 text minimum.
   const accentStrong = ensureContrast(hue, scale(0.72), 0.69, DARK_CHROME_LUMINANCE, 4.5);
 
   return {
     "--color-accent": accent,
     "--color-accent-strong": accentStrong,
     "--color-accent-soft": toRgba(accent, 0.16),
-    // AccentMuted is unused as foreground text today — no contrast requirement to enforce.
+    // Unused as foreground text, so no contrast bar to hold it to.
     "--color-accent-muted": hsl(hue, scale(0.49), 0.44),
     "--color-text-secondary": ensureContrast(hue, scale(0.64), 0.88, DARK_CHROME_LUMINANCE, 4.5),
     "--color-text-muted": ensureContrast(hue, scale(0.4), 0.73, DARK_CHROME_LUMINANCE, 4.5),
-    // TextFaint is deliberately the least prominent tier (timestamps/badges) — held to WCAG's
-    // lower 3:1 bar so it stays visually distinct from Muted/Secondary instead of homogenizing
-    // all three tiers to the same contrast.
+    // The least prominent tier, held to 3:1 so it stays distinct from Muted/Secondary.
     "--color-text-faint": ensureContrast(hue, scale(0.25), 0.53, DARK_CHROME_LUMINANCE, 3.0),
-    // The "gray" chrome (modal background, scrollbar track) — desaturated and dark, but still
-    // hue-tinted like everything else instead of being flat achromatic gray.
+    // Modal background and scrollbar track: dark and desaturated, but still hue-tinted.
     "--color-surface": hsl(hue, clamp(scale(0.2), 0.05, 0.22), 0.1),
-    // The footer's translucent "acrylic" panel. Deliberately more saturated than Surface: it sits
-    // over the wallpaper rather than over the chrome, so it reads as a tinted veil on the photo
-    // instead of a flat gray slab. Alpha matches the static value it replaces, keeping the
-    // wallpaper's read-through — and the footer text's contrast — exactly as before.
+    // The footer's panel. More saturated than Surface since it sits over the photo, not the
+    // chrome. The alpha is load-bearing for the footer text's contrast — don't lower it.
     "--color-surface-veil": toRgba(hsl(hue, scale(0.6), 0.118), 0.55),
   };
 }
 
 /**
- * Returns the black-scrim opacity white text needs over this wallpaper, from two measurements
- * rather than one. Assumes a flat alpha composite (apparent ≈ source × (1 - opacity)), which is
- * what .wallpaper-scrim does.
- *
- *  - the mean has to clear AA (4.5:1), which is the long-standing behaviour, and
- *  - the brightest region has to clear 3:1, which is new.
- *
- * The stronger of the two wins. A mean on its own cannot see a photo that is dark overall but
- * bright exactly where chrome sits — sky behind the pivot header is the usual one — and that
- * photo washes out the header while reporting that no scrim is needed. Taking the max means the
- * regional term only ever adds darkening where a bright region actually exists, so photos that
- * were legible before are darkened no further than they already were.
+ * Scrim opacity white text needs over this wallpaper: the stronger of the mean clearing 4.5:1 and
+ * the brightest region clearing 3:1. Assumes the flat alpha composite .wallpaper-scrim does.
  */
 function computeScrimOpacity(meanLuminance: number, peakLuminance: number): number {
   const forMean =
@@ -186,17 +151,9 @@ function computeScrimOpacity(meanLuminance: number, peakLuminance: number): numb
 }
 
 /**
- * Draws the wallpaper into an offscreen canvas and returns the saturation-weighted circular-mean
- * hue of its pixels, its overall WCAG relative luminance, and the luminance of its brightest
- * regions measured on a grid (see LUMINANCE_GRID). Never rejects — resolves null on
- * any failure (404, decode error, CORS-tainted canvas blocking getImageData) so the caller can
- * fall back to the static CSS palette.
- */
-/**
- * Measures an image that is already loaded. Split out of extractDominant so the wallpaper's own
- * <img> can be sampled directly: requesting the same URL a second time from script would be a
- * separate cache entry in a different CORS mode, and the copy already on screen is the one whose
- * pixels are guaranteed to be there.
+ * Measures an already-loaded image. Split out so the wallpaper's own <img> can be sampled in
+ * place: re-requesting the URL from script would be a separate cache entry in a different CORS
+ * mode.
  */
 function samplePixels(img: HTMLImageElement, sampleSize: number): PaletteSample | null {
   try {
@@ -227,9 +184,7 @@ function samplePixels(img: HTMLImageElement, sampleSize: number): PaletteSample 
       const g = data[i + 1]! / 255;
       const b = data[i + 2]! / 255;
 
-      // Overall brightness drives the auto-darken decision, so — unlike the hue vote below —
-      // every opaque pixel counts here, including the near-black/near-white/near-neutral ones
-      // that hue deliberately skips.
+      // Unlike the hue vote below, every opaque pixel counts toward brightness.
       const pixelLuminance =
         0.2126 * luminanceChannel(r) + 0.7152 * luminanceChannel(g) + 0.0722 * luminanceChannel(b);
       sumLuminance += pixelLuminance;
@@ -245,8 +200,6 @@ function samplePixels(img: HTMLImageElement, sampleSize: number): PaletteSample 
         (((pixel / canvas.width) | 0) * LUMINANCE_GRID / canvas.height) | 0
       );
       const cell = row * LUMINANCE_GRID + column;
-      // Read through a non-null assertion like the pixel accesses above: the index is
-      // clamped into range by construction, but noUncheckedIndexedAccess cannot see that.
       cellLuminance[cell] = cellLuminance[cell]! + pixelLuminance;
       cellCount[cell] = cellCount[cell]! + 1;
 
@@ -273,24 +226,20 @@ function samplePixels(img: HTMLImageElement, sampleSize: number): PaletteSample 
     if (opaqueCount === 0) return null;
     const luminance = sumLuminance / opaqueCount;
 
-    // Every cell that saw at least one opaque pixel, dark to bright. Cells can be empty when
-    // the photo has transparent regions, and they must not count as black.
+    // Only cells that saw an opaque pixel: an empty cell must not count as black.
     const regions: number[] = [];
     for (let cell = 0; cell < cellCount.length; cell++) {
       if (cellCount[cell]! > 0) regions.push(cellLuminance[cell]! / cellCount[cell]!);
     }
     regions.sort((a, b) => a - b);
 
-    // Falls back to the mean only if the grid somehow yielded nothing, which cannot happen
-    // once a single opaque pixel exists but keeps the type honest.
     const peakLuminance =
       regions.length > 0
         ? regions[Math.min(regions.length - 1, Math.round(LUMINANCE_PERCENTILE * (regions.length - 1)))]!
         : luminance;
 
     if (weight === 0) {
-      // No pixel was saturated enough to vote on a hue (greyscale/near-mono photo) — still
-      // report luminance so the caller can darken it if it's too bright.
+      // Greyscale photo: no hue to report, but the luminance still matters.
       return { hue: 0, saturation: 0, luminance, peakLuminance };
     }
 
@@ -309,14 +258,9 @@ function samplePixels(img: HTMLImageElement, sampleSize: number): PaletteSample 
 }
 
 /**
- * Draws the wallpaper into an offscreen canvas and returns the saturation-weighted circular-mean
- * hue of its pixels, its overall WCAG relative luminance, and the luminance of its brightest
- * regions measured on a grid (see LUMINANCE_GRID). Never rejects — resolves null on any failure
- * (404, decode error, CORS-tainted canvas blocking getImageData) so the caller can fall back to
- * the static CSS palette.
- *
- * Pass an <img> that has already loaded in CORS mode to sample it in place; pass a URL and it
- * fetches its own copy.
+ * Samples the wallpaper's hue, mean luminance and regional peak luminance. Pass a loaded <img> to
+ * measure it in place, or a URL to fetch a copy. Resolves null rather than rejecting on any
+ * failure, so the caller can fall back to the static CSS palette.
  */
 export function extractDominant(
   source: string | HTMLImageElement,
@@ -335,19 +279,13 @@ export function extractDominant(
   });
 }
 
-// Guards against a slow sample from an older applyWallpaper call overwriting the palette of a
-// wallpaper that was swapped in after it, if calls overlap.
+// Stops a slow sample from overwriting the palette of a wallpaper swapped in after it.
 let generation = 0;
 
 /**
- * Samples `imageUrl` and recolors the accent/text/surface custom properties from it, returning the
- * scrim opacity its brightness calls for (or null if it could not be sampled at all, leaving the
- * static app.scss palette in place). Safe to call repeatedly/concurrently: only the most recent
- * call's sample is ever applied.
- *
- * Showing the photo is deliberately not this function's job. Wallpaper.tsx owns that, driven by
- * the <img> element's own load event, so the wallpaper appears whether or not the pixels can be
- * read back out of a canvas.
+ * Recolors the custom properties from `source` and returns the scrim opacity it calls for, or null
+ * if it could not be sampled. Safe to call concurrently: only the most recent sample is applied.
+ * Showing the photo is Wallpaper.tsx's job, not this one's.
  */
 export async function applyPaletteFrom(source: string | HTMLImageElement): Promise<number | null> {
   const current = ++generation;

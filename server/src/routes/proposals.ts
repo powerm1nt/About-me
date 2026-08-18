@@ -6,12 +6,7 @@ import { GitHubApiError, createProposal } from "../services/github.js";
 
 export const proposalsRouter = Router();
 
-/**
- * A path that doesn't exist in storage yet is only ever accepted as a *new* proposal (rather than
- * answered with 404) when it looks like a brand-new blog post. That keeps "create" narrowly scoped
- * to what the "Add new article" UI actually produces, instead of letting a caller seed arbitrary
- * object paths.
- */
+/** Keeps "create" scoped to what the "Add new article" UI produces, not arbitrary object paths. */
 const NEW_BLOG_POST_PATH = /^blog\/[a-zA-Z0-9][a-zA-Z0-9._-]*\.md$/;
 
 // POST /api/proposals — opens a PR proposing `newContent` for the page at `path`.
@@ -33,8 +28,7 @@ proposalsRouter.post("/", async (req, res, next) => {
       return;
     }
 
-    // The diff base always comes from live storage, never from the client, so a proposal can't be
-    // crafted to claim a different starting point than what's actually deployed.
+    // The diff base comes from live storage, never the client, so it can't claim a false base.
     let currentContent = await getText(path);
     if (currentContent === null) {
       if (!NEW_BLOG_POST_PATH.test(path)) {

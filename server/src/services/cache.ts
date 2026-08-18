@@ -1,15 +1,9 @@
 /**
- * Two small in-process caches, kept separate because they bound themselves differently.
+ * Two in-process caches, bounded differently: sessions and OAuth states are small and uniform so a
+ * count suffices, while page content varies in size and is bounded by bytes.
  *
- * Auth sessions and OAuth states are small and uniform, so counting entries is enough. Rendered
- * page and article content varies from a few KB upwards, so that cache bounds itself by actual
- * bytes stored — under a count-based limit a handful of large pages could quietly exhaust memory.
- *
- * In-process means per-instance: a Cloud Run revision scaled to N instances holds N independent
- * caches. That is fine for page content (each instance just re-reads from GCS on a miss) and it is
- * why sessions are opaque random ids rather than anything an instance has to agree on — but it does
- * mean a signed-in user whose next request lands on a different instance is asked to sign in again.
- * The C# server had exactly this property; max_instance_count is low enough that it rarely shows.
+ * In-process means per-instance. Harmless for content, but a signed-in user whose next request
+ * lands on another instance is asked to sign in again; max_instance_count keeps that rare.
  */
 
 interface Entry<T> {
@@ -36,7 +30,7 @@ export class TtlCache<T> {
       return undefined;
     }
 
-    // Re-insert so Map iteration order approximates least-recently-used for eviction below.
+    // Re-insert so Map order approximates LRU for the eviction below.
     this.entries.delete(key);
     this.entries.set(key, entry);
     return entry.value;
@@ -66,5 +60,5 @@ export class TtlCache<T> {
   }
 }
 
-/** Rendered page and article content. 20 MB, 5 minutes — matches the old PageContentCache. */
+/** Rendered page and article content: 20 MB, 5 minutes. */
 export const pageCache = new TtlCache<unknown>(5 * 60 * 1000, 20 * 1024 * 1024);
