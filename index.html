@@ -1,5 +1,8 @@
 <!DOCTYPE html>
-<html lang="en" style="background-color: #121212;">
+<!-- The inline background is the pre-stylesheet flash guard and the macOS overscroll color, so it
+     has to match app.scss's own `html` background-color rather than fight it: at #121212 it also
+     overrode the base the fallback wallpaper is screen-blended against, which is what mutes it. -->
+<html lang="en" style="background-color: #322c58;">
 
 <head>
     <meta charset="utf-8" />
@@ -36,7 +39,11 @@
     <link rel="icon" type="image/png" href="/favicon.png" />
 </head>
 
-<body style="background-color: #121212;">
+<!-- No background on body, deliberately: app.scss keeps it transparent so the wallpaper painted on
+     the html canvas stays visible. An inline color here beats that rule and paints an opaque slab
+     over the canvas, which buried the fallback photo and left .main-footer's backdrop-filter with a
+     flat color to blur — i.e. no frosted glass at all until today's photo had loaded. -->
+<body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
 
     <div id="app">
