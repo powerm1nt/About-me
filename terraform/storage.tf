@@ -23,9 +23,11 @@ resource "google_storage_bucket" "assets" {
   }
 }
 
+# legacyObjectReader, not objectViewer: the latter carries storage.objects.list, which let anyone
+# GET the bucket root for an index of every object. Serving only needs storage.objects.get.
 resource "google_storage_bucket_iam_member" "assets_public" {
   bucket = google_storage_bucket.assets.name
-  role   = "roles/storage.objectViewer"
+  role   = "roles/storage.legacyObjectReader"
   member = "allUsers"
 }
 
@@ -45,6 +47,6 @@ resource "google_storage_bucket" "web" {
 
 resource "google_storage_bucket_iam_member" "web_public" {
   bucket = google_storage_bucket.web.name
-  role   = "roles/storage.objectViewer"
+  role   = "roles/storage.legacyObjectReader"
   member = "allUsers"
 }
