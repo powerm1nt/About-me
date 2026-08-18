@@ -53,9 +53,8 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-      # Every proposal's diff base is fetched fresh from storage at proposal time
-      # (ProposalsController), so a patch that no longer applies cleanly means the content changed
-      # since — fail loudly rather than silently corrupting the page.
+      # A patch that no longer applies means the content changed after the proposal was opened —
+      # fail loudly rather than corrupting the page.
       - name: Apply each patch to its target object
         if: steps.find.outputs.files != ''
         run: |
@@ -71,15 +70,13 @@ jobs:
             tmp=$(mktemp)
             err=$(mktemp)
 
-            # `objects describe` separates "this page doesn't exist yet" from every other failure.
-            # Treating a network/auth/throttling error as "new file" would silently overwrite an
-            # existing page with just the diff's insertions.
+            # Separates "page doesn't exist yet" from any other failure: treating a network or auth
+            # error as "new file" would overwrite a real page with only the diff's insertions.
             if gcloud storage objects describe "$object" --format='value(name)' >/dev/null 2>"$err"; then
               gcloud storage cp "$object" "$tmp"
             elif grep -qiE 'not found|404' "$err"; then
-              # No existing object at this path — only valid for a "new article" proposal, whose
-              # patch is a pure-insertion hunk (@@ -1,0 ...) that applies cleanly to an empty file.
-              # An edit patch against a genuinely-missing target will just fail at the patch step.
+              # Valid only for a "new article" proposal, whose pure-insertion patch applies to an
+              # empty file. An edit patch against a missing target fails at the patch step.
               echo "No existing object at '$object' — treating as a new file."
               : > "$tmp"
             else
@@ -89,9 +86,8 @@ jobs:
             fi
             rm -f "$err"
 
-            # The diff is always generated LF-only (Server normalizes both sides before diffing),
-            # but older content may still carry CRLF from earlier Windows-authored uploads —
-            # normalize before patching so unchanged context lines match byte-for-byte.
+            # Diffs are generated LF-only but stored content may carry CRLF, so normalize first or
+            # unchanged context lines won't match.
             sed -i 's/\r$//' "$tmp"
 
             patch --fuzz=3 "$tmp" < "$file"
@@ -104,8 +100,7 @@ jobs:
             echo "::endgroup::"
           done <<< "${{ steps.find.outputs.files }}"
 
-      # Content objects sit behind Cloud CDN with an hour-long TTL, so a merged edit would
-      # otherwise take up to that long to become visible.
+      # Content sits behind Cloud CDN with an hour TTL, so a merged edit would lag without this.
       - name: Invalidate CDN cache for patched pages
         if: steps.find.outputs.files != ''
         run: |

@@ -12,9 +12,8 @@ import { SESSION_HEADER } from "./api";
 import type { AuthUser } from "./types";
 
 /**
- * Tracks the visitor's GitHub sign-in state for the "propose changes" flow. The actual GitHub
- * access token never reaches the browser — only an opaque session id (persisted to localStorage)
- * that Server maps back to the token server-side.
+ * GitHub sign-in state for the "propose changes" flow. The browser only ever holds an opaque
+ * session id; the access token stays server-side.
  */
 
 const STORAGE_KEY = "proposal-session";
@@ -28,14 +27,9 @@ interface InitialAuth {
 }
 
 /**
- * Consumes the OAuth callback's `?session=` / `?resume=` params: stores the session, strips the
- * params from the URL, and reports what the callback asked to resume. Falls back to a previously
- * saved session when the URL carries none.
- *
- * Deliberately at module scope rather than inside the component: this must happen exactly once
- * per page load, and every in-component equivalent (a ref, a lazy `useState` initializer) is
- * re-entered by StrictMode's double-invoke — at which point the params are already stripped and
- * the resume action is silently lost.
+ * Consumes the OAuth callback's `?session=` / `?resume=` params, falling back to a saved session.
+ * At module scope because it must run once per page load: StrictMode's double-invoke re-enters
+ * every in-component equivalent, by which point the params are stripped and the resume is lost.
  */
 const initialAuth: InitialAuth = (() => {
   const params = new URLSearchParams(window.location.search);
@@ -91,8 +85,7 @@ async function fetchMe(sessionId: string): Promise<AuthUser | null> {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [sessionId, setSessionId] = useState<string | null>(initialAuth.sessionId);
   const [user, setUser] = useState<AuthUser | null>(null);
-  // Only "initializing" when there's actually a stored session to verify — with none, the answer
-  // (signed out) is already known and nothing has to be awaited.
+  // Only "initializing" with a stored session to verify; otherwise the answer is already known.
   const [initializing, setInitializing] = useState(initialAuth.sessionId !== null);
 
   useEffect(() => {
@@ -110,8 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [sessionId]);
 
-  // A full-page redirect, not a client-side navigation: the OAuth dance leaves and re-enters the
-  // site. `resume` tells the callback which action to pick back up when it returns.
+  // A full-page redirect: the OAuth dance leaves and re-enters the site.
   const redirectToLogin = useCallback((resume?: Exclude<ResumeAction, null>) => {
     const returnUrl = encodeURIComponent(window.location.href);
     const resumeParam = resume ? `&resume=${encodeURIComponent(resume)}` : "";

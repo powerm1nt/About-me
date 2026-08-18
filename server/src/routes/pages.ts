@@ -5,11 +5,7 @@ import { formatLastEdited, parseFrontmatter, renderRawText, type PageMeta } from
 
 export const pagesRouter = Router();
 
-/**
- * Content only changes via merged GitHub proposals, so a short server-side cache plus a matching
- * browser Cache-Control both meaningfully cut object reads and renders without making an edit feel
- * stuck for long.
- */
+/** Content only changes via merged proposals, so a short cache costs little freshness. */
 const BROWSER_CACHE_CONTROL = "public, max-age=60";
 
 interface PageDto {
@@ -74,8 +70,8 @@ pagesRouter.get("/", async (req, res, next) => {
 });
 
 /**
- * GET /api/pages/raw?path=blog/welcome.md — byte-for-byte stored content, frontmatter included.
- * The editor diffs against this so a proposed patch targets the exact source it will be applied to.
+ * GET /api/pages/raw?path=blog/welcome.md — byte-for-byte stored content, frontmatter included, so
+ * the editor's diff targets the exact source the patch will be applied to.
  */
 pagesRouter.get("/raw", async (req, res, next) => {
   try {
@@ -94,10 +90,7 @@ pagesRouter.get("/raw", async (req, res, next) => {
   }
 });
 
-/**
- * POST /api/pages/preview — renders arbitrary raw markdown through the same pipeline as the live
- * page route, so the editor's Preview tab matches the published result exactly.
- */
+/** POST /api/pages/preview — the same pipeline as the live page route, for the editor's Preview. */
 pagesRouter.post("/preview", (req, res) => {
   const markdown = typeof req.body?.markdown === "string" ? req.body.markdown : "";
   const { html } = renderRawText(markdown, containerBaseUrl);

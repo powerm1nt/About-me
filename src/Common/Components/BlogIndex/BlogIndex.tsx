@@ -11,19 +11,14 @@ export interface BlogIndexProps {
   isJapanese?: boolean;
 }
 
-/**
- * The article list rendered in place of a `<BlogIndex />` tag in blog/index.md. Doubles as the
- * entry point for authoring: "Add new article" opens the same editor an existing page uses, in
- * new-file mode.
- */
+/** The article list rendered in place of a `<BlogIndex />` tag, plus the "Add new article" entry. */
 export default function BlogIndex({ isJapanese = false }: BlogIndexProps) {
   const auth = useAuth();
 
   const [allArticles, setAllArticles] = useState<ArticleMetadata[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // Coming back from the OAuth round-trip with ?resume=create means the visitor clicked
-  // "Add new article" while signed out — pick that action back up rather than making them click twice.
+  // ?resume=create means they clicked "Add new article" while signed out — resume it.
   const [isCreating, setIsCreating] = useState(auth.resumeAction === "create");
 
   useEffect(() => {

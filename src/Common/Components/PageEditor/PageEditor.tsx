@@ -21,9 +21,8 @@ export interface PageEditorProps {
 }
 
 /**
- * The "propose changes" editor. Nothing here writes to the site directly: the edited markdown is
- * sent to Server, which diffs it against the live content and opens a pull request from the
- * signed-in visitor's own GitHub account.
+ * The "propose changes" editor. Nothing here writes to the site: the API diffs the edit against
+ * live content and opens a PR from the signed-in visitor's own GitHub account.
  */
 export default function PageEditor({
   filePath = "",
@@ -52,16 +51,14 @@ export default function PageEditor({
   const canPropose =
     state === "editing" && !loadFailed && commitMessage.trim() !== "" && (!isNewFile || isSlugValid);
 
-  // Cross-author support: a new article's frontmatter is stamped with whoever is actually signed
-  // in via GitHub, not a fixed site-owner name.
+  // A new article is stamped with whoever is signed in, not a fixed site-owner name.
   const authorDisplayName = useCallback((): string => {
     const user = auth.user;
     if (!user) return "";
     return user.name ? `${user.name} (${user.login})` : user.login;
   }, [auth.user]);
 
-  // Fetch the page's exact bytes (frontmatter included) so the proposed diff is generated against
-  // the same source the patch will later be applied to.
+  // The exact stored bytes, so the diff is generated against what the patch will apply to.
   useEffect(() => {
     let active = true;
 
@@ -86,8 +83,7 @@ export default function PageEditor({
     return () => {
       active = false;
     };
-    // Intentionally runs once per editor session: rawContent is the editor's seed, and reloading
-    // it under the user would discard whatever they'd already typed.
+    // Once per editor session: reloading the seed would discard whatever was already typed.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -99,11 +95,9 @@ export default function PageEditor({
   };
 
   /**
-   * Wraps the current selection with prefix/suffix (e.g. "**bold**"). If the selection already
-   * carries the markers — either selected along with the text ("**bold**" fully selected) or
-   * sitting immediately outside it ("bold" selected inside "**bold**") — removes them instead, so
-   * clicking the same action twice toggles the formatting off. Inserts placeholder text when
-   * nothing is selected, so the toolbar always produces valid markdown to type over.
+   * Wraps the selection with prefix/suffix, or strips them when they are already there — inside or
+   * outside the selection — so the action toggles. Inserts placeholder text when nothing is
+   * selected.
    */
   const wrapSelection = (prefix: string, suffix: string, placeholder: string) => {
     const editor = editorRef.current;
@@ -168,9 +162,8 @@ export default function PageEditor({
   };
 
   /**
-   * Prefixes every line touched by the current selection (e.g. "> " for a quote). Numbered lists
-   * get a sequential "1. ", "2. ", ... prefix instead of a fixed marker. If every touched line
-   * already carries the marker, strips it instead — toggles the same way wrapSelection does.
+   * Prefixes every touched line, numbering them for ordered lists, and strips the prefix instead
+   * when every line already carries it.
    */
   const prefixLines = (marker: string, numbered = false) => {
     const editor = editorRef.current;
@@ -182,8 +175,7 @@ export default function PageEditor({
       startLineNumber: selection.startLineNumber,
       startColumn: 1,
       endLineNumber: selection.endLineNumber,
-      // Monaco clamps this to the real end of the line; int32 max, not MAX_SAFE_INTEGER, since
-      // its own position model is 32-bit.
+      // Monaco clamps to the real line end; int32 max, since its position model is 32-bit.
       endColumn: 2147483647,
     };
 
@@ -204,7 +196,7 @@ export default function PageEditor({
 
     replaceRange(range, newLines.join("\n"));
   };
-  // Monaco is created imperatively once the host div exists, and torn down with the editor.
+  // Created imperatively once the host div exists, and torn down with the editor.
   useEffect(() => {
     if (state !== "editing" || loadFailed) return;
 
@@ -225,7 +217,7 @@ export default function PageEditor({
         });
         editorRef.current = editor;
 
-        // Same actions as the toolbar buttons, on the shortcuts people already have in muscle memory.
+        // The toolbar actions, on their usual shortcuts.
         editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyB, () => wrapSelection("**", "**", "bold text"));
         editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyI, () => wrapSelection("*", "*", "italic text"));
         editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyK, () => wrapSelection("[", "](https://)", "link text"));
@@ -252,9 +244,8 @@ export default function PageEditor({
     try {
       setPreviewHtml(await previewMarkdown(markdown));
     } catch {
-      // Server unreachable — render locally instead of showing nothing. Custom component tags
-      // won't expand (Server does that), but prose, headings and code all preview fine. Pulled in
-      // on demand so the fallback renderer never lands in the main bundle.
+      // API unreachable — render locally. Custom component tags won't expand, but prose does.
+      // Imported on demand so the fallback renderer stays out of the main bundle.
       const { marked } = await import("marked");
       setPreviewHtml(await marked.parse(markdown));
     }

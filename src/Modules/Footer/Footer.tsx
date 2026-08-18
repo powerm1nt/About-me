@@ -8,15 +8,14 @@ interface VersionInfo {
   build: number;
 }
 
-// Fallback shown if version.json is missing or malformed; the real value is fetched below.
+// Used if version.json is missing or malformed.
 const FALLBACK_VERSION = "2.1";
 
 export default function Footer() {
   const [version, setVersion] = useState(FALLBACK_VERSION);
 
-  // public/version.json's "build" is bumped automatically by the deploy workflow on every push to
-  // main, so this always reflects the actual deployed build rather than a value that has to be
-  // remembered and hand-edited on every release.
+  // The deploy workflow bumps version.json's "build" on every push to main, so this tracks the
+  // deployed build rather than a hand-edited constant.
   useEffect(() => {
     let active = true;
 
@@ -26,7 +25,7 @@ export default function Footer() {
         if (active && info) setVersion(`${info.version}.${info.build}`);
       })
       .catch(() => {
-        // Keep the static fallback (404, offline, malformed file, ...).
+        // Keep the static fallback.
       });
 
     return () => {

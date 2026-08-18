@@ -7,10 +7,7 @@ export interface HeaderProps {
   isJapanese: boolean;
 }
 
-/**
- * The Metro pivot header: a horizontally-scrollable row of section labels, with the avatar as a
- * square tile at the right end.
- */
+/** A horizontally-scrollable row of section labels, with the avatar tiled at the right end. */
 export default function Header({ isJapanese }: HeaderProps) {
   const { pathname } = useRouter();
 

@@ -1,10 +1,7 @@
 /**
- * Bing's "picture of the day" (the unofficial HPImageArchive.aspx endpoint, no key required),
- * fetched and cached here rather than left for the client to hotlink.
- *
- * bing.com doesn't send CORS headers, so a browser <img crossorigin> painted from it taints the
- * canvas and blocks the palette sampler's getImageData call. The wallpaper route re-serves these
- * bytes from our own origin, which does send CORS headers.
+ * Bing's picture of the day (the unofficial HPImageArchive.aspx endpoint, no key required). Fetched
+ * here rather than hotlinked because bing.com sends no CORS headers, which would taint the canvas
+ * the palette sampler reads.
  */
 
 const MARKET = "en-US";
@@ -24,8 +21,7 @@ interface BingArchiveResponse {
 }
 
 let cached: { entry: BingWallpaperEntry; expiresAt: number } | null = null;
-/** Collapses concurrent misses onto one upstream fetch — on a cold instance every request that
- *  arrives during the first fetch would otherwise hit bing.com independently. */
+/** Collapses concurrent misses onto one upstream fetch. */
 let inFlight: Promise<BingWallpaperEntry | null> | null = null;
 
 export async function getToday(): Promise<BingWallpaperEntry | null> {
@@ -65,7 +61,7 @@ async function fetchToday(): Promise<BingWallpaperEntry | null> {
       date: image.startdate ?? "",
     };
   } catch {
-    // Network failure or malformed JSON — the caller falls back to the bundled wallpaper.
+    // The caller falls back to the bundled wallpaper.
     return null;
   }
 }

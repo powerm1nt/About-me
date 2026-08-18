@@ -9,11 +9,7 @@ import {
   type ReactNode,
 } from "react";
 
-/**
- * A ~100-line history-API router, in place of a routing dependency. The site has five route
- * shapes and no nested layouts, so the whole contract is "what's the current pathname, and how
- * do I push a new one without a full page load".
- */
+/** A history-API router in place of a routing dependency: five route shapes, no nested layouts. */
 
 interface RouterValue {
   pathname: string;
@@ -62,8 +58,7 @@ export function Link({
       href={href}
       onClick={(e) => {
         onClick?.(e);
-        // Let the browser handle anything that isn't a plain left-click on a same-tab link —
-        // ctrl/cmd-click, middle-click and target="_blank" all mean "open elsewhere".
+        // Anything but a plain left-click means "open elsewhere" — let the browser have it.
         if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
         if (rest.target && rest.target !== "_self") return;
         e.preventDefault();

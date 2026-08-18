@@ -1,7 +1,6 @@
 /**
- * Reconstructs a page's edit history straight from the repo's patches/ folder — no Server
- * involvement needed: the GitHub REST API and raw.githubusercontent.com both allow
- * unauthenticated cross-origin GETs on public repos, so this runs entirely in the browser.
+ * Reconstructs a page's edit history from the repo's patches/ folder. Runs entirely in the browser:
+ * the GitHub REST API and raw.githubusercontent.com both allow anonymous cross-origin GETs.
  */
 
 const OWNER = "powerm1nt";
@@ -92,9 +91,7 @@ export async function getRevisionDiff(sha: string, docPath: string): Promise<Dif
   );
   if (!file) return [];
 
-  // Built directly against raw.githubusercontent.com rather than following the API's own
-  // `raw_url` (a github.com/.../raw/... redirect whose intermediate 302 sends an empty
-  // Access-Control-Allow-Origin, unlike the final raw.githubusercontent.com response).
+  // Not the API's own `raw_url`: its intermediate 302 sends an empty Access-Control-Allow-Origin.
   const rawUrl =
     `https://raw.githubusercontent.com/${OWNER}/${REPO}/${sha}/` +
     file.filename.split("/").map(encodeURIComponent).join("/");
@@ -123,7 +120,7 @@ export function parseUnifiedDiff(patchText: string): DiffHunk[] {
     if (rawLine.startsWith("+")) current.lines.push({ type: "added", text: rawLine.slice(1) });
     else if (rawLine.startsWith("-")) current.lines.push({ type: "removed", text: rawLine.slice(1) });
     else if (rawLine.startsWith(" ")) current.lines.push({ type: "context", text: rawLine.slice(1) });
-    // any other line (e.g. the trailing empty element from the final split) is ignored
+    // anything else, including the trailing empty split element, is ignored
   }
 
   return hunks;

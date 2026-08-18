@@ -1,15 +1,9 @@
 /**
- * Produces a classic unified diff (the text format GNU `patch` consumes) between two full file
- * contents.
+ * A classic unified diff, the format GNU `patch` consumes.
  *
- * This is a direct port of the C# DiffService rather than a call to jsdiff's own `createPatch`,
- * and the reason is compatibility: `createPatch` emits an `Index:`/`===` preamble and its own
- * header spelling, while every patch already sitting in `patches/` — and the apply-patches and
- * check-patches workflows that consume them — expects exactly the `--- a/<path>` / `+++ b/<path>`
- * form produced below. Changing the shape would strand the existing patch history.
- *
- * jsdiff supplies the line-level diff; the hunk grouping, context window and `@@` headers are
- * assembled here to match the previous output byte for byte.
+ * Assembled by hand rather than with jsdiff's `createPatch`, which emits an `Index:`/`===` preamble
+ * instead of the bare `--- a/<path>` / `+++ b/<path>` form that everything already in `patches/`
+ * and the workflows consuming them expect. jsdiff still supplies the line-level diff.
  */
 import { diffLines } from "diff";
 
@@ -25,9 +19,8 @@ interface Line {
 }
 
 /**
- * Splitting "…last line\n" on '\n' yields a phantom empty trailing element that doesn't correspond
- * to a real line. Left in, it becomes a spurious final context line that never lines up with the
- * real file, forcing `patch` to fall back to fuzzy matching.
+ * Splitting on '\n' leaves a phantom trailing element. Left in, it becomes a bogus final context
+ * line and forces `patch` into fuzzy matching.
  */
 function trimTrailingNewline(text: string): string {
   if (text.endsWith("\r\n")) return text.slice(0, -2);
@@ -127,9 +120,8 @@ export function createUnifiedDiff(oldText: string, newText: string, relativePath
 }
 
 /**
- * Content can carry CRLF from earlier Windows-authored uploads while the browser editor yields LF.
- * Diffing across mismatched EOL styles flags unrelated context lines as changed, and GNU patch then
- * rejects the hunk with "different line endings" even though the intended edit applies cleanly.
+ * Stored content can carry CRLF while the editor yields LF. Diffing across the two marks unrelated
+ * context lines as changed, and patch then rejects the hunk over line endings.
  */
 export function normalizeLineEndings(text: string): string {
   return text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");

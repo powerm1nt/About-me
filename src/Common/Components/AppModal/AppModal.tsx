@@ -4,16 +4,12 @@ import { useExternalLink, type PendingLink } from "../../../Services/externalLin
 // Keep in sync with app.scss's .app-modal.is-closing animation duration.
 const CLOSE_ANIMATION_MS = 180;
 
-/**
- * Confirm-before-leaving dialog for outbound links. Mounted once at the app root; every
- * ExternalLink (and every external <a> inside rendered markdown) funnels through it.
- */
+/** Confirm-before-leaving dialog for outbound links. Mounted once at the app root. */
 export default function AppModal() {
   const { pending, clear } = useExternalLink();
 
-  // The dialog has to outlive `pending` by one animation. Rather than mirroring pending into
-  // state (which would mean writing state from an effect on every open), the link being closed is
-  // stashed here on the way out — so what's on screen is derived, not synchronised.
+  // The dialog outlives `pending` by one animation, so the closing link is stashed here rather
+  // than mirroring pending into state from an effect.
   const [closingLink, setClosingLink] = useState<PendingLink | null>(null);
 
   const shown = pending ?? closingLink;
@@ -37,8 +33,7 @@ export default function AppModal() {
     []
   );
 
-  // Focus the safe action, and keep Tab/Shift+Tab cycling within the dialog's own focusable
-  // elements instead of escaping into the page behind the overlay.
+  // Focus the safe action and trap Tab within the dialog.
   useEffect(() => {
     if (!pending) return;
     cancelRef.current?.focus();

@@ -32,8 +32,7 @@ jobs:
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${{ vars.GCP_REGION }}-docker.pkg.dev --quiet
 
-      # Built from the repository root: the API is a pnpm workspace package and the lockfile that
-      # pins its dependencies lives there.
+      # Built from the repo root, where the workspace lockfile lives.
       - name: Build and push image
         id: image
         run: |
@@ -42,10 +41,8 @@ jobs:
           docker push "$IMAGE"
           echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
 
-      # Only the image is set here. Every environment variable — including the OAuth client id, and
-      # the client secret mounted from Secret Manager — belongs to the service definition in
-      # terraform/cloudrun.tf. Setting one here with --update-env-vars would work until the next
-      # `terraform apply`, which rewrites the container's environment in full and would drop it.
+      # Image only. Environment variables belong in terraform/cloudrun.tf: the next `terraform
+      # apply` rewrites the container's environment in full and would drop anything set here.
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy blog-api \

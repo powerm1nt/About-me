@@ -1,12 +1,9 @@
 name: Check proposed content patches
 
-# Proposal PRs always come from a fork of a visitor's own account (see ProposalsController /
-# GitHubProposalService), so a plain `pull_request` trigger would run with no credentials at all —
-# GitHub withholds them from fork-triggered `pull_request` runs. `pull_request_target` runs this
-# workflow file from the BASE repo (an attacker can't alter what this job does by editing their
-# fork's copy) and can mint an OIDC token. The only fork-supplied content we touch is the `.patch`
-# text itself, and it's only ever read as inert data and handed to `patch`/`gcloud` — never
-# executed as code.
+# Proposal PRs come from forks, which GitHub denies credentials on a plain `pull_request` trigger.
+# `pull_request_target` runs this file from the base repo — a fork cannot alter what the job does —
+# and can mint an OIDC token. The only fork-supplied input is the `.patch` text, which is read as
+# inert data and handed to `patch`/`gcloud`, never executed.
 on:
   pull_request_target:
     types: [opened, synchronize, reopened]
@@ -49,9 +46,7 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-      # Dry-run each patch against the *current* live content — this is the check that actually
-      # matters: it catches a proposal that's gone stale because the page was edited (by another
-      # merged proposal, or manually) since this PR was opened.
+      # Dry-run against current live content, to catch a proposal gone stale since it was opened.
       - name: Dry-run apply each patch against the live object
         if: steps.find.outputs.files != ''
         run: |
@@ -70,9 +65,8 @@ jobs:
             if gcloud storage objects describe "$object" --format='value(name)' >/dev/null 2>"$err"; then
               gcloud storage cp "$object" "$tmp"
             elif grep -qiE 'not found|404' "$err"; then
-              # No existing object — valid for a "new article" proposal (pure-insertion patch
-              # applies cleanly to an empty file); an edit patch against a genuinely-missing target
-              # will simply fail the dry-run apply below instead.
+              # Valid only for a "new article" proposal; an edit patch against a missing target
+              # fails the dry-run below.
               echo "No existing object at '$object' — checking as a new file."
               : > "$tmp"
             else
@@ -85,9 +79,8 @@ jobs:
             fi
             rm -f "$err"
 
-            # The diff is always generated LF-only (Server normalizes both sides before diffing),
-            # but older content may still carry CRLF from earlier Windows-authored uploads —
-            # normalize before patching so unchanged context lines match byte-for-byte.
+            # Diffs are generated LF-only but stored content may carry CRLF, so normalize first or
+            # unchanged context lines won't match.
             sed -i 's/\r$//' "$tmp"
 
             if ! patch --fuzz=3 --dry-run "$tmp" < "$file"; then

@@ -8,26 +8,22 @@ import { wallpaperRouter } from "./routes/wallpaper.js";
 
 const app = express();
 
-// Cloud Run terminates TLS at the edge and forwards over plain HTTP behind one proxy hop. Without
-// this, req.protocol reports "http" and the OAuth redirect_uri we hand GitHub would not match the
-// https callback registered on the OAuth app.
+// Cloud Run terminates TLS at the edge, so without this req.protocol reports "http" and the OAuth
+// redirect_uri stops matching the callback registered with GitHub.
 app.set("trust proxy", 1);
 
 app.use(express.json({ limit: "1mb" }));
 
 /**
- * CORS, hand-rolled rather than pulled from a package: the policy is a fixed allow-list of origins
- * plus one custom header, which is small enough that a dependency would be more surface than
- * substance. Requests without an Origin (curl, a top-level navigation) get no CORS headers at all,
- * which is exactly what the wallpaper routes' no-store comment depends on.
+ * Hand-rolled CORS: a fixed origin allow-list plus one custom header. Requests without an Origin
+ * get no CORS headers at all, which the wallpaper routes' no-store depends on.
  */
 app.use((req, res, next) => {
   const origin = req.header("origin");
 
   if (origin && config.allowedOrigins.includes(origin.replace(/\/+$/, ""))) {
     res.setHeader("Access-Control-Allow-Origin", origin);
-    // The allow-list is per-origin, so caches must key on Origin or one origin's response would be
-    // replayed for another.
+    // Per-origin allow-list, so caches must key on Origin.
     res.setHeader("Vary", "Origin");
     res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", `Content-Type,${SESSION_HEADER}`);
@@ -46,7 +42,7 @@ app.use("/api/auth", authRouter);
 app.use("/api/proposals", proposalsRouter);
 app.use("/api/wallpaper", wallpaperRouter);
 
-/** Cloud Run's default health probe hits "/" — answer it without falling through to the 404 below. */
+/** Cloud Run's health probe hits "/" — answer it rather than falling through to the 404. */
 app.get("/", (_req, res) => {
   res.json({ status: "ok" });
 });

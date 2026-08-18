@@ -1,6 +1,4 @@
-// Mirrors the Server's Shared/Dto contracts. ASP.NET serializes with camelCase by default, and
-// the DTOs that need a different name carry an explicit [JsonPropertyName] — either way what
-// lands on the wire is exactly what's declared here.
+// Mirrors the API's response contracts in server/src.
 
 export interface PageMeta {
   title: string;
@@ -37,7 +35,7 @@ export interface ArticleMetadata {
 export interface AuthUser {
   login: string;
   avatarUrl: string;
-  /** GitHub's display name; empty when the user hasn't set one, in which case `login` is the fallback. */
+  /** Empty when the user hasn't set one; fall back to `login`. */
   name: string;
 }
 

@@ -1,11 +1,8 @@
-/* NukaWorks - Global Styles - Converted from About-me SCSS */
+/* NukaWorks — global styles */
 *, *::before, *::after { box-sizing: border-box; }
 
-/* ── Segoe UI — self-hosted, matching Microsoft's Fluent/Metro HIG type
-   ramp. Only the six real static weights Segoe UI ships (Light 300,
-   Semilight 350, Regular 400, Semibold 600, Bold 700, Black 900) — no
-   synthetic 200/500 faces, so the browser's own nearest-weight matching
-   picks the correct real face instead of faking bold/thin. */
+/* Self-hosted Segoe UI. Only the six real static weights it ships, so the browser
+   matches a real face instead of synthesising 200/500. */
 @font-face { font-family: "Segoe UI"; src: url("/fonts/Segoe UI Light 300.ttf") format("truetype"); font-weight: 300; font-style: normal; font-display: swap; }
 @font-face { font-family: "Segoe UI"; src: url("/fonts/Segoe UI Light Italic 300.ttf") format("truetype"); font-weight: 300; font-style: italic; font-display: swap; }
 @font-face { font-family: "Segoe UI"; src: url("/fonts/Segoe UI Semilight 350.ttf") format("truetype"); font-weight: 350; font-style: normal; font-display: swap; }
@@ -20,21 +17,8 @@
 @font-face { font-family: "Segoe UI"; src: url("/fonts/Segoe UI Black Italic 900.ttf") format("truetype"); font-weight: 900; font-style: italic; font-display: swap; }
 
 /* ── Color system ────────────────────────────────────────────────────────
-   Adaptive palette drawn from the background artwork's dominant blue-violet
-   rather than a stock neutral gray scale — the text-muted/faint tiers (and
-   --color-surface, the modal/scrollbar "gray") carry a deliberate blue tint
-   instead of being achromatic, so chrome, banners and the wallpaper read as
-   one family of color.
-
-   Everything below is only the pre-JS fallback. src/Services/palette.ts
-   samples the actual wallpaper on load and overwrites the accent, text
-   secondary/muted/faint and surface custom properties on the root element's
-   inline style — so the palette
-   stays in sync if the wallpaper is ever swapped at runtime. Every derived
-   color is checked there against WCAG contrast minimums and nudged lighter
-   if a given hue falls short, and the scrim opacity is computed from the
-   wallpaper's own brightness so a too-bright photo gets darkened instead of
-   washing out text laid directly on top of it. */
+   Pre-JS fallback only: palette.ts resamples all of these from the wallpaper at
+   runtime and enforces the WCAG minimums. */
 :root {
   --wallpaper-url: url("/assets/default2.png");
 
@@ -57,19 +41,10 @@
   --color-danger: #d9636e;
   --color-danger-bg: rgba(217, 99, 110, 0.14);
 }
-/* Default background: blossom branches, a bird, and trailing vines in the
-   corners, a wide open field in the middle so page content stays legible.
-   background-size:cover + center keeps it responsive across viewports.
-   background-blend-mode with background-color mutes the artwork's blue
-   instead of filter (filter on html/body would also wash out the page's
-   own text/content sitting on top of it).
-
-   This rule paints the bundled fallback only. Today's wallpaper is an <img>
-   rendered by Wallpaper.tsx into .wallpaper-layer below, which fades in over
-   this one and carries the auto-darken scrim for both. */
-/* The scrim deliberately is NOT here: .wallpaper-scrim below darkens whichever photo
-   is currently showing, exactly once. Applying it in both places multiplied the two
-   together and turned a bright wallpaper black. */
+/* The bundled fallback photo; today's is an <img> in .wallpaper-layer below.
+   background-blend-mode rather than filter, which would wash out page content too.
+   No scrim here — .wallpaper-scrim covers whichever photo is showing, and applying it
+   in both places multiplies out to black on a bright wallpaper. */
 html {
   padding: 0; margin: 0;
   background-color: #322c58;
@@ -80,25 +55,16 @@ html {
   background-attachment: fixed;
   background-blend-mode: screen;
 }
-/* Body carries no background of its own on purpose. An in-flow block's background paints
-   *above* any negative z-index layer, so an opaque body here would bury the wallpaper layer
-   below rather than letting it fade in over the canvas. */
+/* No background on body: an in-flow block's background paints over the canvas and
+   buries the wallpaper. */
 body { padding: 0; margin: 0; background-color: transparent; }
 @media screen and (max-width: 768px) {
   /* iOS Safari mishandles background-attachment:fixed (jank/repaint bugs) */
   html { background-attachment: scroll; }
 }
 /* ── Wallpaper ──────────────────────────────────────────────────────────
-   Today's photo is a real <img> (Wallpaper.tsx) rather than a background-image, because
-   background-image is not an animatable property: swapping its URL in place makes the browser
-   paint the photo as its bytes arrive, which reads as the image being drawn onto the page. An
-   <img> announces its own readiness through onLoad, so the fade is a plain class toggle on a
-   known-complete image.
-
-   The layer sits at z-index 0 and the three content blocks are lifted to z-index 1 below. That
-   is deliberately explicit rather than parking the wallpaper at z-index -1: a negative layer
-   depends on nothing in the page painting an opaque background over it, which is a fragile thing
-   to rely on. */
+   An <img> (Wallpaper.tsx), not a background-image: background-image cannot be
+   transitioned, so the photo would paint in as its bytes arrive. */
 .wallpaper-layer {
   position: fixed;
   inset: 0;
@@ -111,17 +77,14 @@ body { padding: 0; margin: 0; background-color: transparent; }
   inset: 0;
   width: 100%;
   height: 100%;
-  /* Matches the fallback's background-size: cover / center, so the fade does not shift the
-     composition as one photo replaces the other. */
+  /* Matches the fallback's cover/center so the fade doesn't shift the composition. */
   object-fit: cover;
   object-position: center;
   opacity: 0;
   transition: opacity 0.6s ease-in-out;
 }
 .wallpaper-image.is-visible { opacity: 1; }
-/* Above the photo, below the content: the auto-darken scrim, its alpha set inline by
-   Wallpaper.tsx from the sampled brightness. It covers the fallback too, so the page is never
-   left with unscrimmed text no matter which photo is showing. */
+/* Auto-darken scrim over whichever photo is showing; alpha set inline by Wallpaper.tsx. */
 .wallpaper-scrim {
   position: absolute;
   inset: 0;
@@ -130,61 +93,37 @@ body { padding: 0; margin: 0; background-color: transparent; }
 @media (prefers-reduced-motion: reduce) {
   .wallpaper-image, .wallpaper-scrim { transition: none; }
 }
-/* Lifted above .wallpaper-layer. Without this the fixed, positioned wallpaper would paint over
-   in-flow content, which is not positioned and therefore paints earlier. */
+/* Without this the positioned wallpaper paints over the in-flow content. */
 .metro-header, .main-content, .main-footer { position: relative; z-index: 1; }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: var(--color-surface); border-radius: 0; }
 ::-webkit-scrollbar-thumb { background: var(--color-accent-strong); border-radius: 0; }
 ::selection { background: var(--color-accent); color: #ffffff !important; }
-/* text-shadow inherits to every descendant, so it's a blanket safety net for
-   text sitting directly on the wallpaper (header, article meta, blog cards —
-   anywhere without an opaque panel behind it): a single low-blur dark shadow
-   holds up regardless of what today's photo looks like, unlike the
-   luminance-average-driven scrim above which can miss a photo that's bright
-   in the specific spot chrome sits (e.g. sky behind the header) while
-   averaging dark overall. Invisible on the genuinely opaque panels (modal,
-   editor), so no cost there. It is not free on .main-footer, whose veil is
-   translucent by design: the shadow is what holds that panel's low-contrast
-   muted/faint text up when a bright photo shows through the glass. */
+/* Inherited safety net for text sitting directly on the wallpaper, and for the footer's
+   translucent veil. Opted out below where it reads as a smudge. */
 #app { font-size: clamp(12px, 3vw, 16px); color: #ffffff; display: flex; min-height: 100vh; flex-direction: column; font-family: "Segoe UI", system-ui, -apple-system, sans-serif; font-weight: 300; background-color: transparent; width: 100%; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6); }
 h1 { letter-spacing: 2px; font-weight: 900; }
 a { color: inherit; transition: color 0.15s ease-in-out; text-decoration: underline dotted; }
 a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 
-/* ── Focus — Metro HIG: a plain white dotted rectangular ring, no
-   glow/shadow/radius. Plain white (not the accent) so it stays reliably
-   visible regardless of what's behind it — the wallpaper and most chrome
-   already live in the same blue family as the accent color. Applies to the
-   actual keyboard-focus state only, so mouse clicks don't leave a ring. */
+/* White, not the accent: the wallpaper and chrome are already in that blue family. */
 :focus-visible {
   outline: 2px dotted var(--color-text);
   outline-offset: 3px;
   border-radius: 0;
 }
-/* ── AppHeader — Segoe / Metro pivot style ──────────────────────────────
-   Flat solid chrome, Segoe UI type ramp, huge lowercase pivot labels in
-   a horizontally scrollable strip (Windows Phone Panorama/Pivot pattern). */
+/* ── AppHeader — Metro pivot strip ──────────────────────────────────── */
 .metro-header {
-  /* Fixed top-fade scrim, not driven by wallpaper stats: the header always
-     sits directly on the photo (no panel), so it needs a guaranteed dark
-     base under its ultra-thin (font-weight 200) pivot labels regardless of
-     how bright that day's wallpaper happens to be up top. */
+  /* Fixed rather than wallpaper-driven: the header sits directly on the photo with no
+     panel, so its thin labels need a guaranteed dark base. */
   background: linear-gradient(to bottom, rgba(0, 0, 0, 0.42), rgba(0, 0, 0, 0) 100%);
   width: 100%;
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
-  /* Opts back out of #app's inherited text-shadow — at the pivot labels'
-     huge, ultra-thin (font-weight 200) size the blur reads as a smudge
-     rather than added contrast; the gradient above already guarantees a
-     dark base here regardless of the wallpaper. */
+  /* Opts out of the inherited text-shadow: at this size the blur reads as a smudge. */
   text-shadow: none;
 }
-/* Metro entrance: content slides in from the right, moving left into place —
-   the direction used by Windows Phone's Pivot/page "Continuum" transition
-   (forward navigation enters from the right, not the left). Header plays
-   once as the app boots; the page pane replays whenever FileViewer's
-   `key` changes — on navigation, and again as the loaded content replaces
-   the skeleton — since React remounts the node and restarts the animation. */
+/* Content enters from the right, per Windows Phone's Continuum transition. The pane
+   replays whenever FileViewer's `key` changes, since React remounts the node. */
 @keyframes metro-enter { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: translateX(0); } }
 @media (prefers-reduced-motion: reduce) {
   .metro-header-row, .file-content { animation: none; }
@@ -204,10 +143,8 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   display: flex;
   align-items: baseline;
   gap: 2.4em;
-  /* Setting overflow-x makes overflow-y compute to auto too (CSS Overflow
-     spec), so this scroll container also clips vertically. Give the huge
-     pivot glyphs (descenders on "g"/"y", cap-height overshoot) padding to
-     land inside the box instead of getting cut off. */
+  /* overflow-x makes overflow-y compute to auto, so this clips vertically too — pad for
+     the pivot glyphs' descenders and cap-height overshoot. */
   padding: 0.5rem 0;
   overflow-x: auto;
   overscroll-behavior-x: contain;
@@ -215,8 +152,7 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   scrollbar-width: none;
 }
 .metro-pivot::-webkit-scrollbar { display: none; }
-/* Account tile pinned to the header's right edge — Windows 8 Start-screen
-   inspired: flat, square, no chrome; just a subtle brighten on hover/focus. */
+/* Account tile — flat and square, brightens on hover/focus. */
 .metro-avatar-tile {
   flex: 0 0 auto;
   width: 3.4rem;
@@ -283,10 +219,8 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 }
 .app-modal-btn:hover { color: #ffffff; }
 .app-modal-btn-confirm { color: #ffffff; }
-/* :focus, not :focus-visible — the dialog auto-focuses its cancel button on
-   open regardless of whether that open was triggered by mouse or keyboard,
-   so the ring should always be visible here rather than only for keyboard
-   navigation. */
+/* :focus, not :focus-visible — the dialog autofocuses cancel however it was opened, so
+   the ring should always show. */
 .app-modal-btn:focus {
   outline: 2px dotted var(--color-text);
   outline-offset: 3px;
@@ -295,10 +229,7 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 .main-content-container { width: 100%; min-height: 100vh; background: transparent; overflow: hidden; display: flex; justify-content: center; padding: 0 0 2.5em; }
 @media screen and (max-width: 600px) { .main-content-container { padding: 0 0 1em; } }
 
-/* ── FileViewer — flat Metro reading pane ───────────────────────────────
-   No card chrome: no border, no boxed background, no dividers/shadows.
-   Content aligns to the same clamp() column as the header/footer, with
-   Segoe UI type carrying the hierarchy instead of borders. */
+/* ── FileViewer — flat reading pane, no card chrome ─────────────────── */
 .file-content {
   position: relative;
   width: clamp(280px, 85%, 1200px);
@@ -307,9 +238,8 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   background: transparent;
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
   animation: metro-enter 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
-  /* Staggers the pane a beat behind the header on the way in. Only the
-     skeleton pass wants it: on the replay the delay would hold the pane at
-     opacity 0 for 80ms after the skeleton is gone, reading as a flicker. */
+  /* Skeleton pass only: on the replay this delay holds the pane hidden after the
+     skeleton has gone and reads as a flicker. */
   animation-delay: 0.08s;
 }
 .file-content[data-phase="ready"], .file-content[data-phase="error"] { animation-delay: 0s; }
@@ -335,38 +265,19 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 .nav-link { color: var(--color-text-secondary); font-weight: 300; font-size: 1rem; text-decoration: none; text-transform: lowercase; transition: color 0.15s; }
 .nav-link:hover { color: #ffffff; }
 .loading-text { color: var(--color-text-muted); font-weight: 300; }
-/* Translucent, accent-tinted "acrylic" panel instead of a solid gray bar —
-   lets the wallpaper read through faintly (unlike the fully transparent
-   header) since the footer sits low enough to overlap the corner motifs,
-   where flat text would otherwise lose legibility. The tint follows the
-   wallpaper hue through --color-surface-veil, so the panel and the accent
-   border above it stay the same color family on any photo; the value here
-   is the static fallback for when sampling fails. */
+/* Translucent accent-tinted panel. The tint follows the wallpaper hue through
+   --color-surface-veil; the value there is the static fallback for when sampling fails. */
 .main-footer {
   background-color: var(--color-surface-veil);
-  /* Acrylic, not a plain blur. By the time the backdrop reaches this panel the photo has already
-     been darkened twice — once by .wallpaper-scrim (up to 0.85 on a bright photo) and again by the
-     0.55-alpha veil above — leaving only a small fraction of the original contrast for the filter
-     to act on, which is why a 10px blur read as nothing at all. Saturation is what recovers it:
-     the photo's hue survives the two dark layers far better than its luminance does, so boosting
-     chroma makes the panel read as tinted glass rather than a flat slab. The radius is widened to
-     match; at 10px against a full-bleed photo the result is a slightly soft photo, not glass.
+  /* Saturation, not just blur: the backdrop is already darkened by .wallpaper-scrim and
+     the veil, and hue survives that where luminance doesn't. No brightness() — it lifts the
+     backdrop without lifting the text.
 
-     Deliberately no brightness() in the chain, tempting as it is to undo the scrim locally:
-     backdrop-filter lifts only the backdrop and leaves the text alone, so it would buy contrast
-     for the glass by spending the footer text's. The veil's alpha is fixed at 0.55 for the same
-     reason — see the note in palette.ts.
-
-     Do NOT hand-write the -webkit- twin here. Lightning CSS (Vite's minifier) prefixes this
-     itself from the build targets, and when it finds the prefixed declaration already present it
-     collapses the pair down to the prefixed one alone: the shipped bundle carried
-     -webkit-backdrop-filter and no standard backdrop-filter at all, so every engine without the
-     WebKit alias — Firefox among them — got no glass whatsoever. Verified against dist/: with the
-     manual prefix the built CSS has one declaration, without it, both. */
+     Do not hand-write the -webkit- twin. Lightning CSS prefixes this itself, and if the
+     prefixed form is already present it drops the standard property from the bundle. */
   backdrop-filter: blur(28px) saturate(180%);
   width: 100%;
-  /* A light hairline, not the accent tint that was here: at rgba(accent, 0.16) the top edge was
-     invisible against the scrimmed photo, and a glass panel is read largely from its edge. */
+  /* A white hairline: the accent tint was invisible against the scrimmed photo. */
   border-top: 1px solid rgba(255, 255, 255, 0.18);
 }
 .footer-container { width: clamp(280px, 85%, 1200px); margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1em; padding: 1.2em 0; }
@@ -394,10 +305,7 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 .blog-card-meta { display: flex; align-items: center; gap: 1em; flex-wrap: wrap; font-size: 0.85rem; color: var(--color-text-muted); }
 .blog-card-author { font-weight: 500; color: var(--color-text-secondary); }
 .blog-card-last-edited { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.85rem; color: var(--color-text-secondary); display: inline-flex; align-items: center; gap: 0.4em; }
-/* Info/warning/tip/danger banners — flat Metro "flag" treatment: no boxed
-   border, just a thin accent-colored edge and a soft tint of that same
-   color, matching the rest of the borderless chrome. Info (the default,
-   untyped case) uses the site's own accent rather than a separate blue. */
+/* Info/warning/tip/danger banners — a thin colored edge and a soft tint, no box. */
 .cmpns-info-bubble {
   display: flex; align-items: flex-start; gap: 1em;
   padding: 0.9em 1.1em;
@@ -424,9 +332,7 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 .info-title { font-weight: 600; color: var(--color-text); font-size: 0.95rem; }
 .info-content { font-weight: 300; color: var(--color-text-secondary); }
 .info-content p { margin: 0; }
-/* ── Metro 8.1 buttons — uniform solid border on every side (no left
-   accent bar), flat fill, sharp corners. Outline by default; hover tints
-   with the accent, matching WinRT's default ButtonStyle. */
+/* ── Buttons — flat fill, sharp corners, accent tint on hover ───────── */
 .cmpns-button {
   display: inline-flex; align-items: center; justify-content: center;
   padding: 0.5em 1.2em;
@@ -485,7 +391,7 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   content: "⚠ image unavailable";
 }
 
-/* WASM boot skeleton — mirrors real app chrome */
+/* Pre-boot skeleton — mirrors the real app chrome */
 .sk-shell { display: flex; flex-direction: column; min-height: 100vh; font-family: "Segoe UI", system-ui, -apple-system, sans-serif; background-color: #121212; }
 .sk-header { background: transparent; }
 .sk-header-inner { width: clamp(280px,85%,1200px); margin: 0 auto; display: flex; align-items: center; gap: 1.5em; padding: 2em 0 0.6em; overflow: hidden; }

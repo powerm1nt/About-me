@@ -1,5 +1,2 @@
-// The site's whole visual system — Metro chrome, wallpaper theming, skeletons, article
-// typography — lives in app.scss and is carried over verbatim from the previous build, so the
-// redesign ports across pixel-for-pixel.
 @use "./Theme/app";
 @use "./Theme/hljs";

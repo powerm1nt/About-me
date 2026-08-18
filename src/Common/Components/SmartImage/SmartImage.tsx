@@ -12,11 +12,7 @@ export interface SmartImageProps {
 
 type LoadState = "loading" | "loaded" | "error";
 
-/**
- * An <img> that reserves its own space: a skeleton while it downloads, and a bordered
- * placeholder carrying the alt text if it fails, so a dead image never collapses the layout
- * around it.
- */
+/** An <img> that holds its own space: a skeleton while loading, an alt-text placeholder if it fails. */
 export default function SmartImage({ src, alt, width, height, style, block }: SmartImageProps) {
   const [state, setState] = useState<LoadState>("loading");
 

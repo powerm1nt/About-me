@@ -2,14 +2,12 @@ import { apiUrl, assetUrl } from "./config";
 import type { BingWallpaper } from "./types";
 import { setCssVars } from "./palette";
 
-/** Bundled wallpaper used when Server or Bing is unreachable, so a backend hiccup never leaves
- *  the page without a background. */
+/** Used when the API or Bing is unreachable. */
 export const FALLBACK_WALLPAPER_URL = "/assets/default2.png";
 
 /**
- * Resolves which wallpaper to show on boot: today's Bing "picture of the day", proxied through
- * Server (WallpaperController) so the browser never hotlinks bing.com directly — which also keeps
- * the image same-origin enough to sample into a canvas for the palette.
+ * Today's Bing picture of the day, proxied through the API so the browser never hotlinks bing.com
+ * and the image stays sampleable into a canvas for the palette.
  */
 export async function resolveWallpaperUrl(): Promise<string> {
   try {
@@ -19,12 +17,12 @@ export async function resolveWallpaperUrl(): Promise<string> {
       if (dto?.imageUrl?.trim()) return dto.imageUrl;
     }
   } catch {
-    // Server/Bing unreachable — fall through to the bundled static wallpaper.
+    // Unreachable — fall through to the bundled wallpaper.
   }
   return FALLBACK_WALLPAPER_URL;
 }
 
-/** Points --cardboard-url at the CDN copy so app.scss's background-image rules can reference it. */
+/** Points the asset custom properties at the CDN copies for app.scss to reference. */
 export function injectAssetCssVariables(): void {
   setCssVars({ "--cardboard-url": `url("${assetUrl("cardboard.png")}")` });
 }
