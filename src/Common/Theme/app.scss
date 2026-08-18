@@ -131,9 +131,9 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 /* Metro entrance: content slides in from the right, moving left into place —
    the direction used by Windows Phone's Pivot/page "Continuum" transition
    (forward navigation enters from the right, not the left). Header plays
-   once as the app boots past the static skeleton; the page pane replays on
-   every navigation via @key="FilePath" in FileViewer.razor forcing Blazor
-   to remount it. */
+   once as the app boots; the page pane replays whenever FileViewer's
+   `key` changes — on navigation, and again as the loaded content replaces
+   the skeleton — since React remounts the node and restarts the animation. */
 @keyframes metro-enter { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: translateX(0); } }
 @media (prefers-reduced-motion: reduce) {
   .metro-header-row, .file-content { animation: none; }
@@ -256,8 +256,12 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   background: transparent;
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
   animation: metro-enter 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+  /* Staggers the pane a beat behind the header on the way in. Only the
+     skeleton pass wants it: on the replay the delay would hold the pane at
+     opacity 0 for 80ms after the skeleton is gone, reading as a flicker. */
   animation-delay: 0.08s;
 }
+.file-content[data-phase="ready"], .file-content[data-phase="error"] { animation-delay: 0s; }
 @media screen and (max-width: 768px) { .file-content { width: 95%; min-height: auto; } }
 .file-content img { max-width: 100%; height: auto; border-radius: 0; margin: 1em 0; }
 .article-header-meta { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1em; margin-bottom: 1.6em; }

@@ -91,6 +91,12 @@ export default function FileViewer({ filePath, isJapanese = false }: FileViewerP
     };
   }, [articles, japanese, filePath]);
 
+  // The Metro entrance animation on .file-content is a mount-time CSS animation, so it only
+  // replays if the node is actually remounted. Keying it on the path *and* the load phase gives
+  // the pane two passes: once as the skeleton appears, then again as the real content slides in
+  // over it — and one more on every navigation, which is what the Blazor @key used to buy us.
+  const phase = error !== null ? "error" : page === null ? "loading" : "ready";
+
   const showPane = (next: "read" | "edit" | "history") => setPane({ path: filePath, mode: next });
 
   const startEditing = () => {
@@ -104,7 +110,7 @@ export default function FileViewer({ filePath, isJapanese = false }: FileViewerP
   return (
     <main className="main-content">
       <div className="main-content-container">
-        <div className="file-content">
+        <div className="file-content" data-phase={phase} key={`${filePath}:${phase}`}>
           {error !== null ? (
             <InfoBubble title={`Error: ${error}`} className="md-component-danger" />
           ) : page === null ? (
