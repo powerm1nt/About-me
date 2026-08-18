@@ -192,123 +192,146 @@ function computeScrimOpacity(meanLuminance: number, peakLuminance: number): numb
  * any failure (404, decode error, CORS-tainted canvas blocking getImageData) so the caller can
  * fall back to the static CSS palette.
  */
-export function extractDominant(imageUrl: string, sampleSize = 48): Promise<PaletteSample | null> {
+/**
+ * Measures an image that is already loaded. Split out of extractDominant so the wallpaper's own
+ * <img> can be sampled directly: requesting the same URL a second time from script would be a
+ * separate cache entry in a different CORS mode, and the copy already on screen is the one whose
+ * pixels are guaranteed to be there.
+ */
+function samplePixels(img: HTMLImageElement, sampleSize: number): PaletteSample | null {
+  try {
+    const scale = Math.min(1, sampleSize / Math.max(img.naturalWidth, img.naturalHeight));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return null;
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+    let sumSin = 0;
+    let sumCos = 0;
+    let weight = 0;
+    let sumLuminance = 0;
+    let opaqueCount = 0;
+
+    // Per-cell luminance, for the regional peak the scrim is designed against.
+    const cells = LUMINANCE_GRID * LUMINANCE_GRID;
+    const cellLuminance = new Float64Array(cells);
+    const cellCount = new Uint32Array(cells);
+
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3]! < 128) continue; // skip transparent pixels
+      const r = data[i]! / 255;
+      const g = data[i + 1]! / 255;
+      const b = data[i + 2]! / 255;
+
+      // Overall brightness drives the auto-darken decision, so — unlike the hue vote below —
+      // every opaque pixel counts here, including the near-black/near-white/near-neutral ones
+      // that hue deliberately skips.
+      const pixelLuminance =
+        0.2126 * luminanceChannel(r) + 0.7152 * luminanceChannel(g) + 0.0722 * luminanceChannel(b);
+      sumLuminance += pixelLuminance;
+      opaqueCount++;
+
+      const pixel = i >> 2;
+      const column = Math.min(
+        LUMINANCE_GRID - 1,
+        ((pixel % canvas.width) * LUMINANCE_GRID / canvas.width) | 0
+      );
+      const row = Math.min(
+        LUMINANCE_GRID - 1,
+        (((pixel / canvas.width) | 0) * LUMINANCE_GRID / canvas.height) | 0
+      );
+      const cell = row * LUMINANCE_GRID + column;
+      // Read through a non-null assertion like the pixel accesses above: the index is
+      // clamped into range by construction, but noUncheckedIndexedAccess cannot see that.
+      cellLuminance[cell] = cellLuminance[cell]! + pixelLuminance;
+      cellCount[cell] = cellCount[cell]! + 1;
+
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      const l = (max + min) / 2;
+      if (l < 0.08 || l > 0.92) continue; // skip near-black/near-white
+      const d = max - min;
+      const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+      if (s < 0.15) continue; // skip near-neutral pixels
+
+      let h: number;
+      if (d === 0) h = 0;
+      else if (max === r) h = 60 * ((((g - b) / d) % 6 + 6) % 6);
+      else if (max === g) h = 60 * ((b - r) / d + 2);
+      else h = 60 * ((r - g) / d + 4);
+
+      const rad = (h * Math.PI) / 180;
+      sumSin += Math.sin(rad) * s;
+      sumCos += Math.cos(rad) * s;
+      weight += s;
+    }
+
+    if (opaqueCount === 0) return null;
+    const luminance = sumLuminance / opaqueCount;
+
+    // Every cell that saw at least one opaque pixel, dark to bright. Cells can be empty when
+    // the photo has transparent regions, and they must not count as black.
+    const regions: number[] = [];
+    for (let cell = 0; cell < cellCount.length; cell++) {
+      if (cellCount[cell]! > 0) regions.push(cellLuminance[cell]! / cellCount[cell]!);
+    }
+    regions.sort((a, b) => a - b);
+
+    // Falls back to the mean only if the grid somehow yielded nothing, which cannot happen
+    // once a single opaque pixel exists but keeps the type honest.
+    const peakLuminance =
+      regions.length > 0
+        ? regions[Math.min(regions.length - 1, Math.round(LUMINANCE_PERCENTILE * (regions.length - 1)))]!
+        : luminance;
+
+    if (weight === 0) {
+      // No pixel was saturated enough to vote on a hue (greyscale/near-mono photo) — still
+      // report luminance so the caller can darken it if it's too bright.
+      return { hue: 0, saturation: 0, luminance, peakLuminance };
+    }
+
+    let hue = (Math.atan2(sumSin, sumCos) * 180) / Math.PI;
+    if (hue < 0) hue += 360;
+    return {
+      hue,
+      saturation: Math.min(1, weight / (data.length / 4)),
+      luminance,
+      peakLuminance,
+    };
+  } catch {
+    // getImageData throws SecurityError on a CORS-tainted canvas.
+    return null;
+  }
+}
+
+/**
+ * Draws the wallpaper into an offscreen canvas and returns the saturation-weighted circular-mean
+ * hue of its pixels, its overall WCAG relative luminance, and the luminance of its brightest
+ * regions measured on a grid (see LUMINANCE_GRID). Never rejects — resolves null on any failure
+ * (404, decode error, CORS-tainted canvas blocking getImageData) so the caller can fall back to
+ * the static CSS palette.
+ *
+ * Pass an <img> that has already loaded in CORS mode to sample it in place; pass a URL and it
+ * fetches its own copy.
+ */
+export function extractDominant(
+  source: string | HTMLImageElement,
+  sampleSize = 48
+): Promise<PaletteSample | null> {
+  if (typeof source !== "string") return Promise.resolve(samplePixels(source, sampleSize));
+
   return new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
 
     img.onerror = () => resolve(null);
-    img.onload = () => {
-      try {
-        const scale = Math.min(1, sampleSize / Math.max(img.naturalWidth, img.naturalHeight));
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
-        canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+    img.onload = () => resolve(samplePixels(img, sampleSize));
 
-        const ctx = canvas.getContext("2d", { willReadFrequently: true });
-        if (!ctx) return resolve(null);
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
-        let sumSin = 0;
-        let sumCos = 0;
-        let weight = 0;
-        let sumLuminance = 0;
-        let opaqueCount = 0;
-
-        // Per-cell luminance, for the regional peak the scrim is designed against.
-        const cells = LUMINANCE_GRID * LUMINANCE_GRID;
-        const cellLuminance = new Float64Array(cells);
-        const cellCount = new Uint32Array(cells);
-
-        for (let i = 0; i < data.length; i += 4) {
-          if (data[i + 3]! < 128) continue; // skip transparent pixels
-          const r = data[i]! / 255;
-          const g = data[i + 1]! / 255;
-          const b = data[i + 2]! / 255;
-
-          // Overall brightness drives the auto-darken decision, so — unlike the hue vote below —
-          // every opaque pixel counts here, including the near-black/near-white/near-neutral ones
-          // that hue deliberately skips.
-          const pixelLuminance =
-            0.2126 * luminanceChannel(r) + 0.7152 * luminanceChannel(g) + 0.0722 * luminanceChannel(b);
-          sumLuminance += pixelLuminance;
-          opaqueCount++;
-
-          const pixel = i >> 2;
-          const column = Math.min(
-            LUMINANCE_GRID - 1,
-            ((pixel % canvas.width) * LUMINANCE_GRID / canvas.width) | 0
-          );
-          const row = Math.min(
-            LUMINANCE_GRID - 1,
-            (((pixel / canvas.width) | 0) * LUMINANCE_GRID / canvas.height) | 0
-          );
-          const cell = row * LUMINANCE_GRID + column;
-          // Read through a non-null assertion like the pixel accesses above: the index is
-          // clamped into range by construction, but noUncheckedIndexedAccess cannot see that.
-          cellLuminance[cell] = cellLuminance[cell]! + pixelLuminance;
-          cellCount[cell] = cellCount[cell]! + 1;
-
-          const max = Math.max(r, g, b);
-          const min = Math.min(r, g, b);
-          const l = (max + min) / 2;
-          if (l < 0.08 || l > 0.92) continue; // skip near-black/near-white
-          const d = max - min;
-          const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
-          if (s < 0.15) continue; // skip near-neutral pixels
-
-          let h: number;
-          if (d === 0) h = 0;
-          else if (max === r) h = 60 * ((((g - b) / d) % 6 + 6) % 6);
-          else if (max === g) h = 60 * ((b - r) / d + 2);
-          else h = 60 * ((r - g) / d + 4);
-
-          const rad = (h * Math.PI) / 180;
-          sumSin += Math.sin(rad) * s;
-          sumCos += Math.cos(rad) * s;
-          weight += s;
-        }
-
-        if (opaqueCount === 0) return resolve(null);
-        const luminance = sumLuminance / opaqueCount;
-
-        // Every cell that saw at least one opaque pixel, dark to bright. Cells can be empty when
-        // the photo has transparent regions, and they must not count as black.
-        const regions: number[] = [];
-        for (let cell = 0; cell < cellCount.length; cell++) {
-          if (cellCount[cell]! > 0) regions.push(cellLuminance[cell]! / cellCount[cell]!);
-        }
-        regions.sort((a, b) => a - b);
-
-        // Falls back to the mean only if the grid somehow yielded nothing, which cannot happen
-        // once a single opaque pixel exists but keeps the type honest.
-        const peakLuminance =
-          regions.length > 0
-            ? regions[Math.min(regions.length - 1, Math.round(LUMINANCE_PERCENTILE * (regions.length - 1)))]!
-            : luminance;
-
-        if (weight === 0) {
-          // No pixel was saturated enough to vote on a hue (greyscale/near-mono photo) — still
-          // report luminance so the caller can darken it if it's too bright.
-          return resolve({ hue: 0, saturation: 0, luminance, peakLuminance });
-        }
-
-        let hue = (Math.atan2(sumSin, sumCos) * 180) / Math.PI;
-        if (hue < 0) hue += 360;
-        resolve({
-          hue,
-          saturation: Math.min(1, weight / (data.length / 4)),
-          luminance,
-          peakLuminance,
-        });
-      } catch {
-        // getImageData throws SecurityError on a CORS-tainted canvas.
-        resolve(null);
-      }
-    };
-
-    img.src = imageUrl;
+    img.src = source;
   });
 }
 
@@ -326,10 +349,10 @@ let generation = 0;
  * the <img> element's own load event, so the wallpaper appears whether or not the pixels can be
  * read back out of a canvas.
  */
-export async function applyPaletteFrom(imageUrl: string): Promise<number | null> {
+export async function applyPaletteFrom(source: string | HTMLImageElement): Promise<number | null> {
   const current = ++generation;
 
-  const sample = await extractDominant(imageUrl);
+  const sample = await extractDominant(source);
   if (!sample || current !== generation) return null;
 
   setCssVars(buildPaletteVars(sample.hue, sample.saturation));

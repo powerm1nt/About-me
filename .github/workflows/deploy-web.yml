@@ -69,23 +69,32 @@ jobs:
 
       # Hashed assets first, then index.html: uploading the shell last means it never points at
       # files that haven't finished uploading yet.
+      # version.json is excluded alongside index.html because it is NOT content-hashed: it keeps
+      # one fixed path and its contents change on every deploy. Uploaded with the immutable
+      # year-long cache below, it pins at the edge, which is why the footer kept reporting an old
+      # build number long after newer ones had shipped.
       - name: Upload hashed assets
         run: |
           gcloud storage rsync dist gs://${{ vars.GCP_WEB_BUCKET }} \
-            --recursive --exclude '^index\.html$' \
+            --recursive --exclude '^(index\.html|version\.json)$' \
             --cache-control="public, max-age=31536000, immutable"
 
-      - name: Upload index.html
+      - name: Upload index.html and version.json
         run: |
           gcloud storage cp dist/index.html gs://${{ vars.GCP_WEB_BUCKET }}/index.html \
             --cache-control="no-cache, max-age=0"
+          gcloud storage cp dist/version.json gs://${{ vars.GCP_WEB_BUCKET }}/version.json \
+            --cache-control="no-cache, max-age=0"
 
-      # Everything except index.html is content-hashed, so only the shell can actually be stale
-      # at the edge — invalidating just that path keeps the invalidation quota free for content.
+      # index.html and version.json are the only paths that are not content-hashed, so they are
+      # the only ones that can go stale at the edge — invalidating just those keeps the
+      # invalidation quota free for content.
       - name: Invalidate CDN cache
         run: |
           gcloud compute url-maps invalidate-cdn-cache ${{ vars.GCP_URL_MAP }} \
             --path "/index.html" --async
+          gcloud compute url-maps invalidate-cdn-cache ${{ vars.GCP_URL_MAP }} \
+            --path "/version.json" --async
 
       - name: Purge Cloudflare cache
         run: |
