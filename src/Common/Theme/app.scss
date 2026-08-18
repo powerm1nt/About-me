@@ -28,8 +28,8 @@
 
    Everything below is only the pre-JS fallback. src/Services/palette.ts
    samples the actual wallpaper on load and overwrites the accent, text
-   secondary/muted/faint, surface, wallpaper-url and wallpaper-scrim-opacity
-   custom properties on the root element's inline style — so the palette
+   secondary/muted/faint, surface, wallpaper-loaded-url/-opacity and
+   wallpaper-scrim-opacity custom properties on the root element's inline style — so the palette
    stays in sync if the wallpaper is ever swapped at runtime. Every derived
    color is checked there against WCAG contrast minimums and nudged lighter
    if a given hue falls short, and the scrim opacity is computed from the
@@ -38,6 +38,11 @@
 :root {
   --wallpaper-url: url("/assets/default2.png");
   --wallpaper-scrim-opacity: 0;
+  /* The decoded wallpaper's own layer (body::after). Both stay at these values until
+     palette.ts has a complete frame to show: that is what makes the photo fade in
+     instead of painting as it downloads. */
+  --wallpaper-loaded-url: none;
+  --wallpaper-loaded-opacity: 0;
   --color-accent: #5468e0;
   --color-accent-strong: #7688ea;
   --color-accent-soft: rgba(84, 104, 224, 0.16);
@@ -69,7 +74,7 @@
    for a dark photo — the dynamic scrim is tuned against the wallpaper's own
    luminance, not the low-contrast secondary/muted/faint text tiers sitting
    on it, which need a bit of headroom regardless. */
-html, body {
+html {
   padding: 0; margin: 0;
   background-color: #322c58;
   background-image:
@@ -81,9 +86,41 @@ html, body {
   background-attachment: fixed;
   background-blend-mode: normal, screen;
 }
+/* Body carries no background of its own on purpose. An in-flow block's background paints
+   *above* any negative z-index layer, so an opaque body here would bury the wallpaper layer
+   below rather than letting it fade in over the canvas. */
+body { padding: 0; margin: 0; background-color: transparent; }
 @media screen and (max-width: 768px) {
   /* iOS Safari mishandles background-attachment:fixed (jank/repaint bugs) */
-  html, body { background-attachment: scroll; }
+  html { background-attachment: scroll; }
+}
+/* The loaded wallpaper rides on its own layer instead of replacing --wallpaper-url above.
+   background-image is not an animatable property, and swapping the URL in place makes the
+   browser paint the photo as its bytes arrive, which reads as the image being drawn onto the
+   page. palette.ts decodes the photo in full first and only then sets the two properties below,
+   so this layer cross-fades one complete frame in over the bundled fallback. If the photo never
+   loads, neither property is ever set and the fallback simply stays. z-index -1 keeps the layer
+   above the canvas background painted from html, and below every in-flow element in body.
+   position:fixed also sidesteps the iOS background-attachment bug worked around above. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(0, 0, 0, calc(var(--wallpaper-scrim-opacity) + 0.20)), rgba(0, 0, 0, calc(var(--wallpaper-scrim-opacity) + 0.20))),
+    var(--wallpaper-loaded-url);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+  background-blend-mode: normal, screen;
+  opacity: var(--wallpaper-loaded-opacity);
+  transition: opacity 0.6s ease-in-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Still no partial paint: the photo is decoded either way, it just appears without the fade. */
+  body::after { transition: none; }
 }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: var(--color-surface); border-radius: 0; }
