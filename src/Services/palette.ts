@@ -17,6 +17,10 @@ const MAX_PEAK_LUMINANCE = 0.3;
 // dark overall but bright exactly where the chrome sits.
 const LUMINANCE_GRID = 6;
 
+// Extra darkening on top of the WCAG solve, for photos that need any scrim at all. The minimums
+// clear the ratio but still read washed out under the low-contrast text tiers.
+const SCRIM_BOOST = 0.1;
+
 // Which cell to design for, sorted dark to bright. The brightest single cell would let one
 // specular highlight dim the whole photo.
 const LUMINANCE_PERCENTILE = 0.9;
@@ -146,8 +150,11 @@ function computeScrimOpacity(meanLuminance: number, peakLuminance: number): numb
   const forPeak =
     peakLuminance <= MAX_PEAK_LUMINANCE ? 0 : 1 - MAX_PEAK_LUMINANCE / peakLuminance;
 
+  const needed = Math.max(forMean, forPeak);
+  if (needed === 0) return 0;
+
   // never quite opaque — some photo should stay visible
-  return clamp(Math.max(forMean, forPeak), 0, 0.82);
+  return clamp(needed + SCRIM_BOOST, 0, 0.82);
 }
 
 /**
