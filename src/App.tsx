@@ -1,11 +1,11 @@
 import { useEffect } from "react";
 import AppModal from "./Common/Components/AppModal/AppModal";
+import Wallpaper from "./Common/Components/Wallpaper/Wallpaper";
 import { FileViewer, Footer, Header } from "./Modules";
 import { AuthProvider } from "./Services/auth";
 import { ExternalLinkProvider } from "./Services/externalLink";
 import { RouterProvider, resolveRoute, useRouter } from "./Services/router";
-import { applyWallpaper } from "./Services/palette";
-import { injectAssetCssVariables, resolveWallpaperUrl } from "./Services/wallpaper";
+import { injectAssetCssVariables } from "./Services/wallpaper";
 
 function pageTitle(pathname: string): string {
   const route = resolveRoute(pathname);
@@ -41,6 +41,7 @@ function Shell() {
 
   return (
     <>
+      <Wallpaper />
       <Header isJapanese={route?.japanese ?? false} />
       {route ? (
         <FileViewer filePath={route.filePath} isJapanese={route.japanese} />
@@ -54,12 +55,10 @@ function Shell() {
 }
 
 export default function App() {
-  // Today's Bing wallpaper (falls back to the bundled static image if Server/Bing is
-  // unreachable). applyWallpaper is safe to call again later too — e.g. from a future appearance
-  // picker — re-deriving the whole accent/text palette each time.
+  // Today's Bing wallpaper is fetched and shown by <Wallpaper /> itself, which also re-derives
+  // the palette from it. Only the CDN asset paths are left to set up here.
   useEffect(() => {
     injectAssetCssVariables();
-    void resolveWallpaperUrl().then(applyWallpaper);
   }, []);
 
   return (
