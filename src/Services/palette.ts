@@ -244,9 +244,10 @@ export function extractDominant(imageUrl: string, sampleSize = 48): Promise<Pale
 function preloadImage(imageUrl: string): Promise<boolean> {
   return new Promise((resolve) => {
     const img = new Image();
-    // Same request mode as extractDominant below. A response cached without CORS headers cannot
-    // be reused for a CORS-mode request, so mismatched modes would fetch the photo twice.
-    img.crossOrigin = "anonymous";
+    // Deliberately no crossOrigin, unlike extractDominant below: this request has to match the
+    // no-CORS one the CSS background will make, since a response cached in CORS mode cannot be
+    // reused for a no-CORS request. Priming the entry the stylesheet actually reads is what makes
+    // the reveal instant rather than starting a fresh download behind the fade.
     img.decoding = "async";
 
     img.onerror = () => resolve(false);
