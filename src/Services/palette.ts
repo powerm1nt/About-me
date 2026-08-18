@@ -17,10 +17,33 @@ const DARK_CHROME_LUMINANCE = 0.02;
 // wallpaper (no panel behind it) needs the scrim below.
 const MAX_UNSCRIMMED_LUMINANCE = 0.1833;
 
+// The same solve at WCAG's 3:1 bar, applied to the brightest region rather than the average:
+// (1.0 + 0.05) / (L + 0.05) = 3. Holding a bright patch to AA outright would darken the other
+// nine tenths of a photo to protect a sky, so the peak is held to the lower bar and the
+// text-shadow in app.scss carries the remainder. The average still has to clear AA above.
+const MAX_PEAK_LUMINANCE = 0.3;
+
+// The scrim is driven by how bright the wallpaper gets *somewhere*, not by its average, so the
+// sample is divided into this many cells per axis and each cell's own luminance is measured. A
+// photo that is dark overall but bright exactly where chrome sits — sky behind the pivot header
+// is the usual one — averages out to "no scrim needed" while washing out the text that actually
+// sits on it.
+const LUMINANCE_GRID = 6;
+
+// Which cell to design for, as a fraction through the cells sorted dark to bright. The brightest
+// single cell would let one specular highlight dim the whole photo; the 90th percentile answers
+// "bright across a region large enough to hold text" instead — with a 6x6 grid that is the
+// fourth-brightest cell, so roughly a ninth of the frame. The text-shadow in app.scss remains the
+// safety net for whatever falls above it.
+const LUMINANCE_PERCENTILE = 0.9;
+
 export interface PaletteSample {
   hue: number;
   saturation: number;
+  /** Mean relative luminance across the whole photo. */
   luminance: number;
+  /** Relative luminance of its brightest regions, per the two constants above. */
+  peakLuminance: number;
 }
 
 export function setCssVars(vars: Record<string, string>): void {
@@ -139,20 +162,33 @@ function buildPaletteVars(hue: number, intensity: number): Record<string, string
 }
 
 /**
- * If the wallpaper is bright enough that white text laid directly over it (no panel behind it —
- * e.g. the pivot header labels) would fail WCAG AA, returns the black-scrim opacity needed to
- * bring its apparent luminance down to the AA cutoff. Assumes a flat alpha composite
- * (apparent ≈ source × (1 - opacity)), which is what the CSS scrim layer in app.scss does.
+ * Returns the black-scrim opacity white text needs over this wallpaper, from two measurements
+ * rather than one. Assumes a flat alpha composite (apparent ≈ source × (1 - opacity)), which is
+ * what .wallpaper-scrim does.
+ *
+ *  - the mean has to clear AA (4.5:1), which is the long-standing behaviour, and
+ *  - the brightest region has to clear 3:1, which is new.
+ *
+ * The stronger of the two wins. A mean on its own cannot see a photo that is dark overall but
+ * bright exactly where chrome sits — sky behind the pivot header is the usual one — and that
+ * photo washes out the header while reporting that no scrim is needed. Taking the max means the
+ * regional term only ever adds darkening where a bright region actually exists, so photos that
+ * were legible before are darkened no further than they already were.
  */
-function computeScrimOpacity(wallpaperLuminance: number): number {
-  if (wallpaperLuminance <= MAX_UNSCRIMMED_LUMINANCE) return 0;
-  const opacity = 1 - MAX_UNSCRIMMED_LUMINANCE / wallpaperLuminance;
-  return clamp(opacity, 0, 0.82); // never quite opaque — some photo should stay visible
+function computeScrimOpacity(meanLuminance: number, peakLuminance: number): number {
+  const forMean =
+    meanLuminance <= MAX_UNSCRIMMED_LUMINANCE ? 0 : 1 - MAX_UNSCRIMMED_LUMINANCE / meanLuminance;
+  const forPeak =
+    peakLuminance <= MAX_PEAK_LUMINANCE ? 0 : 1 - MAX_PEAK_LUMINANCE / peakLuminance;
+
+  // never quite opaque — some photo should stay visible
+  return clamp(Math.max(forMean, forPeak), 0, 0.82);
 }
 
 /**
  * Draws the wallpaper into an offscreen canvas and returns the saturation-weighted circular-mean
- * hue of its pixels plus its overall WCAG relative luminance. Never rejects — resolves null on
+ * hue of its pixels, its overall WCAG relative luminance, and the luminance of its brightest
+ * regions measured on a grid (see LUMINANCE_GRID). Never rejects — resolves null on
  * any failure (404, decode error, CORS-tainted canvas blocking getImageData) so the caller can
  * fall back to the static CSS palette.
  */
@@ -180,6 +216,11 @@ export function extractDominant(imageUrl: string, sampleSize = 48): Promise<Pale
         let sumLuminance = 0;
         let opaqueCount = 0;
 
+        // Per-cell luminance, for the regional peak the scrim is designed against.
+        const cells = LUMINANCE_GRID * LUMINANCE_GRID;
+        const cellLuminance = new Float64Array(cells);
+        const cellCount = new Uint32Array(cells);
+
         for (let i = 0; i < data.length; i += 4) {
           if (data[i + 3]! < 128) continue; // skip transparent pixels
           const r = data[i]! / 255;
@@ -189,9 +230,25 @@ export function extractDominant(imageUrl: string, sampleSize = 48): Promise<Pale
           // Overall brightness drives the auto-darken decision, so — unlike the hue vote below —
           // every opaque pixel counts here, including the near-black/near-white/near-neutral ones
           // that hue deliberately skips.
-          sumLuminance +=
+          const pixelLuminance =
             0.2126 * luminanceChannel(r) + 0.7152 * luminanceChannel(g) + 0.0722 * luminanceChannel(b);
+          sumLuminance += pixelLuminance;
           opaqueCount++;
+
+          const pixel = i >> 2;
+          const column = Math.min(
+            LUMINANCE_GRID - 1,
+            ((pixel % canvas.width) * LUMINANCE_GRID / canvas.width) | 0
+          );
+          const row = Math.min(
+            LUMINANCE_GRID - 1,
+            (((pixel / canvas.width) | 0) * LUMINANCE_GRID / canvas.height) | 0
+          );
+          const cell = row * LUMINANCE_GRID + column;
+          // Read through a non-null assertion like the pixel accesses above: the index is
+          // clamped into range by construction, but noUncheckedIndexedAccess cannot see that.
+          cellLuminance[cell] = cellLuminance[cell]! + pixelLuminance;
+          cellCount[cell] = cellCount[cell]! + 1;
 
           const max = Math.max(r, g, b);
           const min = Math.min(r, g, b);
@@ -216,15 +273,35 @@ export function extractDominant(imageUrl: string, sampleSize = 48): Promise<Pale
         if (opaqueCount === 0) return resolve(null);
         const luminance = sumLuminance / opaqueCount;
 
+        // Every cell that saw at least one opaque pixel, dark to bright. Cells can be empty when
+        // the photo has transparent regions, and they must not count as black.
+        const regions: number[] = [];
+        for (let cell = 0; cell < cellCount.length; cell++) {
+          if (cellCount[cell]! > 0) regions.push(cellLuminance[cell]! / cellCount[cell]!);
+        }
+        regions.sort((a, b) => a - b);
+
+        // Falls back to the mean only if the grid somehow yielded nothing, which cannot happen
+        // once a single opaque pixel exists but keeps the type honest.
+        const peakLuminance =
+          regions.length > 0
+            ? regions[Math.min(regions.length - 1, Math.round(LUMINANCE_PERCENTILE * (regions.length - 1)))]!
+            : luminance;
+
         if (weight === 0) {
           // No pixel was saturated enough to vote on a hue (greyscale/near-mono photo) — still
           // report luminance so the caller can darken it if it's too bright.
-          return resolve({ hue: 0, saturation: 0, luminance });
+          return resolve({ hue: 0, saturation: 0, luminance, peakLuminance });
         }
 
         let hue = (Math.atan2(sumSin, sumCos) * 180) / Math.PI;
         if (hue < 0) hue += 360;
-        resolve({ hue, saturation: Math.min(1, weight / (data.length / 4)), luminance });
+        resolve({
+          hue,
+          saturation: Math.min(1, weight / (data.length / 4)),
+          luminance,
+          peakLuminance,
+        });
       } catch {
         // getImageData throws SecurityError on a CORS-tainted canvas.
         resolve(null);
@@ -257,5 +334,5 @@ export async function applyPaletteFrom(imageUrl: string): Promise<number | null>
 
   setCssVars(buildPaletteVars(sample.hue, sample.saturation));
 
-  return computeScrimOpacity(sample.luminance);
+  return computeScrimOpacity(sample.luminance, sample.peakLuminance);
 }
