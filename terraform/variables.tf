@@ -31,6 +31,12 @@ variable "assets_prefix" {
   default     = "static"
 }
 
+variable "shared_assets_prefix" {
+  description = "Object-name prefix reserved for the NukaWorks company site in the shared assets bucket."
+  type        = string
+  default     = "shared_assets"
+}
+
 variable "web_bucket_name" {
   description = "Globally-unique bucket serving the built React frontend."
   type        = string
@@ -49,10 +55,28 @@ variable "site_custom_domain_host" {
   default     = "blog.nuka.works"
 }
 
+variable "company_site_custom_domain_host" {
+  description = "Apex custom domain serving the NukaWorks company frontend."
+  type        = string
+  default     = "nuka.works"
+}
+
 variable "api_service_name" {
   description = "Cloud Run service name for the Server API."
   type        = string
   default     = "blog-api"
+}
+
+variable "company_service_name" {
+  description = "Cloud Run service name for the IAP-protected NukaWorks company website and API."
+  type        = string
+  default     = "website"
+}
+
+variable "iap_access_members" {
+  description = "Google identities allowed through IAP to view nuka.works."
+  type        = set(string)
+  default     = ["domain:nuka.works"]
 }
 
 variable "api_image" {
@@ -84,6 +108,12 @@ variable "cert_version" {
   default     = 1
 }
 
+variable "company_cert_version" {
+  description = "Suffix on the managed certificate dedicated to the NukaWorks apex domain."
+  type        = number
+  default     = 1
+}
+
 variable "github_client_id" {
   description = <<-EOT
     Client id of the GitHub OAuth app behind the "propose changes" sign-in.
@@ -102,4 +132,10 @@ variable "github_repository" {
   description = "owner/name of the GitHub repository allowed to deploy via Workload Identity Federation."
   type        = string
   default     = "powerm1nt/About-me"
+}
+
+variable "company_github_repository" {
+  description = "owner/name of the NukaWorks company repository allowed to deploy via Workload Identity Federation."
+  type        = string
+  default     = "NukaWorks/Website"
 }

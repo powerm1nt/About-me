@@ -16,7 +16,10 @@ resource "google_storage_bucket" "assets" {
   }
 
   cors {
-    origin          = ["https://${var.site_custom_domain_host}"]
+    origin = [
+      "https://${var.site_custom_domain_host}",
+      "https://${var.company_site_custom_domain_host}",
+    ]
     method          = ["GET", "HEAD"]
     response_header = ["Content-Type"]
     max_age_seconds = 3600
@@ -49,4 +52,15 @@ resource "google_storage_bucket_iam_member" "web_public" {
   bucket = google_storage_bucket.web.name
   role   = "roles/storage.legacyObjectReader"
   member = "allUsers"
+}
+
+# GCS has object prefixes rather than real directories. Keeping one marker object makes the
+# company-owned shared_assets/ namespace explicit and visible to storage tooling before content is
+# uploaded there.
+resource "google_storage_bucket_object" "shared_assets_prefix" {
+  bucket        = google_storage_bucket.assets.name
+  name          = "${var.shared_assets_prefix}/.keep"
+  content       = "NukaWorks company shared assets\n"
+  content_type  = "text/plain"
+  cache_control = "no-cache, max-age=0"
 }
