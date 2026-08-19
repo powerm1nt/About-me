@@ -43,14 +43,7 @@ resource "google_service_account_iam_member" "github_impersonation_company" {
 
 # --- What CI is allowed to do ----------------------------------------------
 
-# Apply merged content patches to the assets bucket. Frontend builds now ship in the Cloud Run
-# image, so the web-bucket permissions below only remain during the verified cutover window.
-resource "google_storage_bucket_iam_member" "deployer_web" {
-  bucket = google_storage_bucket.web.name
-  role   = "roles/storage.objectAdmin"
-  member = "serviceAccount:${google_service_account.deployer.email}"
-}
-
+# Apply merged content patches to the assets bucket. Frontend builds ship in the Cloud Run image.
 resource "google_storage_bucket_iam_member" "deployer_assets" {
   bucket = google_storage_bucket.assets.name
   role   = "roles/storage.objectAdmin"
@@ -62,12 +55,6 @@ resource "google_storage_bucket_iam_member" "deployer_assets" {
 # this the deploy fails on storage.buckets.get with the objects themselves perfectly writable.
 # legacyBucketReader is the narrowest role that carries it; the alternative, storage.admin, would
 # also hand CI the ability to rewrite the buckets' IAM.
-resource "google_storage_bucket_iam_member" "deployer_web_bucket" {
-  bucket = google_storage_bucket.web.name
-  role   = "roles/storage.legacyBucketReader"
-  member = "serviceAccount:${google_service_account.deployer.email}"
-}
-
 resource "google_storage_bucket_iam_member" "deployer_assets_bucket" {
   bucket = google_storage_bucket.assets.name
   role   = "roles/storage.legacyBucketReader"

@@ -1,6 +1,5 @@
-# The two buckets behind the CDN: one holding the site's content (markdown + images), one holding
-# the built frontend. Both are read straight by the load balancer's backend buckets, so both are
-# publicly readable — nothing private is ever uploaded to either.
+# The shared bucket behind the assets CDN holds public markdown and images for both sites. The blog
+# frontend is part of its Cloud Run image, so no separate build-output bucket is needed.
 
 resource "google_storage_bucket" "assets" {
   name     = var.assets_bucket_name
@@ -30,26 +29,6 @@ resource "google_storage_bucket" "assets" {
 # GET the bucket root for an index of every object. Serving only needs storage.objects.get.
 resource "google_storage_bucket_iam_member" "assets_public" {
   bucket = google_storage_bucket.assets.name
-  role   = "roles/storage.legacyObjectReader"
-  member = "allUsers"
-}
-
-resource "google_storage_bucket" "web" {
-  name     = var.web_bucket_name
-  location = var.bucket_location
-
-  uniform_bucket_level_access = true
-
-  website {
-    main_page_suffix = "index.html"
-    # Client-side routing: /blog/welcome is not an object, so the bucket must answer with the SPA
-    # shell rather than a 404 page and let the router resolve the path.
-    not_found_page = "index.html"
-  }
-}
-
-resource "google_storage_bucket_iam_member" "web_public" {
-  bucket = google_storage_bucket.web.name
   role   = "roles/storage.legacyObjectReader"
   member = "allUsers"
 }

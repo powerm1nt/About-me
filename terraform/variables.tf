@@ -37,12 +37,6 @@ variable "shared_assets_prefix" {
   default     = "shared_assets"
 }
 
-variable "web_bucket_name" {
-  description = "Globally-unique bucket serving the built React frontend."
-  type        = string
-  default     = "nwrks-web-prod"
-}
-
 variable "cdn_custom_domain_host" {
   description = "Custom domain that serves static assets through the CDN."
   type        = string

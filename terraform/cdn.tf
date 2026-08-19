@@ -27,22 +27,6 @@ resource "google_compute_backend_bucket" "assets" {
   }
 }
 
-resource "google_compute_backend_bucket" "web" {
-  name        = "nwrks-web-backend"
-  bucket_name = google_storage_bucket.web.name
-  enable_cdn  = true
-
-  cdn_policy {
-    cache_mode = "CACHE_ALL_STATIC"
-    # index.html itself must not be cached at the edge: it's the only file whose name doesn't
-    # change between builds, so a cached copy would keep serving hashed asset URLs that no longer
-    # exist. Vite's other output is content-hashed and safe to cache for a year.
-    default_ttl = 0
-    max_ttl     = 31536000
-    client_ttl  = 0
-  }
-}
-
 # USE_ORIGIN_HEADERS is the safety boundary for this mixed frontend/API origin: Express explicitly
 # marks auth and mutation responses private/no-store, while public page reads and static files opt
 # into bounded edge caching. This keeps /api on the CDN without ever force-caching user data.
