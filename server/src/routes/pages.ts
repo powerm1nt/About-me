@@ -5,8 +5,8 @@ import { formatLastEdited, parseFrontmatter, renderRawText, type PageMeta } from
 
 export const pagesRouter = Router();
 
-/** Content only changes via merged proposals, so a short cache costs little freshness. */
-const BROWSER_CACHE_CONTROL = "public, max-age=60";
+/** Browser freshness is short; the shared CDN can absorb public reads for five minutes. */
+const BROWSER_CACHE_CONTROL = "public, max-age=60, s-maxage=300, stale-while-revalidate=60";
 
 interface PageDto {
   path: string;

@@ -1,7 +1,7 @@
-name: Deploy frontend to Cloud Storage
+name: Deploy blog to Cloud Run
 
-# Builds the React app and publishes it to the GCS bucket the load balancer serves
-# blog.nuka.works from.
+# Builds the React frontend and Express API into one image. The shared load balancer and Cloud CDN
+# serve both the app and /api from blog.nuka.works.
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
       - main
     paths-ignore:
       - "patches/**"
-      - "server/**"
+      - "terraform/**"
   workflow_dispatch:
 
 permissions:
@@ -41,22 +41,6 @@ jobs:
           git commit -am "chore: bump build number to $BUILD [skip ci]"
           git push origin "HEAD:${GITHUB_REF_NAME}"
 
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build
-        run: pnpm build
-        env:
-          VITE_API_BASE_URL: ${{ vars.API_BASE_URL }}
-          VITE_ASSET_BASE_URL: ${{ vars.ASSET_BASE_URL }}
-
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
@@ -65,29 +49,36 @@ jobs:
 
       - uses: google-github-actions/setup-gcloud@v2
 
-      # Hashed assets first so the shell never points at files still uploading. version.json is
-      # excluded with index.html: it is not content-hashed, and the immutable cache below would pin
-      # it at the edge.
-      - name: Upload hashed assets
-        run: |
-          gcloud storage rsync dist gs://${{ vars.GCP_WEB_BUCKET }} \
-            --recursive --exclude '^(index\.html|version\.json)$' \
-            --cache-control="public, max-age=31536000, immutable"
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ vars.GCP_REGION }}-docker.pkg.dev --quiet
 
-      - name: Upload index.html and version.json
+      - name: Build and push image
+        id: image
         run: |
-          gcloud storage cp dist/index.html gs://${{ vars.GCP_WEB_BUCKET }}/index.html \
-            --cache-control="no-cache, max-age=0"
-          gcloud storage cp dist/version.json gs://${{ vars.GCP_WEB_BUCKET }}/version.json \
-            --cache-control="no-cache, max-age=0"
+          IMAGE="${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/containers/blog-api:${{ github.sha }}"
+          docker build \
+            --build-arg VITE_API_BASE_URL="" \
+            --build-arg VITE_ASSET_BASE_URL="${{ vars.ASSET_BASE_URL }}" \
+            -f server/Dockerfile \
+            -t "$IMAGE" \
+            .
+          docker push "$IMAGE"
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
 
-      # The only paths that aren't content-hashed, so the only ones that can go stale at the edge.
+      # Image only. Terraform owns the service environment and runtime identity.
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy ${{ vars.GCP_CLOUD_RUN_SERVICE }} \
+            --image "${{ steps.image.outputs.image }}" \
+            --region "${{ vars.GCP_REGION }}" \
+            --quiet
+
+      # Origin headers keep /api sessions private and hashed assets immutable. Invalidating all
+      # paths makes the new SPA shell visible immediately after a revision rolls out.
       - name: Invalidate CDN cache
         run: |
           gcloud compute url-maps invalidate-cdn-cache ${{ vars.GCP_URL_MAP }} \
-            --path "/index.html" --async
-          gcloud compute url-maps invalidate-cdn-cache ${{ vars.GCP_URL_MAP }} \
-            --path "/version.json" --async
+            --path "/*" --async
 
       - name: Purge Cloudflare cache
         run: |

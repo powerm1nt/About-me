@@ -34,12 +34,6 @@ function isAllowedReturnUrl(returnUrl: string | undefined): boolean {
   });
 }
 
-/** Derived from the request so a local run and the deployed service each send their own origin. */
-function callbackUrl(req: { protocol: string; get(name: string): string | undefined }): string {
-  // Correct only because `trust proxy` is enabled in index.ts.
-  return `${req.protocol}://${req.get("host")}/api/auth/github/callback`;
-}
-
 // GET /api/auth/github/login?returnUrl=https://blog.nuka.works/blog/welcome&resume=edit
 authRouter.get("/github/login", (req, res) => {
   const returnUrl = typeof req.query.returnUrl === "string" ? req.query.returnUrl : undefined;
@@ -52,10 +46,11 @@ authRouter.get("/github/login", (req, res) => {
 
   const state = createState({ returnUrl: returnUrl as string, resume });
 
+  // Let GitHub use the callback URL registered on the OAuth app. Reflecting the request host here
+  // couples sign-in to whichever Cloud Run or CDN hostname happened to receive the login request.
   const authorizeUrl =
     "https://github.com/login/oauth/authorize" +
     `?client_id=${encodeURIComponent(config.github.clientId)}` +
-    `&redirect_uri=${encodeURIComponent(callbackUrl(req))}` +
     "&scope=public_repo" +
     `&state=${state}`;
 
@@ -85,7 +80,6 @@ authRouter.get("/github/callback", async (req, res, next) => {
         client_id: config.github.clientId,
         client_secret: config.github.clientSecret,
         code,
-        redirect_uri: callbackUrl(req),
       }),
     });
 

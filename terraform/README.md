@@ -2,24 +2,23 @@
 
 Everything the site runs on, in one project:
 
-| Resource                                | What it does                                                    |
-| --------------------------------------- | --------------------------------------------------------------- |
-| `google_storage_bucket.assets`          | Shared content under the `static/` and `shared_assets/` prefixes |
-| `google_storage_bucket.web`             | The `blog.nuka.works` React frontend                              |
-| Global external ALB + Cloud CDN         | Serves both buckets, one hostname each, with managed TLS         |
-| `google_cloud_run_v2_service.api`       | The Express/TypeScript `server/` API                             |
-| `google_cloud_run_v2_service.company_site` | IAP-protected `nuka.works` frontend and API                    |
-| Serverless NEG + global backend service | Routes `nuka.works` from the shared load balancer to Cloud Run    |
+| Resource                                   | What it does                                                    |
+| ------------------------------------------ | --------------------------------------------------------------- |
+| `google_storage_bucket.assets`             | Shared content under the `static/` and `shared_assets/` prefixes |
+| Global external ALB + Cloud CDN            | Serves assets and the public blog with managed TLS               |
+| `google_cloud_run_v2_service.api`          | Combined `blog.nuka.works` React frontend and Express `/api`     |
+| `google_cloud_run_v2_service.company_site` | IAP-protected `nuka.works` frontend and API                      |
+| Serverless NEGs + global backend services  | Route both domains from the shared load balancer to Cloud Run    |
 | Secret Manager                          | Holds the GitHub OAuth client secret                             |
 | Workload Identity Federation            | Lets GitHub Actions deploy without a service-account key         |
 
 Host routing:
 
 - `nwrks-cdn.public.prod.nuka.works` → shared assets bucket
-- `blog.nuka.works` → blog web bucket
+- `blog.nuka.works` → combined public blog Cloud Run service through Cloud CDN
 - `nuka.works` → IAP-protected company Cloud Run service
-- The blog API is reached at its own Cloud Run URL (`api_url` output). The company frontend calls
-  its API on the same IAP-protected origin.
+- The blog API is same-origin at `https://blog.nuka.works/api`. CDN behavior follows Express's
+  origin headers: public reads opt into short caching; auth and mutation routes are private/no-store.
 
 ## Shared asset namespaces
 
@@ -107,11 +106,10 @@ gcloud services enable \
    | ---------------------- | -------------------------------------------- |
    | `GCP_PROJECT_ID`       | Project id                                    |
    | `GCP_REGION`           | `northamerica-northeast1` (or your `region`)  |
-   | `GCP_WEB_BUCKET`       | `web_bucket` output                           |
+   | `GCP_CLOUD_RUN_SERVICE`| `blog-api`                                    |
    | `GCP_ASSETS_BUCKET`    | `assets_bucket` output                        |
    | `GCP_ASSETS_PREFIX`    | `static`                                      |
    | `GCP_URL_MAP`          | `nwrks-url-map`                               |
-   | `API_BASE_URL`         | `api_url` output                              |
    | `ASSET_BASE_URL`       | `cdn_asset_base_url` output                   |
 
    For `NukaWorks/Website`, set `GCP_ASSETS_PREFIX` to `shared_assets`, `ASSET_BASE_URL` to the
@@ -145,7 +143,7 @@ company-owned files are isolated under `shared_assets/`.
   `template[0].containers[0].image` is in `ignore_changes` — otherwise every `terraform apply`
   would roll the service back to `var.api_image` and undo the latest deploy.
 - **Secret values.** Only the container, per above.
-- **Bucket contents.** Frontend builds and merged content patches are written by CI.
+- **Bucket contents.** Merged content patches and company assets are written by CI.
 - **DNS.** `nuka.works` lives on Cloudflare (`hank.ns.cloudflare.com` / `meadow.ns.cloudflare.com`).
 
 ## Cost knob

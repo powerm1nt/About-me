@@ -1,4 +1,5 @@
 import express, { type NextFunction, type Request, type Response } from "express";
+import path from "node:path";
 import { config } from "./config.js";
 import { SESSION_HEADER } from "./services/sessions.js";
 import { pagesRouter } from "./routes/pages.js";
@@ -37,15 +38,56 @@ app.use((req, res, next) => {
   next();
 });
 
+// Cloud CDN uses origin headers for this backend. Dynamic and authenticated endpoints are private
+// unless an individual public GET route opts into caching with a more specific response header.
+app.use("/api", (_req, res, next) => {
+  res.setHeader("Cache-Control", "private, no-store");
+  next();
+});
+
 app.use("/api/pages", pagesRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/proposals", proposalsRouter);
 app.use("/api/wallpaper", wallpaperRouter);
 
-/** Cloud Run's health probe hits "/" — answer it rather than falling through to the 404. */
-app.get("/", (_req, res) => {
-  res.json({ status: "ok" });
-});
+// Production images include the Vite build at WEB_ROOT. API routes are mounted first so an
+// unknown /api request still returns JSON instead of falling through to the client-side app.
+const webRoot = process.env.WEB_ROOT?.trim();
+if (webRoot) {
+  app.use(
+    express.static(webRoot, {
+      index: false,
+      setHeaders: (res, filePath) => {
+        const relativePath = path.relative(webRoot, filePath).replaceAll(path.sep, "/");
+
+        if (relativePath.startsWith("assets/")) {
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        } else if (relativePath === "index.html" || relativePath === "version.json") {
+          res.setHeader("Cache-Control", "no-cache, max-age=0, must-revalidate");
+        } else {
+          res.setHeader("Cache-Control", "public, max-age=3600");
+        }
+      },
+    })
+  );
+
+  app.use((req, res, next) => {
+    if (req.method !== "GET" || req.path.startsWith("/api/")) {
+      next();
+      return;
+    }
+
+    res.setHeader("Cache-Control", "no-cache, max-age=0, must-revalidate");
+    res.sendFile(path.join(webRoot, "index.html"), (error) => {
+      if (error) next(error);
+    });
+  });
+} else {
+  /** Local API health response when no frontend build is mounted. */
+  app.get("/", (_req, res) => {
+    res.json({ status: "ok" });
+  });
+}
 
 app.use((_req, res) => {
   res.status(404).json({ error: "Not found." });

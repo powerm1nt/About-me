@@ -14,7 +14,7 @@ output "company_cdn_asset_base_url" {
 }
 
 output "site_url" {
-  description = "Public URL of the React frontend."
+  description = "Public URL of the blog frontend."
   value       = "https://${var.site_custom_domain_host}"
 }
 
@@ -24,7 +24,12 @@ output "company_site_url" {
 }
 
 output "api_url" {
-  description = "Cloud Run URL of the Server API — this is VITE_API_BASE_URL for the frontend build."
+  description = "Public same-origin base URL of the blog API, served through Cloud CDN."
+  value       = "https://${var.site_custom_domain_host}/api"
+}
+
+output "blog_service_url" {
+  description = "Direct Cloud Run URL for diagnostics; browsers use site_url and /api."
   value       = google_cloud_run_v2_service.api.uri
 }
 

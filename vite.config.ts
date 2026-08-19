@@ -1,9 +1,8 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-// The Server API lives on a different origin in production (VITE_API_BASE_URL, baked in at build
-// time). In dev it's left empty so /api/* falls through to the proxy below, which keeps the
-// browser same-origin and sidesteps CORS/OAuth-return-url configuration while developing.
+// Frontend and API share an origin in production. In development, /api/* falls through to the
+// proxy below so the browser keeps that same-origin contract while Express runs on its own port.
 const devApiTarget = process.env.VITE_DEV_API_TARGET ?? "http://localhost:5066";
 
 export default defineConfig({
