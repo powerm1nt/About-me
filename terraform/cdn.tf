@@ -1,10 +1,11 @@
-# One global external Application Load Balancer fronting both buckets, replacing the Azure Front
-# Door profile that used to do the same job:
+# One global external Application Load Balancer fronting the shared buckets and company Cloud Run
+# service, replacing the Azure Front Door profile that used to do the same job:
 #
 #   nwrks-cdn.public.prod.nuka.works  -> assets bucket  (markdown + images, /static/...)
 #   blog.nuka.works                    -> web bucket     (the built React frontend)
+#   nuka.works                         -> IAP-protected Cloud Run website
 #
-# Point both hostnames' A/AAAA records at google_compute_global_address.this before applying —
+# Point all hostnames' A/AAAA records at google_compute_global_address.this before applying —
 # the managed certificate can't be issued until DNS resolves to this IP.
 
 resource "google_compute_global_address" "this" {
@@ -56,6 +57,11 @@ resource "google_compute_url_map" "this" {
     path_matcher = "site"
   }
 
+  host_rule {
+    hosts        = [var.company_site_custom_domain_host]
+    path_matcher = "company-site"
+  }
+
   path_matcher {
     name            = "assets"
     default_service = google_compute_backend_bucket.assets.id
@@ -64,6 +70,11 @@ resource "google_compute_url_map" "this" {
   path_matcher {
     name            = "site"
     default_service = google_compute_backend_bucket.web.id
+  }
+
+  path_matcher {
+    name            = "company-site"
+    default_service = google_compute_backend_service.company_site.id
   }
 }
 
@@ -87,10 +98,28 @@ resource "google_compute_managed_ssl_certificate" "this" {
   }
 }
 
+# Keep the active blog/assets certificate attached while Google provisions the apex-domain
+# certificate. This separates certificate lifecycles and prevents a nuka.works addition from
+# interrupting either existing hostname.
+resource "google_compute_managed_ssl_certificate" "company" {
+  name = "nwrks-company-cert-v${var.company_cert_version}"
+
+  managed {
+    domains = [var.company_site_custom_domain_host]
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
 resource "google_compute_target_https_proxy" "this" {
-  name             = "nwrks-https-proxy"
-  url_map          = google_compute_url_map.this.id
-  ssl_certificates = [google_compute_managed_ssl_certificate.this.id]
+  name    = "nwrks-https-proxy"
+  url_map = google_compute_url_map.this.id
+  ssl_certificates = [
+    google_compute_managed_ssl_certificate.this.id,
+    google_compute_managed_ssl_certificate.company.id,
+  ]
 }
 
 resource "google_compute_global_forwarding_rule" "https" {

@@ -1,31 +1,34 @@
-# Terraform — NukaWorks infra (Google Cloud)
+# Terraform — shared NukaWorks web infrastructure (Google Cloud)
 
 Everything the site runs on, in one project:
 
 | Resource                                | What it does                                                    |
 | --------------------------------------- | --------------------------------------------------------------- |
-| `google_storage_bucket.assets`          | The site's markdown and images, under the `static/` prefix       |
-| `google_storage_bucket.web`             | The built React frontend                                         |
+| `google_storage_bucket.assets`          | Shared content under the `static/` and `shared_assets/` prefixes |
+| `google_storage_bucket.web`             | The `blog.nuka.works` React frontend                              |
 | Global external ALB + Cloud CDN         | Serves both buckets, one hostname each, with managed TLS         |
 | `google_cloud_run_v2_service.api`       | The Express/TypeScript `server/` API                             |
+| `google_cloud_run_v2_service.company_site` | IAP-protected `nuka.works` frontend and API                    |
+| Serverless NEG + global backend service | Routes `nuka.works` from the shared load balancer to Cloud Run    |
 | Secret Manager                          | Holds the GitHub OAuth client secret                             |
 | Workload Identity Federation            | Lets GitHub Actions deploy without a service-account key         |
 
 Host routing:
 
-- `nwrks-cdn.public.prod.nuka.works` → assets bucket
-- `blog.nuka.works` → web bucket
-- The API is reached at its own Cloud Run URL (`api_url` output), called cross-origin by the
-  frontend. CORS is configured from `CORS_ALLOWED_ORIGINS` on the service, which doubles as the
-  OAuth returnUrl allow-list.
+- `nwrks-cdn.public.prod.nuka.works` → shared assets bucket
+- `blog.nuka.works` → blog web bucket
+- `nuka.works` → IAP-protected company Cloud Run service
+- The blog API is reached at its own Cloud Run URL (`api_url` output). The company frontend calls
+  its API on the same IAP-protected origin.
 
-## Why objects sit under `static/`
+## Shared asset namespaces
 
 The Azure setup this replaced served content from a blob container named `static`, so its public
 path was `/static/blog/welcome.md`. GCS has no containers, so the container name became an object
 prefix — which reproduces that path byte-for-byte. That is the reason every image and link inside
 already-published markdown survived the migration untouched. Changing `assets_prefix` would break
-all of them.
+all of them. The company site uses `shared_assets/` in that same bucket so its uploads cannot
+collide with blog content; Terraform creates `shared_assets/.keep` to establish that namespace.
 
 ## Remote state
 
@@ -67,7 +70,7 @@ gcloud services enable \
 
 ## After the first apply
 
-1. **DNS.** Point both hostnames at the `load_balancer_ip` output with A records. `nuka.works` is on
+1. **DNS.** Point all three hostnames at the `load_balancer_ip` output with A records. `nuka.works` is on
    Cloudflare and these must stay **DNS-only (grey cloud)** — an orange-clouded record proxies the
    request and Google's managed certificate can never complete its HTTP-01 challenge. The
    certificate sits in `PROVISIONING` until DNS resolves; that can take up to an hour after it does.
@@ -97,8 +100,8 @@ gcloud services enable \
    | `GCP_WORKLOAD_IDENTITY_PROVIDER`  | `workload_identity_provider` output       |
    | `GCP_DEPLOY_SERVICE_ACCOUNT`      | `deployer_service_account` output         |
    | `GH_OAUTH_CLIENT_ID`              | GitHub OAuth app client id                |
-   | `CLOUDFLARE_ZONE_ID`              | Cloudflare zone for `nuka.works`          |
-   | `CLOUDFLARE_API_TOKEN`            | Token with cache-purge permission         |
+   | `CLOUDFLARE_ZONE_ID`              | Cloudflare zone for `nuka.works` (blog workflow only) |
+   | `CLOUDFLARE_API_TOKEN`            | Cache-purge token (blog workflow only)    |
 
    | GitHub variable        | Value                                        |
    | ---------------------- | -------------------------------------------- |
@@ -111,7 +114,23 @@ gcloud services enable \
    | `API_BASE_URL`         | `api_url` output                              |
    | `ASSET_BASE_URL`       | `cdn_asset_base_url` output                   |
 
-4. **Migrate the old content** (once), then decommission Azure:
+   For `NukaWorks/Website`, set `GCP_ASSETS_PREFIX` to `shared_assets`, `ASSET_BASE_URL` to the
+   `company_cdn_asset_base_url` output, and `GCP_CLOUD_RUN_SERVICE` to `website`. The company deploy
+   does not require Cloudflare secrets: the apex record is DNS-only and the frontend is served by
+   Cloud Run rather than cached at the edge.
+
+## Company-site Google SSO
+
+The company frontend and API are served from one Cloud Run image. IAP is enabled directly on the
+service, so both the load-balancer route and the default `run.app` URL require Google SSO before
+returning application content. `iap_access_members` defaults to `domain:nuka.works`; add individual
+Google accounts or groups to that set if access needs to extend beyond the Workspace domain.
+
+Cloud CDN is intentionally disabled for the company Cloud Run backend because IAP and Cloud CDN
+cannot protect/cache the same backend. The shared assets hostname remains CDN-backed and public;
+company-owned files are isolated under `shared_assets/`.
+
+### Historical content migration
 
    ```bash
    az login
@@ -122,7 +141,7 @@ gcloud services enable \
 
 ## What Terraform deliberately doesn't own
 
-- **The deployed API image.** `deploy-server.yml` pushes a new digest per release, so
+- **Deployed Cloud Run images.** The deploy workflows push a new digest per release, so
   `template[0].containers[0].image` is in `ignore_changes` — otherwise every `terraform apply`
   would roll the service back to `var.api_image` and undo the latest deploy.
 - **Secret values.** Only the container, per above.
@@ -131,6 +150,6 @@ gcloud services enable \
 
 ## Cost knob
 
-`api_min_instances` defaults to `0`: nothing is billed while the API is idle, but the first request
-after a quiet period pays a cold start — the same trade the old F1 App Service plan forced. Set it
-to `1` to keep one instance warm and remove that latency.
+`api_min_instances` defaults to `0`: nothing is billed while either Cloud Run service is idle, but
+the first request after a quiet period pays a cold start. Set it to `1` to keep one instance of each
+service warm and remove that latency.

@@ -1,5 +1,5 @@
 output "load_balancer_ip" {
-  description = "Point both custom domains' A records here. The managed certificate stays PROVISIONING until they resolve to this address."
+  description = "Point all custom domains' A records here. Managed certificates stay PROVISIONING until they resolve to this address."
   value       = google_compute_global_address.this.address
 }
 
@@ -8,14 +8,29 @@ output "cdn_asset_base_url" {
   value       = "https://${var.cdn_custom_domain_host}/${var.assets_prefix}"
 }
 
+output "company_cdn_asset_base_url" {
+  description = "Public CDN base URL reserved for NukaWorks company assets."
+  value       = "https://${var.cdn_custom_domain_host}/${var.shared_assets_prefix}"
+}
+
 output "site_url" {
   description = "Public URL of the React frontend."
   value       = "https://${var.site_custom_domain_host}"
 }
 
+output "company_site_url" {
+  description = "Public URL of the NukaWorks company frontend."
+  value       = "https://${var.company_site_custom_domain_host}"
+}
+
 output "api_url" {
   description = "Cloud Run URL of the Server API — this is VITE_API_BASE_URL for the frontend build."
   value       = google_cloud_run_v2_service.api.uri
+}
+
+output "company_service_url" {
+  description = "IAP-protected Cloud Run URL for the NukaWorks company website and API."
+  value       = google_cloud_run_v2_service.company_site.uri
 }
 
 output "assets_bucket" {

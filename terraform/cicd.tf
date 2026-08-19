@@ -22,7 +22,7 @@ resource "google_iam_workload_identity_pool_provider" "github" {
   }
 
   # Without this, *any* GitHub repository's OIDC token would be accepted by the provider.
-  attribute_condition = "assertion.repository == '${var.github_repository}'"
+  attribute_condition = "assertion.repository == '${var.github_repository}' || assertion.repository == '${var.company_github_repository}'"
 
   oidc {
     issuer_uri = "https://token.actions.githubusercontent.com"
@@ -33,6 +33,12 @@ resource "google_service_account_iam_member" "github_impersonation" {
   service_account_id = google_service_account.deployer.name
   role               = "roles/iam.workloadIdentityUser"
   member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/attribute.repository/${var.github_repository}"
+}
+
+resource "google_service_account_iam_member" "github_impersonation_company" {
+  service_account_id = google_service_account.deployer.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/attribute.repository/${var.company_github_repository}"
 }
 
 # --- What CI is allowed to do ----------------------------------------------
@@ -88,10 +94,23 @@ resource "google_cloud_run_v2_service_iam_member" "deployer_admin" {
   member   = "serviceAccount:${google_service_account.deployer.email}"
 }
 
+resource "google_cloud_run_v2_service_iam_member" "deployer_company_site_admin" {
+  name     = google_cloud_run_v2_service.company_site.name
+  location = google_cloud_run_v2_service.company_site.location
+  role     = "roles/run.admin"
+  member   = "serviceAccount:${google_service_account.deployer.email}"
+}
+
 # Deploying a revision means setting the service's runtime identity, which IAM treats as acting
 # as that service account.
 resource "google_service_account_iam_member" "deployer_acts_as_api" {
   service_account_id = google_service_account.api.name
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:${google_service_account.deployer.email}"
+}
+
+resource "google_service_account_iam_member" "deployer_acts_as_company_site" {
+  service_account_id = google_service_account.company_site.name
   role               = "roles/iam.serviceAccountUser"
   member             = "serviceAccount:${google_service_account.deployer.email}"
 }
