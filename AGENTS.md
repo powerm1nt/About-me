@@ -9,14 +9,15 @@ Working rules for humans and coding agents in this repository. Read this before 
 | Part      | Location    | Stack                                                          |
 | --------- | ----------- | -------------------------------------------------------------- |
 | Frontend  | `src/`      | React 19 + TypeScript, Vite, SCSS. Root pnpm package.           |
-| API       | `server/`   | Express 5 + TypeScript on Cloud Run. Its own pnpm package.      |
-| Infra     | `terraform/`| Google Cloud: GCS buckets, global ALB + Cloud CDN, Secret Manager, Workload Identity Federation. |
+| API       | `server/`   | Express 5 + TypeScript. Its own pnpm package.                   |
+| Infra     | `terraform/`| Google Cloud: combined Cloud Run app, assets bucket, global ALB + Cloud CDN, Secret Manager, Workload Identity Federation. |
 
 Content (markdown pages, images) does not live in git. It sits in the assets bucket under the
 `static/` prefix and is edited through the API or the `patches/` flow described below.
 
-The API is a separate package on purpose: its dependencies (`express`, `@google-cloud/storage`,
-`octokit`) must never reach the browser bundle's dependency graph.
+The API remains a separate workspace package so its dependencies (`express`,
+`@google-cloud/storage`, `octokit`) never reach the browser bundle. Production packages both builds
+into one Cloud Run image: Express serves the Vite output and same-origin `/api` routes.
 
 ## Layout
 
@@ -127,8 +128,7 @@ load-bearing for them. Respect `prefers-reduced-motion`.
 | Workflow            | Trigger                                       | Effect                                     |
 | ------------------- | --------------------------------------------- | ------------------------------------------ |
 | `build-check.yml`   | push to `develop`, PRs into `develop`/`main`  | Compile only, no credentials               |
-| `deploy-web.yml`    | push to `main` (ignores `patches/`, `server/`)| Bumps `version.json`, builds, syncs to the web bucket |
-| `deploy-api.yml`    | push to `main` touching `server/` or lockfiles| Builds and deploys Cloud Run               |
+| `deploy-web.yml`    | push to `main` (ignores `patches/`, Terraform)| Bumps `version.json`, builds and deploys the combined Cloud Run image |
 | `apply-patches.yml` | push to `main` adding `patches/**/*.patch`    | Applies content patches to the assets bucket |
 | `check-patches.yml` | `pull_request_target` on patch PRs            | Validates visitor-proposed content patches |
 
@@ -143,6 +143,8 @@ applied to bucket objects: never execute patch content, and note that proposal P
   `terraform -chdir=terraform apply -var project_id=<project>`.
 - Do not change `assets_prefix`. Objects sit under `static/` so that published markdown keeps the
   exact public paths it had before the Azure migration. Changing it breaks every existing link.
+- `blog.nuka.works` and `/api` share the blog Cloud Run backend. Cloud CDN uses origin cache
+  headers, so API routes must stay private/no-store unless the response is intentionally public.
 - The old Azure stack was decommissioned in August 2026. `scripts/migrate-azure-to-gcp.sh` is kept
   for its historical record of the migration; it no longer has live resources to act on.
 

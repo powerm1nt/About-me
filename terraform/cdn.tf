@@ -1,8 +1,8 @@
-# One global external Application Load Balancer fronting the shared buckets and company Cloud Run
-# service, replacing the Azure Front Door profile that used to do the same job:
+# One global external Application Load Balancer fronting the shared assets bucket and both Cloud
+# Run services, replacing the Azure Front Door profile that used to do the same job:
 #
 #   nwrks-cdn.public.prod.nuka.works  -> assets bucket  (markdown + images, /static/...)
-#   blog.nuka.works                    -> web bucket     (the built React frontend)
+#   blog.nuka.works                    -> blog Cloud Run (React frontend + Express /api)
 #   nuka.works                         -> IAP-protected Cloud Run website
 #
 # Point all hostnames' A/AAAA records at google_compute_global_address.this before applying —
@@ -43,9 +43,36 @@ resource "google_compute_backend_bucket" "web" {
   }
 }
 
+# USE_ORIGIN_HEADERS is the safety boundary for this mixed frontend/API origin: Express explicitly
+# marks auth and mutation responses private/no-store, while public page reads and static files opt
+# into bounded edge caching. This keeps /api on the CDN without ever force-caching user data.
+resource "google_compute_backend_service" "blog" {
+  name                  = "nwrks-blog-backend"
+  protocol              = "HTTP"
+  load_balancing_scheme = "EXTERNAL"
+  timeout_sec           = 30
+  enable_cdn            = true
+
+  cdn_policy {
+    cache_mode        = "USE_ORIGIN_HEADERS"
+    negative_caching  = false
+    serve_while_stale = 60
+
+    cache_key_policy {
+      include_host         = true
+      include_protocol     = true
+      include_query_string = true
+    }
+  }
+
+  backend {
+    group = google_compute_region_network_endpoint_group.blog.id
+  }
+}
+
 resource "google_compute_url_map" "this" {
   name            = "nwrks-url-map"
-  default_service = google_compute_backend_bucket.web.id
+  default_service = google_compute_backend_service.blog.id
 
   host_rule {
     hosts        = [var.cdn_custom_domain_host]
@@ -69,7 +96,7 @@ resource "google_compute_url_map" "this" {
 
   path_matcher {
     name            = "site"
-    default_service = google_compute_backend_bucket.web.id
+    default_service = google_compute_backend_service.blog.id
   }
 
   path_matcher {

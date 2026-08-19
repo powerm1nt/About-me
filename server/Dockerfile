@@ -1,5 +1,5 @@
-# Cloud Run image for the API. Built from the repository root, because the server is a pnpm
-# workspace package and the lockfile that pins its dependencies lives there.
+# Cloud Run image for the blog frontend and API. Built from the repository root, because the two
+# packages share one image and the workspace lockfile pins both.
 #
 # Cloud Run hands the port to listen on in $PORT and terminates TLS itself, so the app binds plain
 # HTTP on that port (see src/index.ts).
@@ -15,9 +15,19 @@ RUN npm install -g pnpm@11.18.0
 # rather than on every source edit.
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY server/package.json server/package.json
-RUN pnpm install --frozen-lockfile --filter aboutme-server
+RUN pnpm install --frozen-lockfile
 
+COPY index.html tsconfig.json vite.config.ts ./
+COPY public/ public/
+COPY src/ src/
 COPY server/ server/
+
+ARG VITE_API_BASE_URL=""
+ARG VITE_ASSET_BASE_URL="https://nwrks-cdn.public.prod.nuka.works/static"
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+ENV VITE_ASSET_BASE_URL=$VITE_ASSET_BASE_URL
+
+RUN pnpm build
 RUN pnpm --filter aboutme-server build
 
 # Resolves the workspace package into a self-contained directory with production dependencies only
@@ -34,9 +44,11 @@ ENV NODE_ENV=production
 
 # Drop root: nothing here writes to disk at runtime, so the process has no reason to own its files.
 COPY --from=build --chown=node:node /app ./
+COPY --from=build --chown=node:node /repo/dist ./web/
 USER node
 
 ENV PORT=8080
+ENV WEB_ROOT=/app/web
 EXPOSE 8080
 
 CMD ["node", "dist/index.js"]

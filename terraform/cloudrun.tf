@@ -1,5 +1,5 @@
-# The Express/TypeScript API (server/), replacing the Linux App Service the old ASP.NET Core
-# service ran on.
+# The blog's combined React/Express service, replacing both the frontend bucket and the Linux App
+# Service that the old ASP.NET Core API ran on.
 #
 # The GitHub OAuth client secret lives in Secret Manager and is mounted as an environment variable
 # at runtime, so — unlike the App Service setup, where the deploy workflow pushed the secret in as
@@ -7,7 +7,7 @@
 
 resource "google_service_account" "api" {
   account_id   = "blog-api"
-  display_name = "Server API (Cloud Run)"
+  display_name = "Blog frontend and API (Cloud Run)"
 }
 
 # Read/write, not read-only: proposals are applied to content objects by the patch workflow, and
@@ -121,13 +121,25 @@ resource "google_cloud_run_v2_service" "api" {
   }
 }
 
-# The API is a public read/propose endpoint — the browser calls it directly, unauthenticated.
-# Authorization is the app's own GitHub session check, not IAM.
+# The blog and its API are public. Authorization for editing is the app's own GitHub session
+# check, not Cloud Run IAM.
 resource "google_cloud_run_v2_service_iam_member" "public" {
   name     = google_cloud_run_v2_service.api.name
   location = google_cloud_run_v2_service.api.location
   role     = "roles/run.invoker"
   member   = "allUsers"
+}
+
+# Cloud CDN reaches the combined blog service through this serverless NEG. The service's run.app
+# URL remains available for direct diagnostics, but production browsers use blog.nuka.works.
+resource "google_compute_region_network_endpoint_group" "blog" {
+  name                  = "nwrks-blog-neg"
+  network_endpoint_type = "SERVERLESS"
+  region                = var.region
+
+  cloud_run {
+    service = google_cloud_run_v2_service.api.name
+  }
 }
 
 # The company site gets an isolated runtime identity and Cloud Run environment. The one container
