@@ -1,6 +1,7 @@
 // better-auth's data model. These four tables are the library's own contract — it reads and writes
-// them by name — so they are transcribed rather than designed, and `better-auth generate` is what
-// verifies them against the installed version.
+// them by name — so they are not designed here, they are transcribed from the installed version's
+// own table definitions (@better-auth/core's getAuthTables). Do not edit them from memory: a single
+// missing column fails at runtime, inside a sign-in, rather than at build time.
 //
 // Post metadata is not here yet: it still lives as JSON in the assets bucket, behind
 // src/services/photos.ts. Moving it is a separate change.
@@ -46,8 +47,12 @@ model Session {
 
 // One row per sign-in method on an account: a GitHub or Google link, or the local password itself.
 // `password` is null for social links, and the OAuth token columns are null for a local account.
+//
+// `issuer` identifies the identity provider that vouched for the account, and is half of the unique
+// key: the same accountId from two different issuers is two different people.
 model Account {
   id                    String    @id
+  issuer                String
   accountId             String
   providerId            String
   userId                String
@@ -62,16 +67,17 @@ model Account {
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
+  @@unique([issuer, accountId])
   @@map("account")
 }
 
 model Verification {
-  id         String    @id
+  id         String   @id
   identifier String
   value      String
   expiresAt  DateTime
-  createdAt  DateTime? @default(now())
-  updatedAt  DateTime? @updatedAt
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@map("verification")
 }
