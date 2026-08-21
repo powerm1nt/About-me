@@ -39,4 +39,18 @@ export const auth = betterAuth({
   // Same list the CORS check uses: an origin trusted to call the API is trusted to be returned to
   // after a social redirect, and keeping one list means the two cannot drift apart.
   trustedOrigins: config.allowedOrigins,
+
+  advanced: {
+    /**
+     * The API answers on api.hisuiki.com but the frontend is served from hisuiki.com, so a cookie
+     * left on the API's own host would never be sent back. Scoping it to the parent domain fixes
+     * that, and is also what will let per-profile subdomains share one session later.
+     *
+     * The two hosts are the same site, so SameSite=Lax still permits the frontend's requests; this
+     * is a cross-*origin* setup, not a cross-site one, and it needs no SameSite=None.
+     */
+    crossSubDomainCookies: config.auth.cookieDomain
+      ? { enabled: true, domain: config.auth.cookieDomain }
+      : { enabled: false },
+  },
 });

@@ -53,18 +53,20 @@ app.use("/api", (_req, res, next) => {
  * therefore mounted before express.json(), which would otherwise consume the request first and
  * leave the handler waiting on a stream that never emits.
  */
-app.all("/api/auth/*splat", toNodeHandler(auth));
+if (config.servesApi) {
+  app.all("/api/auth/*splat", toNodeHandler(auth));
 
-app.use(express.json({ limit: "1mb" }));
+  app.use(express.json({ limit: "1mb" }));
 
-app.use("/api/pages", pagesRouter);
-// No cache override: like and comment counts change per request and must never be shared-cached.
-app.use("/api/photos", photosRouter);
-app.use("/api/wallpaper", wallpaperRouter);
+  app.use("/api/pages", pagesRouter);
+  // No cache override: like and comment counts change per request and must never be shared-cached.
+  app.use("/api/photos", photosRouter);
+  app.use("/api/wallpaper", wallpaperRouter);
+}
 
 // Production images include the Vite build at WEB_ROOT. API routes are mounted first so an
 // unknown /api request still returns JSON instead of falling through to the client-side app.
-const webRoot = process.env.WEB_ROOT?.trim();
+const webRoot = config.servesWeb ? process.env.WEB_ROOT?.trim() : undefined;
 if (webRoot) {
   app.use(
     express.static(webRoot, {
@@ -111,7 +113,12 @@ app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
 });
 
 app.listen(config.port, () => {
-  console.log(`API listening on port ${config.port}`);
+  console.log(`Listening on port ${config.port} as "${config.role}"`);
+
+  // Only the API half touches storage, the database, or sessions; warning about them on the web
+  // service would be noise about configuration it deliberately does not have.
+  if (!config.servesApi) return;
+
   if (!config.storage.bucketName) {
     console.warn("GCS_BUCKET is not set — every page read will fail until it is.");
   }

@@ -1,7 +1,8 @@
-name: Deploy blog to Cloud Run
+name: Deploy hisuiki to Cloud Run
 
-# Builds the React frontend and Express API into one image. The shared load balancer and Cloud CDN
-# serve both the app and /api from blog.nuka.works.
+# Builds the React frontend and Express API into one image, then deploys that same image to two
+# Cloud Run services. APP_ROLE — set by Terraform on each service, not here — decides which half a
+# revision serves: hisuiki.com runs it as the frontend, api.hisuiki.com runs it as the API.
 
 on:
   push:
@@ -51,12 +52,14 @@ jobs:
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${{ vars.GCP_REGION }}-docker.pkg.dev --quiet
 
+      # API_BASE_URL is baked into the bundle at build time, so the frontend has to be told the
+      # API's hostname here — it can no longer assume its own origin.
       - name: Build and push image
         id: image
         run: |
-          IMAGE="${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/containers/blog-api:${{ github.sha }}"
+          IMAGE="${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/containers/hisuiki:${{ github.sha }}"
           docker build \
-            --build-arg VITE_API_BASE_URL="" \
+            --build-arg VITE_API_BASE_URL="${{ vars.API_BASE_URL }}" \
             --build-arg VITE_ASSET_BASE_URL="${{ vars.ASSET_BASE_URL }}" \
             -f server/Dockerfile \
             -t "$IMAGE" \
@@ -64,16 +67,28 @@ jobs:
           docker push "$IMAGE"
           echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
 
-      # Image only. Terraform owns the service environment and runtime identity.
-      - name: Deploy to Cloud Run
+      # Image only, to both services. Terraform owns each service's environment and runtime
+      # identity, including the APP_ROLE that decides which half it serves.
+      #
+      # The API goes first: a frontend revision calling an API that has not been updated yet is the
+      # recoverable order, whereas the reverse can serve a bundle expecting routes that do not exist.
+      - name: Deploy API to Cloud Run
         run: |
-          gcloud run deploy ${{ vars.GCP_CLOUD_RUN_SERVICE }} \
+          gcloud run deploy ${{ vars.GCP_API_SERVICE }} \
             --image "${{ steps.image.outputs.image }}" \
             --region "${{ vars.GCP_REGION }}" \
             --quiet
 
-      # Origin headers keep /api sessions private and hashed assets immutable. Invalidating all
-      # paths makes the new SPA shell visible immediately after a revision rolls out.
+      - name: Deploy frontend to Cloud Run
+        run: |
+          gcloud run deploy ${{ vars.GCP_WEB_SERVICE }} \
+            --image "${{ steps.image.outputs.image }}" \
+            --region "${{ vars.GCP_REGION }}" \
+            --quiet
+
+      # The frontend backend caches on origin headers, so hashed assets stay immutable and the SPA
+      # shell is revalidated. Invalidating all paths makes a new shell visible immediately. The API
+      # has no CDN in front of it at all, so nothing there needs purging.
       - name: Invalidate CDN cache
         run: |
           gcloud compute url-maps invalidate-cdn-cache ${{ vars.GCP_URL_MAP }} \

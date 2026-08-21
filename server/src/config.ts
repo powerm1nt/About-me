@@ -10,8 +10,20 @@ const prefix = env("GCS_PREFIX", "static").replace(/^\/+|\/+$/g, "");
 
 const cdnBaseUrl = env("CDN_BASE_URL").replace(/\/+$/, "");
 
+/**
+ * Which half of the application this process serves. The frontend and the API run as separate Cloud
+ * Run services on separate hostnames, from one image: "web" mounts the built React bundle, "api"
+ * mounts the Express routes, and "combined" — the default — mounts both, which is what local
+ * development and a single-origin deployment want.
+ */
+const role = env("APP_ROLE", "combined");
+
 export const config = {
   port: Number(env("PORT", "8080")),
+
+  role,
+  servesApi: role === "api" || role === "combined",
+  servesWeb: role === "web" || role === "combined",
 
   storage: {
     bucketName: env("GCS_BUCKET"),
@@ -52,6 +64,13 @@ export const config = {
 
     /** Signs session cookies. From Secret Manager in production; never a literal here. */
     secret: env("BETTER_AUTH_SECRET"),
+
+    /**
+     * Domain the session cookie is scoped to, e.g. ".hisuiki.com". Needed because the API is served
+     * from api.hisuiki.com while the frontend sits on hisuiki.com: a cookie left on the API's own
+     * host is never sent by the frontend. Empty in development, where both are localhost.
+     */
+    cookieDomain: env("AUTH_COOKIE_DOMAIN"),
 
     github: {
       clientId: env("GITHUB_CLIENT_ID"),

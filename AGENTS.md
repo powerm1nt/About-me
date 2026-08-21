@@ -4,20 +4,48 @@ Working rules for humans and coding agents in this repository. Read this before 
 
 ## What this is
 
-`about-me` is the personal site behind `blog.nuka.works`. It has three parts:
+`about-me` is the personal site behind `hisuiki.com`. It has three parts:
 
 | Part      | Location    | Stack                                                          |
 | --------- | ----------- | -------------------------------------------------------------- |
 | Frontend  | `src/`      | React 19 + TypeScript, Vite, SCSS. Root pnpm package.           |
 | API       | `server/`   | Express 5 + TypeScript. Its own pnpm package.                   |
-| Infra     | `terraform/`| Google Cloud: combined Cloud Run app, assets bucket, Cloud SQL (Postgres), global ALB + Cloud CDN, Secret Manager, Workload Identity Federation. |
+| Infra     | `terraform/`| Google Cloud (project `hisuiki`): two Cloud Run services, assets bucket, Cloud SQL (Postgres), global ALB + Cloud CDN, Secret Manager, Workload Identity Federation. |
 
 Content (markdown pages, images) does not live in git. It sits in the assets bucket under the
 `static/` prefix and is edited through the API by anyone signed in.
 
 The API remains a separate workspace package so its dependencies (`express`,
-`@google-cloud/storage`, `better-auth`, `@prisma/client`) never reach the browser bundle. Production packages both builds
-into one Cloud Run image: Express serves the Vite output and same-origin `/api` routes.
+`@google-cloud/storage`, `better-auth`, `@prisma/client`) never reach the browser bundle.
+
+## Two services, one image
+
+Production runs **one image as two Cloud Run services**, split by hostname:
+
+| Host              | Service        | `APP_ROLE` | Serves                        |
+| ----------------- | -------------- | ---------- | ----------------------------- |
+| `hisuiki.com`     | `hisuiki-web`  | `web`      | the built React bundle        |
+| `api.hisuiki.com` | `hisuiki-api`  | `api`      | Express `/api`                |
+| `cdn.hisuiki.com` | —              | —          | the assets bucket, via Cloud CDN |
+
+`APP_ROLE` is read in `server/src/config.ts` and gates what `index.ts` mounts. It defaults to
+`combined`, which is what local development wants: one process, everything, same origin.
+
+The split is not free, and three things depend on getting it right:
+
+- **`VITE_API_BASE_URL` is baked in at build time.** The bundle can no longer assume its own origin,
+  so the deploy workflow passes the API host as a build argument. Empty in development, where Vite's
+  proxy keeps things same-origin.
+- **Every authenticated request must send credentials.** `credentials: "include"` is set on the
+  better-auth client and on the photo and page-save calls. Miss it on a new call and the app looks
+  permanently signed out.
+- **The session cookie is scoped to the parent domain** through `AUTH_COOKIE_DOMAIN=.hisuiki.com`,
+  because a cookie left on `api.hisuiki.com` is never sent by `hisuiki.com`. The two are the same
+  site, so `SameSite=Lax` still works — this is cross-origin, not cross-site.
+
+The API has no CDN in front of it. That is the point of separating the origins: when the two shared
+a hostname, every authenticated response had to opt out of caching individually, and one missing
+header would have put a signed-in user's data in a shared cache.
 
 ## Layout
 
@@ -208,15 +236,18 @@ release that depends on them.
 
 ## Infrastructure notes
 
-- **The assets bucket moved to the `hisuiki` project in August 2026.** Content now lives in
+- **Everything moved to the `hisuiki` project in August 2026.** Content lives in
   `gs://hisuiki-assets-prod` (US, versioned); `nwrks-assets-prod` was copied, verified, and deleted.
-  The `terraform/` stack still describes the retired NukaWorks Prod project and its state in
-  `gs://nwrks-tfstate-prod` therefore lists an assets bucket that no longer exists — do not
-  `terraform apply` that stack expecting it to be correct. The `hisuiki` stack is written fresh,
-  with its own state in `gs://hisuiki-tfstate-prod`; the old state is archived there under
-  `archive/nukaworks-prod/` for reference only.
-- No CDN sits in front of the new bucket yet, so `CDN_BASE_URL` is empty and assets are served
-  straight from `storage.googleapis.com`. Repoint it when the hisuiki load balancer exists.
+  The NukaWorks Prod stack is retired, and its final state is archived in
+  `gs://hisuiki-tfstate-prod/archive/nukaworks-prod/` for reference only — never point a backend
+  at it.
+- **The assets bucket predates this stack**, so `storage.tf` adopts it with an `import` block rather
+  than creating it. Leave that block in place until the first apply has run everywhere it matters.
+- **The load balancer's IP is new.** `hisuiki.com`'s A record pointed at `8.228.225.172`, which
+  belonged to the retired NukaWorks load balancer in another project — an address cannot move
+  between projects. Read `terraform output load_balancer_ip` after applying and update the record;
+  `api` and `cdn` are CNAMEs to the apex, so that one record carries all three. The managed
+  certificate covers all three names and stays `PROVISIONING` until each resolves here.
 - Do not change `assets_prefix`. Objects sit under `static/` so that published markdown keeps the
   exact public paths it had before the Azure migration. Changing it breaks every existing link.
 - `blog.nuka.works` and `/api` share the blog Cloud Run backend. Cloud CDN uses origin cache
