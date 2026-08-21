@@ -149,9 +149,16 @@ variable "site_owner_emails" {
 }
 
 variable "github_repository" {
-  description = "owner/name of the GitHub repository allowed to deploy via Workload Identity Federation."
+  description = <<-EOT
+    owner/name of the GitHub repository allowed to deploy via Workload Identity Federation.
+
+    This is matched exactly against the `repository` claim in the Actions OIDC token, so it has to
+    track a repository rename. GitHub redirects the old name for git and the API, which hides the
+    change from everything except this check — where it surfaces as
+    "the given credential is rejected by the attribute condition".
+  EOT
   type        = string
-  default     = "powerm1nt/About-me"
+  default     = "powerm1nt/Hisuiki"
 }
 
 variable "wildcard_cert_active" {
