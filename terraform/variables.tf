@@ -128,9 +128,12 @@ variable "github_client_id" {
   description = <<-EOT
     Client id of the GitHub OAuth app used for sign-in. Public — it travels in the authorize URL the
     browser follows — so unlike the client secret there is no reason to keep it out of the config.
+
+    This is the same OAuth app the retired NukaWorks stack used; its callback URL now points at
+    api.hisuiki.com rather than blog.nuka.works.
   EOT
   type        = string
-  default     = ""
+  default     = "Ov23libBcHbgZHkrxg6D"
 }
 
 variable "google_client_id" {
