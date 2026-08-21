@@ -5,6 +5,7 @@
 locals {
   required_services = [
     "artifactregistry.googleapis.com",
+    "certificatemanager.googleapis.com",
     "cloudresourcemanager.googleapis.com",
     "compute.googleapis.com",
     "iamcredentials.googleapis.com",

@@ -149,10 +149,18 @@ resource "google_compute_managed_ssl_certificate" "this" {
   }
 }
 
+# Two certificate sources, one at a time. While var.wildcard_cert_active is false the proxy keeps
+# the classic three-name certificate that is already serving traffic; flipping it to true swaps in
+# the Certificate Manager map holding the wildcard. Doing that before the wildcard reports ACTIVE
+# would take HTTPS down for the whole site, which is exactly why it is a deliberate second step.
 resource "google_compute_target_https_proxy" "this" {
-  name             = "hisuiki-https-proxy"
-  url_map          = google_compute_url_map.this.id
-  ssl_certificates = [google_compute_managed_ssl_certificate.this.id]
+  name    = "hisuiki-https-proxy"
+  url_map = google_compute_url_map.this.id
+
+  ssl_certificates = var.wildcard_cert_active ? [] : [google_compute_managed_ssl_certificate.this.id]
+  certificate_map = var.wildcard_cert_active ? (
+    "//certificatemanager.googleapis.com/${google_certificate_manager_certificate_map.this.id}"
+  ) : null
 }
 
 resource "google_compute_global_forwarding_rule" "https" {

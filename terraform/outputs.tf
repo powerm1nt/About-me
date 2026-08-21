@@ -60,3 +60,12 @@ output "deployer_service_account" {
   description = "Set as the GCP_DEPLOY_SERVICE_ACCOUNT repository secret for the deploy workflow."
   value       = google_service_account.deployer.email
 }
+
+output "wildcard_dns_authorization_record" {
+  description = "Add this TXT record before the wildcard certificate can be issued. It stays in place for as long as the certificate is renewed."
+  value = {
+    name = google_certificate_manager_dns_authorization.hisuiki.dns_resource_record[0].name
+    type = google_certificate_manager_dns_authorization.hisuiki.dns_resource_record[0].type
+    data = google_certificate_manager_dns_authorization.hisuiki.dns_resource_record[0].data
+  }
+}

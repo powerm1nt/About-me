@@ -153,3 +153,16 @@ variable "github_repository" {
   type        = string
   default     = "powerm1nt/About-me"
 }
+
+variable "wildcard_cert_active" {
+  description = <<-EOT
+    Whether the load balancer serves the Certificate Manager wildcard certificate instead of the
+    classic three-name one.
+
+    Leave false until `gcloud certificate-manager certificates describe hisuiki-wildcard-cert`
+    reports ACTIVE. The wildcard cannot issue until its DNS authorization TXT record resolves, and
+    attaching a map whose certificate has not issued takes HTTPS down for every hostname.
+  EOT
+  type        = bool
+  default     = false
+}
