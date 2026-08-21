@@ -11,7 +11,8 @@
     "build": "prisma generate && tsc",
     "start": "node dist/index.js",
     "typecheck": "prisma generate && tsc --noEmit",
-    "migrate": "prisma migrate deploy"
+    "migrate": "prisma migrate deploy",
+    "test:security": "tsx test/userContent.test.ts"
   },
   "dependencies": {
     "@google-cloud/storage": "^8.0.0",
@@ -19,12 +20,15 @@
     "@prisma/client": "^7.9.1",
     "better-auth": "^1.7.1",
     "express": "^5.2.1",
-    "marked": "^18.0.9"
+    "marked": "^18.0.9",
+    "postcss": "^8.5.26",
+    "prisma": "^7.9.1",
+    "sanitize-html": "^2.17.7"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/node": "^26.2.0",
-    "prisma": "^7.9.1",
+    "@types/sanitize-html": "^2.16.1",
     "tsx": "^4.23.12",
     "typescript": "^5.9.3"
   }

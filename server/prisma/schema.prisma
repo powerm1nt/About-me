@@ -28,6 +28,15 @@ model User {
   sessions      Session[]
   accounts      Account[]
 
+  // Hisuiki's own relations. better-auth never touches these; it only ever inserts and reads the
+  // columns above.
+  profile      Profile?
+  posts        Post[]
+  comments     Comment[]
+  likes        Like[]
+  reposts      Repost[]
+  profilePages ProfilePage[]
+
   @@map("user")
 }
 
@@ -80,4 +89,159 @@ model Verification {
   updatedAt  DateTime @updatedAt
 
   @@map("verification")
+}
+
+// ── Hisuiki's own model ────────────────────────────────────────────────────────────────────────
+//
+// Everything below is the application's, not better-auth's. The columns added to User are all
+// nullable or defaulted on purpose: better-auth inserts rows knowing only its own fields, so a
+// required column without a default would break every sign-up.
+
+/// One person's public presence: the handle their subdomain is built from, and how their pages look.
+model Profile {
+  userId String @id
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Subdomain label — emi.hisuiki.com. Lowercase, unique, and separate from the account's display
+  /// name so someone can be "Emi (powerm1nt)" at emi.hisuiki.com without the two being tied.
+  handle   String? @unique
+  headline String?
+  bio      String?
+
+  /// Sanitised at write time and scoped to this profile's own container at render, so a stylesheet
+  /// cannot restyle the app chrome or another person's content.
+  customCss String?
+
+  /// Object paths in the data bucket, not URLs, so the serving host can change without a rewrite.
+  wallpaperPath String?
+  avatarPath    String?
+  accentColor   String?
+
+  /// Extra links this person adds to the header, as [{ label, href }]. JSON rather than a table:
+  /// it is a short ordered list that is always read and written whole.
+  headerLinks Json @default("[]")
+
+  /// The "{name}'s profile" entry in the header. Users can remove it, hence the flag.
+  showProfileLink Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("profile")
+}
+
+/// A post: markdown with a limited HTML subset, optionally carrying media.
+///
+/// Media posts and written articles are one model rather than two. They differ only in whether
+/// there are attachments and whether a title was given, and every feature that matters — comments,
+/// likes, reposts, the feed — applies identically to both.
+model Post {
+  id       String @id
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  /// Set for articles, so they get a readable URL on the author's profile. Null for media posts.
+  slug  String?
+  title String?
+
+  /// The source the author wrote. renderedHtml is the sanitised output, cached so a feed of fifty
+  /// posts is not fifty markdown renders.
+  body         String
+  renderedHtml String?
+
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  media    PostMedia[]
+  comments Comment[]
+  likes    Like[]
+  reposts  Repost[]
+
+  @@unique([authorId, slug])
+  @@index([publishedAt])
+  @@map("post")
+}
+
+/// One image on a post. Paths point into the data bucket under the owning user's prefix.
+model PostMedia {
+  id     String @id
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  path      String
+  thumbPath String?
+  width     Int     @default(0)
+  height    Int     @default(0)
+  alt       String  @default("")
+  position  Int     @default(0)
+
+  @@index([postId])
+  @@map("post_media")
+}
+
+model Comment {
+  id       String @id
+  postId   String
+  post     Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([postId])
+  @@map("comment")
+}
+
+/// Keyed by the pair, so liking twice is impossible rather than merely discouraged.
+model Like {
+  userId    String
+  postId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, postId])
+  @@index([postId])
+  @@map("like")
+}
+
+/// Sharing someone else's post onto your own profile, optionally with a remark of your own.
+model Repost {
+  id       String @id
+  userId   String
+  postId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post     Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  comment   String?
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
+  @@index([postId])
+  @@map("repost")
+}
+
+/// A page the user writes for their own profile — an about page, a links page, anything.
+/// `isHome` replaces the default profile landing, which is how a profile overrides app behaviour.
+model ProfilePage {
+  id     String @id
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  slug         String
+  title        String
+  body         String
+  renderedHtml String?
+  isHome       Boolean @default(false)
+  /// Whether the page appears in the profile's own navigation, and in what order.
+  inNav    Boolean @default(true)
+  position Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, slug])
+  @@map("profile_page")
 }

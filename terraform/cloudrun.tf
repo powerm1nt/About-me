@@ -231,11 +231,96 @@ resource "google_cloud_run_v2_service" "api" {
         instances = [google_sql_database_instance.main.connection_name]
       }
     }
+
+    # Direct VPC egress. The database has no public address, so without an interface on this network
+    # the connector has nothing to dial. PRIVATE_RANGES_ONLY keeps ordinary outbound traffic — the
+    # GCS API, GitHub and Google's OAuth endpoints — on the public path rather than routing it
+    # through the VPC, which would need a NAT gateway to work at all.
+    vpc_access {
+      egress = "PRIVATE_RANGES_ONLY"
+
+      network_interfaces {
+        network    = google_compute_network.main.id
+        subnetwork = google_compute_subnetwork.run.id
+      }
+    }
   }
 
   lifecycle {
     ignore_changes = [
       template[0].containers[0].image,
+      client,
+      client_version,
+    ]
+  }
+}
+
+# ── Migrations ────────────────────────────────────────────────────────────────────────────────
+#
+# Once the database is private, `cloud-sql-proxy` on a workstation can no longer reach it. This job
+# runs the same image from inside the VPC and applies pending migrations:
+#
+#   gcloud run jobs execute hisuiki-migrate --region <region> --project <project> --wait
+#
+# It is deliberately a job rather than a startup step in the API: a migration that runs on every
+# cold start would race itself across instances, and a failed one would take the service down
+# rather than simply reporting.
+resource "google_cloud_run_v2_job" "migrate" {
+  name     = "hisuiki-migrate"
+  location = var.region
+
+  deletion_protection = false
+
+  depends_on = [google_project_service.required]
+
+  template {
+    template {
+      service_account = google_service_account.api.email
+      max_retries     = 0
+
+      containers {
+        image   = var.app_image
+        command = ["pnpm"]
+        args    = ["exec", "prisma", "migrate", "deploy"]
+
+        env {
+          name = "DATABASE_URL"
+          value_source {
+            secret_key_ref {
+              secret  = google_secret_manager_secret.database_url.secret_id
+              version = "latest"
+            }
+          }
+        }
+
+        volume_mounts {
+          name       = "cloudsql"
+          mount_path = "/cloudsql"
+        }
+      }
+
+      volumes {
+        name = "cloudsql"
+
+        cloud_sql_instance {
+          instances = [google_sql_database_instance.main.connection_name]
+        }
+      }
+
+      vpc_access {
+        egress = "PRIVATE_RANGES_ONLY"
+
+        network_interfaces {
+          network    = google_compute_network.main.id
+          subnetwork = google_compute_subnetwork.run.id
+        }
+      }
+    }
+  }
+
+  lifecycle {
+    ignore_changes = [
+      template[0].template[0].containers[0].image,
       client,
       client_version,
     ]

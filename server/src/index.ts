@@ -1,6 +1,7 @@
 import express, { type NextFunction, type Request, type Response } from "express";
 import path from "node:path";
 import { config } from "./config.js";
+import { applyMigrations } from "./services/migrate.js";
 
 const app = express();
 
@@ -121,6 +122,10 @@ app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
   console.error("Unhandled error:", error);
   res.status(500).json({ error: "Internal server error." });
 });
+
+// Before the port opens, so no request is ever served against a schema this build did not expect.
+// A failure here exits non-zero: Cloud Run keeps the previous revision serving.
+await applyMigrations();
 
 app.listen(config.port, () => {
   console.log(`Listening on port ${config.port} as "${config.role}"`);

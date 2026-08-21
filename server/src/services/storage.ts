@@ -5,7 +5,11 @@
 import { Storage } from "@google-cloud/storage";
 import { config } from "../config.js";
 
-const storage = new Storage();
+// apiEndpoint is only set locally, where it points at the storage emulator. Application Default
+// Credentials still apply in production; the emulator ignores them.
+const storage = new Storage(
+  config.storage.apiEndpoint ? { apiEndpoint: config.storage.apiEndpoint } : {}
+);
 const bucket = () => storage.bucket(config.storage.bucketName);
 
 /** Public base URL rendered markdown links its assets at. */

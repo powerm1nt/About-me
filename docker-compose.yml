@@ -1,0 +1,102 @@
+# Production-shaped stack, for testing the real image locally.
+#
+#   docker compose up --build
+#
+#   http://localhost:8080   the frontend, served by the production image in its "web" role
+#   http://localhost:8081   the API, the same image in its "api" role
+#
+# This mirrors production's split: one image, two services, two origins — which means it also
+# reproduces the parts that only bite when the frontend and API are not same-origin, namely CORS and
+# the session cookie. Development (docker-compose.dev.yml) proxies through Vite and hides both.
+#
+# VITE_API_BASE_URL is a build argument rather than an environment variable because the frontend
+# bundle bakes it in at build time; changing it means rebuilding the image, exactly as in CI.
+
+name: hisuiki
+
+services:
+  postgres:
+    restart: unless-stopped
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: hisuiki
+      POSTGRES_USER: hisuiki
+      POSTGRES_PASSWORD: hisuiki
+    # 5433 on the host: the dev stack already binds 5432, and running both at once should not be a
+    # port fight.
+    ports:
+      - "0.0.0.0:5433:5432"
+    volumes:
+      # /var/lib/postgresql, not .../data: Postgres 18 images keep data in a
+      # major-version subdirectory so `pg_upgrade --link` can work across a mount boundary,
+      # and refuse to start when the older path is mounted instead.
+      - postgres-prod-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hisuiki -d hisuiki"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  gcs:
+    restart: unless-stopped
+    image: fsouza/fake-gcs-server:1.52
+    command:
+      - -scheme=http
+      - -port=4443
+      - -public-host=gcs:4443
+      - -data=/data
+    ports:
+      - "0.0.0.0:4444:4443"
+    volumes:
+      - ./.local/gcs:/data
+
+  api:
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+      args:
+        VITE_API_BASE_URL: http://localhost:8081
+        VITE_ASSET_BASE_URL: http://localhost:4444/storage/v1/b/hisuiki-assets-prod/o
+    depends_on:
+      postgres:
+        condition: service_healthy
+      gcs:
+        condition: service_started
+    ports:
+      - "0.0.0.0:8081:8080"
+    environment:
+      APP_ROLE: api
+      PORT: 8080
+      DATABASE_URL: postgresql://hisuiki:hisuiki@postgres:5432/hisuiki
+      GCS_BUCKET: hisuiki-assets-prod
+      GCS_PREFIX: static
+      GCS_API_ENDPOINT: http://gcs:4443
+      CDN_BASE_URL: http://localhost:4444/storage/v1/b/hisuiki-assets-prod/o
+      CORS_ALLOWED_ORIGINS: http://localhost:8080
+      BETTER_AUTH_URL: http://localhost:8081
+      BETTER_AUTH_SECRET: local-production-shaped-secret-not-used-anywhere-else
+      AUTH_APP_NAME: Hisuiki (local)
+      # Empty on purpose. Production scopes the cookie to .hisuiki.com so api. and the apex share it;
+      # localhost has no parent domain to scope to, and setting one stops the cookie being stored.
+      AUTH_COOKIE_DOMAIN: ""
+      SITE_OWNER_EMAILS: dev@example.com
+
+  web:
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+      args:
+        VITE_API_BASE_URL: http://localhost:8081
+        VITE_ASSET_BASE_URL: http://localhost:4444/storage/v1/b/hisuiki-assets-prod/o
+    depends_on:
+      - api
+    ports:
+      - "0.0.0.0:8080:8080"
+    environment:
+      APP_ROLE: web
+      PORT: 8080
+
+volumes:
+  postgres-prod-data:

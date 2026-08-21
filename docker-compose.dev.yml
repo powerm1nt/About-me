@@ -1,0 +1,136 @@
+# Local development stack. Everything binds 0.0.0.0 so the app is reachable from another machine on
+# the network, not just from inside the container.
+#
+#   docker compose -f docker-compose.dev.yml up
+#
+#   http://localhost:5173   the frontend (Vite, hot reload)
+#   http://localhost:5066   the API directly; the frontend proxies /api here, so the browser stays
+#                           same-origin and the session cookie needs no domain of its own
+#   http://localhost:8083   dbgate, to look at Postgres
+#
+# Nothing here touches Google Cloud. Postgres is local and object storage is a fake-gcs-server, so a
+# mistake in development cannot reach the production database or bucket.
+
+name: hisuiki
+
+services:
+  postgres:
+    restart: unless-stopped
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: hisuiki
+      POSTGRES_USER: hisuiki
+      POSTGRES_PASSWORD: hisuiki
+    ports:
+      - "0.0.0.0:5432:5432"
+    volumes:
+      # /var/lib/postgresql, not .../data: Postgres 18 images keep data in a
+      # major-version subdirectory so `pg_upgrade --link` can work across a mount boundary,
+      # and refuse to start when the older path is mounted instead.
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hisuiki -d hisuiki"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Stands in for Cloud Storage. Seed it from the real bucket with ./scripts/seed-local-gcs.sh,
+  # which writes into .local/gcs/ — otherwise the site renders with every page missing.
+  gcs:
+    restart: unless-stopped
+    image: fsouza/fake-gcs-server:1.52
+    command:
+      - -scheme=http
+      - -port=4443
+      - -public-host=gcs:4443
+      - -data=/data
+    ports:
+      - "0.0.0.0:4443:4443"
+    volumes:
+      - ./.local/gcs:/data
+
+  api:
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dev
+    command: pnpm --filter hisuiki-server dev
+    depends_on:
+      postgres:
+        condition: service_healthy
+      gcs:
+        condition: service_started
+    ports:
+      - "0.0.0.0:5066:5066"
+    volumes:
+      - ./src:/repo/src
+      - ./server/src:/repo/server/src
+      - ./server/prisma:/repo/server/prisma
+      - ./index.html:/repo/index.html
+      - ./public:/repo/public
+      - ./vite.config.ts:/repo/vite.config.ts
+      - ./tsconfig.json:/repo/tsconfig.json
+    environment:
+      APP_ROLE: api
+      PORT: 5066
+      DATABASE_URL: postgresql://hisuiki:hisuiki@postgres:5432/hisuiki
+      GCS_BUCKET: hisuiki-assets-prod
+      GCS_PREFIX: static
+      GCS_API_ENDPOINT: http://gcs:4443
+      # The emulator serves objects on its own host, so rendered markdown must point there too.
+      CDN_BASE_URL: http://localhost:4443/storage/v1/b/hisuiki-assets-prod/o
+      # The browser talks to the frontend's origin and Vite proxies /api here, so this is the origin
+      # to trust and to send people back to after signing in.
+      CORS_ALLOWED_ORIGINS: http://localhost:5173
+      BETTER_AUTH_URL: http://localhost:5173
+      BETTER_AUTH_SECRET: local-development-secret-not-used-anywhere-else
+      AUTH_APP_NAME: Hisuiki (dev)
+      # Empty: both halves are localhost in development, so the cookie needs no parent domain.
+      AUTH_COOKIE_DOMAIN: ""
+      SITE_OWNER_EMAILS: dev@example.com
+      GOOGLE_APPLICATION_CREDENTIALS: ""
+
+  web:
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dev
+    command: pnpm dev --host 0.0.0.0 --port 5173
+    depends_on:
+      - api
+    ports:
+      - "0.0.0.0:5173:5173"
+    volumes:
+      - ./src:/repo/src
+      - ./index.html:/repo/index.html
+      - ./public:/repo/public
+      - ./vite.config.ts:/repo/vite.config.ts
+      - ./tsconfig.json:/repo/tsconfig.json
+    environment:
+      # Empty, so the bundle calls its own origin and Vite proxies to the API container.
+      VITE_API_BASE_URL: ""
+      VITE_ASSET_BASE_URL: http://localhost:4443/storage/v1/b/hisuiki-assets-prod/o
+      VITE_DEV_API_TARGET: http://api:5066
+
+  dbgate:
+    restart: unless-stopped
+    image: dbgate/dbgate:5.2.7-alpine
+    depends_on:
+      - postgres
+    ports:
+      - "0.0.0.0:8083:3000"
+    volumes:
+      - dbgate-data:/root/.dbgate
+    environment:
+      CONNECTIONS: con1
+      LABEL_con1: Hisuiki
+      SERVER_con1: postgres
+      PORT_con1: 5432
+      USER_con1: hisuiki
+      PASSWORD_con1: hisuiki
+      DATABASE_con1: hisuiki
+      ENGINE_con1: postgres@dbgate-plugin-postgres
+
+volumes:
+  postgres-data:
+  dbgate-data:

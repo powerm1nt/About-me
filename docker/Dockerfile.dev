@@ -1,0 +1,24 @@
+# Development image: the toolchain, not a build.
+#
+# Source is bind-mounted rather than copied, so an edit on the host is picked up by the watcher in
+# the container. Only the dependency install is baked in, which is what makes a rebuild rare.
+FROM node:24-slim
+
+# Installed directly rather than through corepack, matching server/Dockerfile — corepack is
+# deprecated in current Node and aborts under emulation.
+RUN npm install -g pnpm@11.18.0
+
+WORKDIR /repo
+
+# Manifests first so `pnpm install` is cached until the dependencies themselves change.
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY server/package.json server/package.json
+RUN pnpm install --frozen-lockfile
+
+# The generated Prisma client lives in the image, not the bind mount, so a host without it still
+# starts. The schema is copied for that generate step alone; the bind mount supersedes it at runtime.
+COPY server/prisma server/prisma
+COPY server/prisma.config.ts server/prisma.config.ts
+RUN pnpm --filter hisuiki-server exec prisma generate
+
+EXPOSE 5173 5066

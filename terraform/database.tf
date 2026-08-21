@@ -1,14 +1,9 @@
 # Postgres behind better-auth: accounts, sessions, and provider links.
 #
-# Deliberately lightweight. There is no VPC, no private services access peering, and no serverless
-# connector — Cloud Run reaches the instance through the Cloud SQL *connector*, which authenticates
-# with IAM and speaks TLS over Google's internal network to a unix socket inside the container.
-# The instance has a public IP because the connector requires one, but with an empty authorized-
-# networks list nothing on the internet can open a connection to it: reachability is granted by
-# roles/cloudsql.client, not by an IP range.
-#
-# The alternative — private IP on a dedicated VPC — buys little here and costs a peering range, a
-# network, and a much slower first apply.
+# The instance has no public IP. It sits on the VPC in network.tf, reachable only from inside it,
+# and Cloud Run gets there through Direct VPC egress. IAM still governs who may connect —
+# roles/cloudsql.client — so removing the public address narrows the network path rather than
+# replacing the authorization model.
 
 resource "google_sql_database_instance" "main" {
   name             = var.db_instance_name
@@ -19,7 +14,11 @@ resource "google_sql_database_instance" "main" {
   # the Cloud Run services it keeps Terraform's guard on.
   deletion_protection = true
 
-  depends_on = [google_project_service.required]
+  # The peering has to exist before an instance can be given an address inside it.
+  depends_on = [
+    google_project_service.required,
+    google_service_networking_connection.private_services,
+  ]
 
   settings {
     # Pinned, and not a detail: new instances now default to ENTERPRISE_PLUS, which only accepts the
@@ -41,9 +40,11 @@ resource "google_sql_database_instance" "main" {
     }
 
     ip_configuration {
-      ipv4_enabled = true
-      # No authorized networks at all. The only way in is the connector, holding cloudsql.client.
-      ssl_mode = "ENCRYPTED_ONLY"
+      # No public address at all; the instance answers only on its private one.
+      ipv4_enabled                                  = false
+      private_network                               = google_compute_network.main.id
+      enable_private_path_for_google_cloud_services = true
+      ssl_mode                                      = "ENCRYPTED_ONLY"
     }
 
     database_flags {
@@ -151,6 +152,12 @@ resource "google_secret_manager_secret" "github_client_secret" {
 resource "google_secret_manager_secret_version" "github_client_secret_placeholder" {
   secret      = google_secret_manager_secret.github_client_secret.id
   secret_data = "placeholder-replace-with-real-github-client-secret"
+
+  lifecycle {
+    # Once a real secret is added as a later version, the placeholder is disabled by hand so nothing
+    # can fall back to it. Terraform would otherwise see enabled=false as drift and switch it back on.
+    ignore_changes = [enabled]
+  }
 }
 
 resource "google_secret_manager_secret" "google_client_secret" {
@@ -166,4 +173,10 @@ resource "google_secret_manager_secret" "google_client_secret" {
 resource "google_secret_manager_secret_version" "google_client_secret_placeholder" {
   secret      = google_secret_manager_secret.google_client_secret.id
   secret_data = "placeholder-replace-with-real-google-client-secret"
+
+  lifecycle {
+    # Once a real secret is added as a later version, the placeholder is disabled by hand so nothing
+    # can fall back to it. Terraform would otherwise see enabled=false as drift and switch it back on.
+    ignore_changes = [enabled]
+  }
 }

@@ -47,6 +47,12 @@ ENV NODE_ENV=production
 # Drop root: nothing here writes to disk at runtime, so the process has no reason to own its files.
 COPY --from=build --chown=node:node /app ./
 COPY --from=build --chown=node:node /repo/dist ./web/
+# The schema, its migrations and the Prisma config, so `prisma migrate deploy` can run at startup.
+COPY --from=build --chown=node:node /repo/server/prisma ./prisma/
+COPY --from=build --chown=node:node /repo/server/prisma.config.ts ./prisma.config.ts
+
+# `pnpm exec` needs pnpm present in the runtime image, not just the build stage.
+RUN npm install -g pnpm@11.18.0
 USER node
 
 ENV PORT=8080

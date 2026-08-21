@@ -30,6 +30,13 @@ export const config = {
     prefix,
 
     /**
+     * Overrides where the storage client sends its requests. Empty in production, where it talks to
+     * Google; set to a fake-gcs-server in the local compose stack so development never reads or
+     * writes the real bucket by accident.
+     */
+    apiEndpoint: env("GCS_API_ENDPOINT"),
+
+    /**
      * Public base URL rendered markdown points its assets at. Falls back to storage.googleapis.com
      * when no CDN host is configured, so a local run still resolves images.
      */
