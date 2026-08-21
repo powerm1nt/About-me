@@ -46,11 +46,12 @@ resource "google_compute_region_network_endpoint_group" "web" {
 
 # The frontend is a built React bundle: hashed assets are immutable and index.html must never be
 # cached at the edge. Express sets exactly those headers per file, so the CDN follows them.
+# No timeout_sec on either backend service: one fronting a serverless NEG rejects the field. The
+# request timeout that actually applies is the Cloud Run service's own, which defaults to 300s.
 resource "google_compute_backend_service" "web" {
   name                  = "hisuiki-web-backend"
   protocol              = "HTTP"
   load_balancing_scheme = "EXTERNAL"
-  timeout_sec           = 30
   enable_cdn            = true
 
   cdn_policy {
@@ -89,7 +90,6 @@ resource "google_compute_backend_service" "api" {
   name                  = "hisuiki-api-backend"
   protocol              = "HTTP"
   load_balancing_scheme = "EXTERNAL"
-  timeout_sec           = 60
   enable_cdn            = false
 
   backend {

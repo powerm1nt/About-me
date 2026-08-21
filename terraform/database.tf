@@ -22,6 +22,11 @@ resource "google_sql_database_instance" "main" {
   depends_on = [google_project_service.required]
 
   settings {
+    # Pinned, and not a detail: new instances now default to ENTERPRISE_PLUS, which only accepts the
+    # db-perf-optimized-N-* tiers and costs an order of magnitude more. Shared-core exists solely on
+    # the Enterprise edition, so leaving this unset rejects var.db_tier outright.
+    edition = "ENTERPRISE"
+
     tier              = var.db_tier
     availability_type = "ZONAL"
     disk_size         = 10
@@ -121,10 +126,18 @@ resource "google_secret_manager_secret_version" "better_auth_secret" {
   secret_data = random_password.better_auth_secret.result
 }
 
-# Created empty: OAuth client secrets come from the GitHub and Google consoles and are added with
-#   gcloud secrets versions add <id> --data-file=-
-# Terraform owning a version would mean the secret passing through a tfvars file and the state in
-# plain text, which is exactly what Secret Manager exists to avoid.
+# OAuth client secrets come from the GitHub and Google consoles. Terraform owning their real values
+# would mean each one passing through a tfvars file and sitting in the state in plain text, which is
+# exactly what Secret Manager exists to avoid — so it owns only a placeholder first version.
+#
+# The placeholder is not ceremony. Cloud Run resolves secret_key_ref at deploy time and refuses to
+# create a service whose secret has no versions, so an empty secret here fails the apply rather than
+# waiting politely for a value. Adding the real secret later creates version 2, "latest" follows it,
+# and the next revision picks it up:
+#
+#   gcloud secrets versions add github-oauth-client-secret --data-file=- --project=hisuiki
+#
+# Terraform keeps managing version 1 and will not fight the newer one.
 resource "google_secret_manager_secret" "github_client_secret" {
   secret_id = "github-oauth-client-secret"
 
@@ -135,6 +148,11 @@ resource "google_secret_manager_secret" "github_client_secret" {
   depends_on = [google_project_service.required]
 }
 
+resource "google_secret_manager_secret_version" "github_client_secret_placeholder" {
+  secret      = google_secret_manager_secret.github_client_secret.id
+  secret_data = "placeholder-replace-with-real-github-client-secret"
+}
+
 resource "google_secret_manager_secret" "google_client_secret" {
   secret_id = "google-oauth-client-secret"
 
@@ -143,4 +161,9 @@ resource "google_secret_manager_secret" "google_client_secret" {
   }
 
   depends_on = [google_project_service.required]
+}
+
+resource "google_secret_manager_secret_version" "google_client_secret_placeholder" {
+  secret      = google_secret_manager_secret.google_client_secret.id
+  secret_data = "placeholder-replace-with-real-google-client-secret"
 }

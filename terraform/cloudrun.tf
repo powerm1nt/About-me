@@ -116,7 +116,13 @@ resource "google_cloud_run_v2_service" "api" {
   deletion_protection = false
   ingress             = "INGRESS_TRAFFIC_ALL"
 
-  depends_on = [google_project_service.required]
+  # The secret *versions* specifically: Cloud Run resolves secret_key_ref while creating the
+  # service, and a secret with no versions fails that outright.
+  depends_on = [
+    google_project_service.required,
+    google_secret_manager_secret_version.github_client_secret_placeholder,
+    google_secret_manager_secret_version.google_client_secret_placeholder,
+  ]
 
   template {
     service_account = google_service_account.api.email

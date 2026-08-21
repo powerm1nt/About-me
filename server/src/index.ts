@@ -1,11 +1,6 @@
 import express, { type NextFunction, type Request, type Response } from "express";
 import path from "node:path";
-import { toNodeHandler } from "better-auth/node";
 import { config } from "./config.js";
-import { auth } from "./services/auth.js";
-import { pagesRouter } from "./routes/pages.js";
-import { photosRouter } from "./routes/photos.js";
-import { wallpaperRouter } from "./routes/wallpaper.js";
 
 const app = express();
 
@@ -53,7 +48,22 @@ app.use("/api", (_req, res, next) => {
  * therefore mounted before express.json(), which would otherwise consume the request first and
  * leave the handler waiting on a stream that never emits.
  */
+/**
+ * Imported here rather than at the top of the file so that the "web" role never loads the API's
+ * modules at all. This is not an optimisation: better-auth throws on construction when
+ * BETTER_AUTH_SECRET is missing, and the frontend service deliberately has no secret, no database,
+ * and no bucket — so a static import crash-loops it on boot.
+ */
 if (config.servesApi) {
+  const [{ toNodeHandler }, { auth }, { pagesRouter }, { photosRouter }, { wallpaperRouter }] =
+    await Promise.all([
+      import("better-auth/node"),
+      import("./services/auth.js"),
+      import("./routes/pages.js"),
+      import("./routes/photos.js"),
+      import("./routes/wallpaper.js"),
+    ]);
+
   app.all("/api/auth/*splat", toNodeHandler(auth));
 
   app.use(express.json({ limit: "1mb" }));
