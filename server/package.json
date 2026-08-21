@@ -6,21 +6,25 @@
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "build": "tsc",
+    "generate": "prisma generate",
+    "dev": "prisma generate && tsx watch src/index.ts",
+    "build": "prisma generate && tsc",
     "start": "node dist/index.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "prisma generate && tsc --noEmit",
+    "migrate": "prisma migrate deploy"
   },
   "dependencies": {
     "@google-cloud/storage": "^8.0.0",
-    "@octokit/rest": "^22.0.1",
-    "diff": "^9.0.0",
+    "@prisma/adapter-pg": "^7.9.1",
+    "@prisma/client": "^7.9.1",
+    "better-auth": "^1.7.1",
     "express": "^5.2.1",
     "marked": "^18.0.9"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/node": "^26.2.0",
+    "prisma": "^7.9.1",
     "tsx": "^4.23.12",
     "typescript": "^5.9.3"
   }

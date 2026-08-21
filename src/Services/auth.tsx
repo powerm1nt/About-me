@@ -1,143 +1,69 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
-import { apiUrl } from "./config";
-import { SESSION_HEADER } from "./api";
+import { createContext, useContext, useMemo, type ReactNode } from "react";
+import { authClient } from "./authClient";
 import type { AuthUser } from "./types";
 
 /**
- * GitHub sign-in state for the "propose changes" flow. The browser only ever holds an opaque
- * session id; the access token stays server-side.
+ * Sign-in state, over better-auth's session hook.
+ *
+ * The browser holds nothing: the session is an HttpOnly cookie the server sets, so every call that
+ * needs an identity just sends credentials and lets the API resolve it. This context exists to give
+ * the app one shape to read rather than to store anything of its own.
  */
-
-const STORAGE_KEY = "proposal-session";
-
-/** Action the OAuth callback asked to resume once the user lands back here. */
-export type ResumeAction = "edit" | "create" | null;
-
-interface InitialAuth {
-  sessionId: string | null;
-  resume: ResumeAction;
-}
-
-/**
- * Consumes the OAuth callback's `?session=` / `?resume=` params, falling back to a saved session.
- * At module scope because it must run once per page load: StrictMode's double-invoke re-enters
- * every in-component equivalent, by which point the params are stripped and the resume is lost.
- */
-const initialAuth: InitialAuth = (() => {
-  const params = new URLSearchParams(window.location.search);
-  const fromUrl = params.get("session");
-
-  if (!fromUrl) {
-    return { sessionId: localStorage.getItem(STORAGE_KEY), resume: null };
-  }
-
-  const resume = params.get("resume");
-  localStorage.setItem(STORAGE_KEY, fromUrl);
-  window.history.replaceState({}, "", window.location.pathname);
-
-  return {
-    sessionId: fromUrl,
-    resume: resume === "edit" || resume === "create" ? resume : null,
-  };
-})();
 
 interface AuthValue {
   user: AuthUser | null;
   isSignedIn: boolean;
-  sessionId: string | null;
-  /** Set from the callback's `?resume=` param; read by whichever component owns that action. */
-  resumeAction: ResumeAction;
-  /** True until the stored session (if any) has been checked against /api/auth/me. */
+  /** True until the session request has settled, so the UI can avoid flashing a signed-out state. */
   initializing: boolean;
-  redirectToLogin: (resume?: Exclude<ResumeAction, null>) => void;
-  logout: () => Promise<void>;
+  /** Sends the browser to the sign-in page, returning here afterwards. */
+  redirectToLogin: () => void;
+  signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthValue>({
   user: null,
   isSignedIn: false,
-  sessionId: null,
-  resumeAction: null,
   initializing: true,
   redirectToLogin: () => {},
-  logout: async () => {},
+  signOut: async () => {},
 });
 
-async function fetchMe(sessionId: string): Promise<AuthUser | null> {
-  try {
-    const response = await fetch(apiUrl("/api/auth/me"), {
-      headers: { [SESSION_HEADER]: sessionId },
-    });
-    return response.ok ? ((await response.json()) as AuthUser) : null;
-  } catch {
-    return null;
-  }
-}
+/** Where the sign-in page should return to; read by SignIn from the query string. */
+export const RETURN_PARAM = "return";
+
+export const signInHref = (japanese: boolean): string => {
+  const here = `${window.location.pathname}${window.location.search}`;
+  const base = japanese ? "/signin/ja" : "/signin";
+  return `${base}?${RETURN_PARAM}=${encodeURIComponent(here)}`;
+};
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [sessionId, setSessionId] = useState<string | null>(initialAuth.sessionId);
-  const [user, setUser] = useState<AuthUser | null>(null);
-  // Only "initializing" with a stored session to verify; otherwise the answer is already known.
-  const [initializing, setInitializing] = useState(initialAuth.sessionId !== null);
+  const { data, isPending } = authClient.useSession();
 
-  useEffect(() => {
-    if (!sessionId) return;
+  const value = useMemo<AuthValue>(() => {
+    const sessionUser = data?.user;
 
-    let active = true;
-    void fetchMe(sessionId).then((me) => {
-      if (!active) return;
-      setUser(me);
-      setInitializing(false);
-    });
-
-    return () => {
-      active = false;
+    return {
+      user: sessionUser
+        ? {
+            id: sessionUser.id,
+            name: sessionUser.name ?? "",
+            email: sessionUser.email ?? "",
+            image: sessionUser.image ?? "",
+          }
+        : null,
+      isSignedIn: sessionUser !== undefined && sessionUser !== null,
+      initializing: isPending,
+      // A full page navigation rather than a client-side one: coming back from a social provider is
+      // a fresh document load anyway, so the two paths behave the same.
+      redirectToLogin: () => {
+        window.location.href = signInHref(window.location.pathname.endsWith("/ja"));
+      },
+      signOut: async () => {
+        await authClient.signOut();
+      },
     };
-  }, [sessionId]);
-
-  // A full-page redirect: the OAuth dance leaves and re-enters the site.
-  const redirectToLogin = useCallback((resume?: Exclude<ResumeAction, null>) => {
-    const returnUrl = encodeURIComponent(window.location.href);
-    const resumeParam = resume ? `&resume=${encodeURIComponent(resume)}` : "";
-    window.location.href = apiUrl(`/api/auth/github/login?returnUrl=${returnUrl}${resumeParam}`);
-  }, []);
-
-  const logout = useCallback(async () => {
-    if (sessionId) {
-      try {
-        await fetch(apiUrl("/api/auth/logout"), {
-          method: "POST",
-          headers: { [SESSION_HEADER]: sessionId },
-        });
-      } catch {
-        // best-effort — the local session is dropped either way
-      }
-    }
-    localStorage.removeItem(STORAGE_KEY);
-    setSessionId(null);
-    setUser(null);
-  }, [sessionId]);
-
-  const value = useMemo<AuthValue>(
-    () => ({
-      user,
-      isSignedIn: user !== null,
-      sessionId,
-      resumeAction: initialAuth.resume,
-      initializing,
-      redirectToLogin,
-      logout,
-    }),
-    [user, sessionId, initializing, redirectToLogin, logout]
-  );
+  }, [data, isPending]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

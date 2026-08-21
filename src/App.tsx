@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import AppModal from "./Common/Components/AppModal/AppModal";
 import Wallpaper from "./Common/Components/Wallpaper/Wallpaper";
-import { FileViewer, Footer, Header } from "./Modules";
+import { FileViewer, Footer, Header, Photos, SignIn } from "./Modules";
 import { AuthProvider } from "./Services/auth";
 import { ExternalLinkProvider } from "./Services/externalLink";
 import { RouterProvider, resolveRoute, useRouter } from "./Services/router";
@@ -10,6 +10,10 @@ import { injectAssetCssVariables } from "./Services/wallpaper";
 function pageTitle(pathname: string): string {
   const route = resolveRoute(pathname);
   if (!route) return "Not found — powerm1nt";
+  if (route.kind === "photos") {
+    return route.photoId ? "Photo — powerm1nt" : "Photos — powerm1nt";
+  }
+  if (route.kind === "signin") return "Sign in — powerm1nt";
   if (route.isBlogIndex) return "Blog — powerm1nt";
   if (route.filePath.startsWith("blog/")) {
     const slug = route.filePath.slice("blog/".length).replace(/(\.ja)?\.md$/, "");
@@ -43,10 +47,20 @@ function Shell() {
     <>
       <Wallpaper />
       <Header isJapanese={route?.japanese ?? false} />
-      {route ? (
-        <FileViewer filePath={route.filePath} isJapanese={route.japanese} />
-      ) : (
+      {route === null ? (
         <NotFound />
+      ) : route.kind === "photos" ? (
+        <Photos photoId={route.photoId} isJapanese={route.japanese} />
+      ) : route.kind === "signin" ? (
+        <main className="main-content">
+          <div className="main-content-container">
+            <div className="file-content" data-phase="ready">
+              <SignIn isJapanese={route.japanese} />
+            </div>
+          </div>
+        </main>
+      ) : (
+        <FileViewer filePath={route.filePath} isJapanese={route.japanese} />
       )}
       <Footer />
       <AppModal />

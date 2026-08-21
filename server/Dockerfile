@@ -22,12 +22,14 @@ COPY public/ public/
 COPY src/ src/
 COPY server/ server/
 
-ARG VITE_API_BASE_URL=""
-ARG VITE_ASSET_BASE_URL="https://nwrks-cdn.public.prod.nuka.works/static"
+ARG VITE_API_BASE_URL="https://api.hisuiki.com"
+ARG VITE_ASSET_BASE_URL="https://cdn.hisuiki.com/static"
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 ENV VITE_ASSET_BASE_URL=$VITE_ASSET_BASE_URL
 
 RUN pnpm build
+# The API's build runs `prisma generate` first: the generated client is gitignored, so it is not in
+# the build context and has to be produced here. Generating needs no database connection.
 RUN pnpm --filter aboutme-server build
 
 # Resolves the workspace package into a self-contained directory with production dependencies only

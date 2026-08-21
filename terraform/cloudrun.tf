@@ -1,33 +1,110 @@
-# The blog's combined React/Express service, replacing both the frontend bucket and the Linux App
-# Service that the old ASP.NET Core API ran on.
+# Two Cloud Run services from one image, split by origin:
 #
-# The GitHub OAuth client secret lives in Secret Manager and is mounted as an environment variable
-# at runtime, so — unlike the App Service setup, where the deploy workflow pushed the secret in as
-# a plain app setting on every release — the value never passes through CI.
+#   hisuiki.com      -> hisuiki-web   APP_ROLE=web   serves the built React frontend, no /api
+#   api.hisuiki.com  -> hisuiki-api   APP_ROLE=api   serves Express /api, no static files
+#
+# One image rather than two because the frontend build and the API build already share a repository,
+# a lockfile, and a release; splitting the artifact would mean two pipelines to keep in step for no
+# gain. APP_ROLE decides what a revision mounts (see server/src/index.ts).
+#
+# The split itself is what costs something: the browser now talks to a different origin than it was
+# served from, so the session cookie has to be scoped to the parent domain and CORS has to name the
+# frontend explicitly. Both are configured below and neither is optional.
 
-resource "google_service_account" "api" {
-  account_id   = "blog-api"
-  display_name = "Blog frontend and API (Cloud Run)"
+# ── Web ───────────────────────────────────────────────────────────────────────────────────────
+
+resource "google_service_account" "web" {
+  account_id   = "hisuiki-web"
+  display_name = "hisuiki frontend (Cloud Run)"
 }
 
-# Read/write, not read-only: proposals are applied to content objects by the patch workflow, and
-# the API itself reads every page it renders.
+resource "google_cloud_run_v2_service" "web" {
+  name     = var.web_service_name
+  location = var.region
+
+  deletion_protection = false
+  ingress             = "INGRESS_TRAFFIC_ALL"
+
+  depends_on = [google_project_service.required]
+
+  template {
+    service_account = google_service_account.web.email
+
+    scaling {
+      min_instance_count = var.min_instances
+      max_instance_count = 4
+    }
+
+    containers {
+      image = var.app_image
+
+      env {
+        name  = "APP_ROLE"
+        value = "web"
+      }
+
+      # Static files only: no bucket, no database, no secrets. If this service is ever compromised
+      # there is nothing behind it to reach.
+      resources {
+        limits = {
+          cpu    = "1"
+          memory = "512Mi"
+        }
+      }
+    }
+  }
+
+  lifecycle {
+    # The deploy workflow owns the deployed image; Terraform owns everything else about the service.
+    ignore_changes = [
+      template[0].containers[0].image,
+      client,
+      client_version,
+    ]
+  }
+}
+
+# ── API ───────────────────────────────────────────────────────────────────────────────────────
+
+resource "google_service_account" "api" {
+  account_id   = "hisuiki-api"
+  display_name = "hisuiki API (Cloud Run)"
+}
+
+# Read/write: the editor saves markdown here and the photo gallery writes images and its metadata.
 resource "google_storage_bucket_iam_member" "api_assets" {
   bucket = google_storage_bucket.assets.name
   role   = "roles/storage.objectAdmin"
   member = "serviceAccount:${google_service_account.api.email}"
 }
 
-resource "google_secret_manager_secret" "github_client_secret" {
-  secret_id = "github-oauth-client-secret"
+# gcloud and the client library read bucket metadata before listing objects, which objectAdmin does
+# not carry. legacyBucketReader is the narrowest role that does.
+resource "google_storage_bucket_iam_member" "api_assets_bucket" {
+  bucket = google_storage_bucket.assets.name
+  role   = "roles/storage.legacyBucketReader"
+  member = "serviceAccount:${google_service_account.api.email}"
+}
 
-  replication {
-    auto {}
+resource "google_project_iam_member" "api_cloudsql_client" {
+  project = var.project_id
+  role    = "roles/cloudsql.client"
+  member  = "serviceAccount:${google_service_account.api.email}"
+}
+
+locals {
+  api_secrets = {
+    database_url         = google_secret_manager_secret.database_url.id
+    better_auth_secret   = google_secret_manager_secret.better_auth_secret.id
+    github_client_secret = google_secret_manager_secret.github_client_secret.id
+    google_client_secret = google_secret_manager_secret.google_client_secret.id
   }
 }
 
-resource "google_secret_manager_secret_iam_member" "api_github_client_secret" {
-  secret_id = google_secret_manager_secret.github_client_secret.id
+resource "google_secret_manager_secret_iam_member" "api" {
+  for_each = local.api_secrets
+
+  secret_id = each.value
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.api.email}"
 }
@@ -39,20 +116,30 @@ resource "google_cloud_run_v2_service" "api" {
   deletion_protection = false
   ingress             = "INGRESS_TRAFFIC_ALL"
 
+  # The secret *versions* specifically: Cloud Run resolves secret_key_ref while creating the
+  # service, and a secret with no versions fails that outright.
+  depends_on = [
+    google_project_service.required,
+    google_secret_manager_secret_version.github_client_secret_placeholder,
+    google_secret_manager_secret_version.google_client_secret_placeholder,
+  ]
+
   template {
     service_account = google_service_account.api.email
 
     scaling {
-      min_instance_count = var.api_min_instances
+      min_instance_count = var.min_instances
       max_instance_count = 4
     }
 
     containers {
-      image = var.api_image
+      image = var.app_image
 
-      # Plain names, read directly by server/src/config.ts. These replaced the ASP.NET
-      # "Section__Key" variables the C# service used — that spelling is a .NET configuration-binder
-      # convention and carries no meaning in Node.
+      env {
+        name  = "APP_ROLE"
+        value = "api"
+      }
+
       env {
         name  = "GCS_BUCKET"
         value = google_storage_bucket.assets.name
@@ -65,14 +152,28 @@ resource "google_cloud_run_v2_service" "api" {
 
       env {
         name  = "CDN_BASE_URL"
-        value = "https://${var.cdn_custom_domain_host}"
+        value = "https://${var.cdn_domain}"
       }
 
-      # Doubles as the OAuth returnUrl allow-list, so the login flow can't be used as an open
-      # redirect that leaks a session id.
+      # The frontend is a different origin now, so this is a real CORS allow-list rather than a
+      # formality. It doubles as better-auth's trusted-origin list.
       env {
         name  = "CORS_ALLOWED_ORIGINS"
-        value = "https://${var.site_custom_domain_host}"
+        value = "https://${var.site_domain}"
+      }
+
+      # better-auth builds its callback URLs from this, so it must match what is registered with
+      # GitHub and Google: https://api.hisuiki.com/api/auth/callback/{github,google}
+      env {
+        name  = "BETTER_AUTH_URL"
+        value = "https://${var.api_domain}"
+      }
+
+      # The session cookie is issued by api.hisuiki.com but has to be readable by hisuiki.com, and
+      # later by per-profile subdomains. Scoping it to the parent domain is what makes that work.
+      env {
+        name  = "AUTH_COOKIE_DOMAIN"
+        value = ".${var.site_domain}"
       }
 
       env {
@@ -81,23 +182,38 @@ resource "google_cloud_run_v2_service" "api" {
       }
 
       env {
-        name  = "GITHUB_REPO_OWNER"
-        value = split("/", var.github_repository)[0]
+        name  = "GOOGLE_CLIENT_ID"
+        value = var.google_client_id
       }
 
       env {
-        name  = "GITHUB_REPO_NAME"
-        value = split("/", var.github_repository)[1]
+        name  = "SITE_OWNER_EMAILS"
+        value = var.site_owner_emails
       }
 
-      env {
-        name = "GITHUB_CLIENT_SECRET"
-        value_source {
-          secret_key_ref {
-            secret  = google_secret_manager_secret.github_client_secret.secret_id
-            version = "latest"
+      dynamic "env" {
+        for_each = {
+          DATABASE_URL         = google_secret_manager_secret.database_url.secret_id
+          BETTER_AUTH_SECRET   = google_secret_manager_secret.better_auth_secret.secret_id
+          GITHUB_CLIENT_SECRET = google_secret_manager_secret.github_client_secret.secret_id
+          GOOGLE_CLIENT_SECRET = google_secret_manager_secret.google_client_secret.secret_id
+        }
+
+        content {
+          name = env.key
+
+          value_source {
+            secret_key_ref {
+              secret  = env.value
+              version = "latest"
+            }
           }
         }
+      }
+
+      volume_mounts {
+        name       = "cloudsql"
+        mount_path = "/cloudsql"
       }
 
       resources {
@@ -107,12 +223,17 @@ resource "google_cloud_run_v2_service" "api" {
         }
       }
     }
+
+    volumes {
+      name = "cloudsql"
+
+      cloud_sql_instance {
+        instances = [google_sql_database_instance.main.connection_name]
+      }
+    }
   }
 
   lifecycle {
-    # The deploy workflow owns the deployed image; Terraform owns everything else about the service.
-    # Without this, every `terraform apply` would roll the service back to var.api_image and undo
-    # the most recent deploy.
     ignore_changes = [
       template[0].containers[0].image,
       client,
@@ -121,184 +242,17 @@ resource "google_cloud_run_v2_service" "api" {
   }
 }
 
-# The blog and its API are public. Authorization for editing is the app's own GitHub session
-# check, not Cloud Run IAM.
-resource "google_cloud_run_v2_service_iam_member" "public" {
-  name     = google_cloud_run_v2_service.api.name
-  location = google_cloud_run_v2_service.api.location
+# Both services are public. Authorization is the application's own session check, not Cloud Run IAM.
+resource "google_cloud_run_v2_service_iam_member" "web_public" {
+  name     = google_cloud_run_v2_service.web.name
+  location = google_cloud_run_v2_service.web.location
   role     = "roles/run.invoker"
   member   = "allUsers"
 }
 
-# Cloud CDN reaches the combined blog service through this serverless NEG. The service's run.app
-# URL remains available for direct diagnostics, but production browsers use blog.nuka.works.
-resource "google_compute_region_network_endpoint_group" "blog" {
-  name                  = "nwrks-blog-neg"
-  network_endpoint_type = "SERVERLESS"
-  region                = var.region
-
-  cloud_run {
-    service = google_cloud_run_v2_service.api.name
-  }
-}
-
-# The company site gets an isolated runtime identity and Cloud Run environment. The one container
-# serves both the built React frontend and its API, which lets IAP protect every route—including
-# the run.app URL—before any application bytes are returned.
-data "google_project" "current" {
-  project_id = var.project_id
-}
-
-resource "google_project_service" "iap" {
-  project            = var.project_id
-  service            = "iap.googleapis.com"
-  disable_on_destroy = false
-}
-
-resource "google_project_service_identity" "iap" {
-  provider = google-beta
-
-  project = google_project_service.iap.project
-  service = google_project_service.iap.service
-}
-
-resource "google_service_account" "company_site" {
-  account_id   = var.company_service_name
-  display_name = "NukaWorks company website (Cloud Run)"
-}
-
-resource "google_storage_bucket_iam_member" "company_site_assets" {
-  bucket = google_storage_bucket.assets.name
-  role   = "roles/storage.objectAdmin"
-  member = "serviceAccount:${google_service_account.company_site.email}"
-}
-
-resource "google_secret_manager_secret_iam_member" "company_site_github_client_secret" {
-  secret_id = google_secret_manager_secret.github_client_secret.id
-  role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${google_service_account.company_site.email}"
-}
-
-resource "google_cloud_run_v2_service" "company_site" {
-  name     = var.company_service_name
-  location = var.region
-
-  deletion_protection = false
-  ingress             = "INGRESS_TRAFFIC_ALL"
-  iap_enabled         = true
-
-  template {
-    service_account = google_service_account.company_site.email
-
-    scaling {
-      min_instance_count = var.api_min_instances
-      max_instance_count = 4
-    }
-
-    containers {
-      # Start from the already-deployed server image. The company workflow immediately replaces it
-      # with the combined frontend/API image and owns all subsequent image revisions.
-      image = google_cloud_run_v2_service.api.template[0].containers[0].image
-
-      env {
-        name  = "GCS_BUCKET"
-        value = google_storage_bucket.assets.name
-      }
-
-      env {
-        name  = "GCS_PREFIX"
-        value = var.shared_assets_prefix
-      }
-
-      env {
-        name  = "CDN_BASE_URL"
-        value = "https://${var.cdn_custom_domain_host}"
-      }
-
-      env {
-        name  = "CORS_ALLOWED_ORIGINS"
-        value = "https://${var.company_site_custom_domain_host}"
-      }
-
-      env {
-        name  = "GITHUB_CLIENT_ID"
-        value = var.github_client_id
-      }
-
-      env {
-        name  = "GITHUB_REPO_OWNER"
-        value = split("/", var.company_github_repository)[0]
-      }
-
-      env {
-        name  = "GITHUB_REPO_NAME"
-        value = split("/", var.company_github_repository)[1]
-      }
-
-      env {
-        name = "GITHUB_CLIENT_SECRET"
-        value_source {
-          secret_key_ref {
-            secret  = google_secret_manager_secret.github_client_secret.secret_id
-            version = "latest"
-          }
-        }
-      }
-
-      resources {
-        limits = {
-          cpu    = "1"
-          memory = "512Mi"
-        }
-      }
-    }
-  }
-
-  lifecycle {
-    ignore_changes = [
-      template[0].containers[0].image,
-      client,
-      client_version,
-    ]
-  }
-}
-
-resource "google_cloud_run_v2_service_iam_member" "company_site_iap_invoker" {
-  name     = google_cloud_run_v2_service.company_site.name
-  location = google_cloud_run_v2_service.company_site.location
+resource "google_cloud_run_v2_service_iam_member" "api_public" {
+  name     = google_cloud_run_v2_service.api.name
+  location = google_cloud_run_v2_service.api.location
   role     = "roles/run.invoker"
-  member   = google_project_service_identity.iap.member
-}
-
-resource "google_iap_web_cloud_run_service_iam_member" "company_site_access" {
-  for_each = var.iap_access_members
-
-  project                = var.project_id
-  location               = google_cloud_run_v2_service.company_site.location
-  cloud_run_service_name = google_cloud_run_v2_service.company_site.name
-  role                   = "roles/iap.httpsResourceAccessor"
-  member                 = each.value
-}
-
-# The shared load balancer routes only nuka.works to this serverless backend. Cloud CDN is omitted
-# deliberately because Google IAP and CDN cannot be enabled on the same protected application.
-resource "google_compute_region_network_endpoint_group" "company_site" {
-  name                  = "nwrks-company-site-neg"
-  network_endpoint_type = "SERVERLESS"
-  region                = var.region
-
-  cloud_run {
-    service = google_cloud_run_v2_service.company_site.name
-  }
-}
-
-resource "google_compute_backend_service" "company_site" {
-  name                  = "nwrks-company-site-backend"
-  protocol              = "HTTP"
-  load_balancing_scheme = "EXTERNAL"
-  timeout_sec           = 30
-
-  backend {
-    group = google_compute_region_network_endpoint_group.company_site.id
-  }
+  member   = "allUsers"
 }
