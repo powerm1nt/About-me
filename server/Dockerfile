@@ -23,7 +23,7 @@ COPY src/ src/
 COPY server/ server/
 
 ARG VITE_API_BASE_URL=""
-ARG VITE_ASSET_BASE_URL="https://nwrks-cdn.public.prod.nuka.works/static"
+ARG VITE_ASSET_BASE_URL="https://storage.googleapis.com/hisuiki-assets-prod/static"
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 ENV VITE_ASSET_BASE_URL=$VITE_ASSET_BASE_URL
 

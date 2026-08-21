@@ -3,7 +3,7 @@
 export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/+$/, "");
 
 export const ASSET_BASE_URL = (
-  import.meta.env.VITE_ASSET_BASE_URL ?? "https://nwrks-cdn.public.prod.nuka.works/static"
+  import.meta.env.VITE_ASSET_BASE_URL ?? "https://storage.googleapis.com/hisuiki-assets-prod/static"
 ).replace(/\/+$/, "");
 
 /** Absolute URL for a Server API path, e.g. apiUrl("/api/pages?path=README.md"). */

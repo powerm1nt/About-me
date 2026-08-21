@@ -208,8 +208,15 @@ release that depends on them.
 
 ## Infrastructure notes
 
-- Terraform state lives in `gs://nwrks-tfstate-prod`. Apply with
-  `terraform -chdir=terraform apply -var project_id=<project>`.
+- **The assets bucket moved to the `hisuiki` project in August 2026.** Content now lives in
+  `gs://hisuiki-assets-prod` (US, versioned); `nwrks-assets-prod` was copied, verified, and deleted.
+  The `terraform/` stack still describes the retired NukaWorks Prod project and its state in
+  `gs://nwrks-tfstate-prod` therefore lists an assets bucket that no longer exists — do not
+  `terraform apply` that stack expecting it to be correct. The `hisuiki` stack is written fresh,
+  with its own state in `gs://hisuiki-tfstate-prod`; the old state is archived there under
+  `archive/nukaworks-prod/` for reference only.
+- No CDN sits in front of the new bucket yet, so `CDN_BASE_URL` is empty and assets are served
+  straight from `storage.googleapis.com`. Repoint it when the hisuiki load balancer exists.
 - Do not change `assets_prefix`. Objects sit under `static/` so that published markdown keeps the
   exact public paths it had before the Azure migration. Changing it breaks every existing link.
 - `blog.nuka.works` and `/api` share the blog Cloud Run backend. Cloud CDN uses origin cache
