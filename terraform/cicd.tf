@@ -88,3 +88,23 @@ resource "google_storage_bucket_iam_member" "deployer_assets_bucket" {
   role   = "roles/storage.legacyBucketReader"
   member = "serviceAccount:${google_service_account.deployer.email}"
 }
+
+# Invalidating the CDN after a release needs compute.urlMaps.invalidateCache, which no predefined
+# role carries without also granting broad control of the load balancer. A custom role with exactly
+# the two permissions the gcloud command uses keeps the deploy identity from being able to rewrite
+# routing as a side effect of being able to purge a cache.
+resource "google_project_iam_custom_role" "cdn_invalidator" {
+  role_id     = "cdnCacheInvalidator"
+  title       = "CDN cache invalidator"
+  description = "Purge Cloud CDN content for a URL map, and nothing else."
+  permissions = [
+    "compute.urlMaps.get",
+    "compute.urlMaps.invalidateCache",
+  ]
+}
+
+resource "google_project_iam_member" "deployer_cdn_invalidate" {
+  project = var.project_id
+  role    = google_project_iam_custom_role.cdn_invalidator.id
+  member  = "serviceAccount:${google_service_account.deployer.email}"
+}
