@@ -1,9 +1,9 @@
 {
-  "name": "aboutme-web",
+  "name": "hisuiki-web",
   "version": "2.1",
-  "description": "About me Website",
-  "repository": "https://github.com/powerm1nt/About-me",
-  "homepage": "https://developer.nuka.works/team/powerm1nt",
+  "description": "Hisuiki — personal site and blog",
+  "repository": "https://github.com/powerm1nt/Hisuiki",
+  "homepage": "https://hisuiki.com",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@11.18.0",

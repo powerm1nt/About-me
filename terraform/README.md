@@ -58,7 +58,7 @@ Then, in order:
 
    ```
    export DATABASE_URL=...
-   pnpm --filter aboutme-server migrate
+   pnpm --filter hisuiki-server migrate
    ```
 5. **Set the repository variables** the deploy workflow reads: `GCP_PROJECT_ID`, `GCP_REGION`,
    `GCP_WEB_SERVICE`, `GCP_API_SERVICE`, `GCP_URL_MAP`, `API_BASE_URL`, `ASSET_BASE_URL`, plus the

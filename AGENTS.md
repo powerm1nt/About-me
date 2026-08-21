@@ -71,12 +71,12 @@ pnpm typecheck
 pnpm lint         # eslint .; pnpm lint:fix to autofix
 ```
 
-For the API: `pnpm --filter aboutme-server dev` (tsx watch), `... build`, `... typecheck`. Each of
+For the API: `pnpm --filter hisuiki-server dev` (tsx watch), `... build`, `... typecheck`. Each of
 those runs `prisma generate` first, because the generated client lives in `server/src/generated/`
 and is gitignored — a fresh clone has no client until something generates one.
 
 Database work needs `DATABASE_URL` exported (Prisma 7 does not read `.env` itself):
-`pnpm --filter aboutme-server migrate` applies migrations.
+`pnpm --filter hisuiki-server migrate` applies migrations.
 
 There is no test suite. Verification therefore means: `pnpm typecheck`, `pnpm lint`, and a real
 `pnpm build` before you commit. If a change is visual, say plainly that it was not confirmed in a

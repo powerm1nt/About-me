@@ -6,7 +6,7 @@
 
 const MARKET = "en-US";
 const CACHE_TTL_MS = 60 * 60 * 1000;
-const USER_AGENT = "About-me-Server/1.0";
+const USER_AGENT = "Hisuiki-Server/1.0";
 
 export interface BingWallpaperEntry {
   imageBytes: Buffer;

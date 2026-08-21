@@ -30,7 +30,7 @@ ENV VITE_ASSET_BASE_URL=$VITE_ASSET_BASE_URL
 RUN pnpm build
 # The API's build runs `prisma generate` first: the generated client is gitignored, so it is not in
 # the build context and has to be produced here. Generating needs no database connection.
-RUN pnpm --filter aboutme-server build
+RUN pnpm --filter hisuiki-server build
 
 # Resolves the workspace package into a self-contained directory with production dependencies only
 # — no pnpm symlinks pointing outside it, and none of the frontend's build tooling.
@@ -38,7 +38,7 @@ RUN pnpm --filter aboutme-server build
 # --legacy because pnpm 10+ otherwise refuses to deploy from a workspace that hasn't opted into
 # injected dependencies. Injecting them would only matter if this package depended on another
 # workspace package; it doesn't, so the legacy (node_modules-copying) behaviour is exactly right.
-RUN pnpm deploy --legacy --filter aboutme-server --prod /app
+RUN pnpm deploy --legacy --filter hisuiki-server --prod /app
 
 FROM node:24-slim AS runtime
 WORKDIR /app

@@ -54,7 +54,7 @@ export const config = {
   },
 
   auth: {
-    appName: env("AUTH_APP_NAME", "About me"),
+    appName: env("AUTH_APP_NAME", "Hisuiki"),
 
     /**
      * Public origin better-auth builds its callback URLs from. It must match what is registered

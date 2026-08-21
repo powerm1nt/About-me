@@ -10,7 +10,7 @@
     {
       "name": "server",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "aboutme-server", "dev"],
+      "runtimeArgs": ["--filter", "hisuiki-server", "dev"],
       "port": 5066,
       "env": {
         "PORT": "5066"
