@@ -52,5 +52,15 @@ export const auth = betterAuth({
     crossSubDomainCookies: config.auth.cookieDomain
       ? { enabled: true, domain: config.auth.cookieDomain }
       : { enabled: false },
+
+    /**
+     * Behind Cloud Run and the load balancer there is no socket address to read, so without this
+     * better-auth cannot resolve a client IP and falls back to a single shared rate-limit bucket
+     * per path — which means one abusive caller throttles everyone at once. The load balancer
+     * appends the real client address to X-Forwarded-For.
+     */
+    ipAddress: {
+      ipAddressHeaders: ["x-forwarded-for"],
+    },
   },
 });
