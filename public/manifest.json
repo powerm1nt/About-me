@@ -1,6 +1,6 @@
 {
   "short_name": "Hisuiki",
-  "name": "Hisuiki — Blog & Portfolio",
+  "name": "Hisuiki — Photos & Writing",
   "icons": [
     {
       "src": "https://cdn.hisuiki.com/static/pfp.jpg",
@@ -8,6 +8,7 @@
       "type": "image/jpeg"
     }
   ],
+  "description": "Hisuiki is a media sharing and blogging platform: post photos, write articles, and comment on what others share.",
   "start_url": ".",
   "display": "standalone",
   "theme_color": "#121212",
