@@ -40,7 +40,7 @@ jobs:
       # against.
 
       - name: Typecheck API
-        run: pnpm --filter aboutme-server typecheck
+        run: pnpm --filter hisuiki-server typecheck
 
       - name: Build API
-        run: pnpm --filter aboutme-server build
+        run: pnpm --filter hisuiki-server build
