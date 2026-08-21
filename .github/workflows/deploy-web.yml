@@ -94,10 +94,20 @@ jobs:
           gcloud compute url-maps invalidate-cdn-cache ${{ vars.GCP_URL_MAP }} \
             --path "/*" --async
 
+      # Skipped rather than failed when the credentials are absent: the zone moved with the domain,
+      # and a deploy that succeeded everywhere else should not be reported as broken because the
+      # edge cache in front of it was not purged.
       - name: Purge Cloudflare cache
+        env:
+          ZONE: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
-          curl -s -X POST "https://api.cloudflare.com/client/v4/zones/${{ secrets.CLOUDFLARE_ZONE_ID }}/purge_cache" \
-            -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
+          if [ -z "$ZONE" ] || [ -z "$TOKEN" ]; then
+            echo "No Cloudflare credentials configured — skipping purge."
+            exit 0
+          fi
+          curl -s -X POST "https://api.cloudflare.com/client/v4/zones/$ZONE/purge_cache" \
+            -H "Authorization: Bearer $TOKEN" \
             -H "Content-Type: application/json" \
             --data '{"purge_everything":true}' \
             --fail
