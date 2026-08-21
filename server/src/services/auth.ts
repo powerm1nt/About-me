@@ -10,6 +10,7 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { config } from "../config.js";
 import { prisma } from "./prisma.js";
+import { trustedOrigins } from "./origins.js";
 
 export const auth = betterAuth({
   appName: config.auth.appName,
@@ -36,9 +37,9 @@ export const auth = betterAuth({
     },
   },
 
-  // Same list the CORS check uses: an origin trusted to call the API is trusted to be returned to
-  // after a social redirect, and keeping one list means the two cannot drift apart.
-  trustedOrigins: config.allowedOrigins,
+  // The same rule the CORS check uses: an origin trusted to call the API is trusted to be returned
+  // to after a social redirect, and sharing one implementation means the two cannot drift apart.
+  trustedOrigins,
 
   advanced: {
     /**

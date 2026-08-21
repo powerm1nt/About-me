@@ -14,7 +14,9 @@ export async function resolveWallpaperUrl(): Promise<string> {
     const response = await fetch(apiUrl("/api/wallpaper/bing"));
     if (response.ok) {
       const dto = (await response.json()) as BingWallpaper;
-      if (dto?.imageUrl?.trim()) return dto.imageUrl;
+      // A path from the API, resolved against the API's own origin — which in production is a
+      // different host from the page.
+      if (dto?.imageUrl?.trim()) return apiUrl(dto.imageUrl);
     }
   } catch {
     // Unreachable — fall through to the bundled wallpaper.

@@ -13,8 +13,13 @@ const CACHE_CONTROL = "no-store";
 /**
  * GET /api/wallpaper/bing — today's picture-of-the-day metadata. `imageUrl` points at the route
  * below, not bing.com, so the client can sample it into a canvas without tainting it.
+ *
+ * It is a path, not an absolute URL. Building one from the request's Host looked right until a
+ * proxy sat in front: Vite rewrites Host to the container it forwards to, so the browser was handed
+ * http://api:5066/... and could not resolve it. The client joins this onto its own API base, which
+ * is correct behind a proxy, on a LAN address, and cross-origin in production alike.
  */
-wallpaperRouter.get("/bing", async (req, res, next) => {
+wallpaperRouter.get("/bing", async (_req, res, next) => {
   try {
     const entry = await getToday();
     if (!entry) {
@@ -24,7 +29,7 @@ wallpaperRouter.get("/bing", async (req, res, next) => {
 
     res.setHeader("Cache-Control", CACHE_CONTROL);
     res.json({
-      imageUrl: `${req.protocol}://${req.get("host")}/api/wallpaper/bing/image`,
+      imageUrl: "/api/wallpaper/bing/image",
       title: entry.title,
       copyright: entry.copyright,
       date: entry.date,

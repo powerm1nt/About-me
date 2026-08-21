@@ -2,6 +2,7 @@ import express, { type NextFunction, type Request, type Response } from "express
 import path from "node:path";
 import { config } from "./config.js";
 import { applyMigrations } from "./services/migrate.js";
+import { isAllowedOrigin } from "./services/origins.js";
 
 const app = express();
 
@@ -20,7 +21,7 @@ app.set("trust proxy", 1);
 app.use((req, res, next) => {
   const origin = req.header("origin");
 
-  if (origin && config.allowedOrigins.includes(origin.replace(/\/+$/, ""))) {
+  if (origin && isAllowedOrigin(origin)) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     // Per-origin allow-list, so caches must key on Origin.
     res.setHeader("Vary", "Origin");

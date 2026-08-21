@@ -114,6 +114,12 @@ export const config = {
 
   },
 
+  /**
+   * Development only: also accept origins on a private network, so the compose stack can be opened
+   * from another machine on the LAN. Never set in production.
+   */
+  trustPrivateNetworkOrigins: env("TRUST_PRIVATE_NETWORK_ORIGINS") === "true",
+
   /** Both the CORS allow-list and the OAuth returnUrl allow-list, so login can't open-redirect. */
   allowedOrigins: env(
     "CORS_ALLOWED_ORIGINS",

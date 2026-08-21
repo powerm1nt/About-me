@@ -65,6 +65,10 @@ services:
     volumes:
       - ./src:/repo/src
       - ./server/src:/repo/server/src
+      # An anonymous volume over the generated client, so the container's `prisma generate` writes
+      # inside the container instead of into the bind mount. Without it the output lands on the host
+      # owned by root, and the next generate on the host fails with EACCES.
+      - /repo/server/src/generated
       - ./server/prisma:/repo/server/prisma
       - ./index.html:/repo/index.html
       - ./public:/repo/public
@@ -77,12 +81,17 @@ services:
       GCS_BUCKET: hisuiki-assets-prod
       GCS_PREFIX: static
       GCS_API_ENDPOINT: http://gcs:4443
-      # The emulator serves objects on its own host, so rendered markdown must point there too.
-      CDN_BASE_URL: http://localhost:4443/storage/v1/b/hisuiki-assets-prod/o
+      # Relative, through the frontend's /local-gcs proxy: an absolute localhost URL is unreachable
+      # from any machine but this one.
+      CDN_BASE_URL: /local-gcs/hisuiki-assets-prod
       # The browser talks to the frontend's origin and Vite proxies /api here, so this is the origin
       # to trust and to send people back to after signing in.
+      # Plus any private-network origin, via TRUST_PRIVATE_NETWORK_ORIGINS below.
       CORS_ALLOWED_ORIGINS: http://localhost:5173
-      BETTER_AUTH_URL: http://localhost:5173
+      # Deliberately unset: with a fixed base URL every redirect points at localhost, which is
+      # wrong the moment the app is opened from another machine. Unset, better-auth derives the
+      # origin from the request, and TRUST_PRIVATE_NETWORK_ORIGINS is what makes that safe here.
+      TRUST_PRIVATE_NETWORK_ORIGINS: "true"
       BETTER_AUTH_SECRET: local-development-secret-not-used-anywhere-else
       AUTH_APP_NAME: Hisuiki (dev)
       # Empty: both halves are localhost in development, so the cookie needs no parent domain.
@@ -109,7 +118,7 @@ services:
     environment:
       # Empty, so the bundle calls its own origin and Vite proxies to the API container.
       VITE_API_BASE_URL: ""
-      VITE_ASSET_BASE_URL: http://localhost:4443/storage/v1/b/hisuiki-assets-prod/o
+      VITE_ASSET_BASE_URL: /local-gcs/hisuiki-assets-prod/static
       VITE_DEV_API_TARGET: http://api:5066
 
   dbgate:
