@@ -57,3 +57,8 @@ output "artifact_registry_repository" {
   description = "Docker repository the combined application images are pushed to."
   value       = "${google_artifact_registry_repository.containers.location}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.containers.repository_id}"
 }
+
+output "database_instance_connection_name" {
+  description = "PROJECT:REGION:INSTANCE — the socket path Cloud Run mounts, and what `cloud-sql-proxy` takes to run migrations from a workstation."
+  value       = google_sql_database_instance.main.connection_name
+}

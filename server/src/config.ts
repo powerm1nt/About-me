@@ -36,11 +36,56 @@ export const config = {
       prefix && objectName.startsWith(`${prefix}/`) ? objectName.slice(prefix.length + 1) : objectName,
   },
 
-  github: {
-    clientId: env("GITHUB_CLIENT_ID"),
-    clientSecret: env("GITHUB_CLIENT_SECRET"),
-    repoOwner: env("GITHUB_REPO_OWNER", "powerm1nt"),
-    repoName: env("GITHUB_REPO_NAME", "About-me"),
+  database: {
+    /** Postgres connection string. On Cloud Run this points at the Cloud SQL unix socket. */
+    url: env("DATABASE_URL"),
+  },
+
+  auth: {
+    appName: env("AUTH_APP_NAME", "About me"),
+
+    /**
+     * Public origin better-auth builds its callback URLs from. It must match what is registered
+     * with GitHub and Google, so it is configured rather than reflected from the request host.
+     */
+    baseUrl: env("BETTER_AUTH_URL"),
+
+    /** Signs session cookies. From Secret Manager in production; never a literal here. */
+    secret: env("BETTER_AUTH_SECRET"),
+
+    github: {
+      clientId: env("GITHUB_CLIENT_ID"),
+      clientSecret: env("GITHUB_CLIENT_SECRET"),
+    },
+
+    google: {
+      clientId: env("GOOGLE_CLIENT_ID"),
+      clientSecret: env("GOOGLE_CLIENT_SECRET"),
+    },
+
+    /** Moderators, by email address, so the role is independent of which provider they signed in with. */
+    ownerEmails: env("SITE_OWNER_EMAILS")
+      .split(",")
+      .map((address) => address.trim().toLowerCase())
+      .filter(Boolean),
+  },
+
+  photos: {
+    /**
+     * Anyone signed in with GitHub may post, so every write path is bounded rather than trusted.
+     * The caps below are what stops one account from filling the shared assets bucket.
+     */
+    maxUploadBytes: Number(env("PHOTOS_MAX_UPLOAD_BYTES", String(8 * 1024 * 1024))),
+    maxPostsPerHour: Number(env("PHOTOS_MAX_POSTS_PER_HOUR", "12")),
+    maxCommentsPerHour: Number(env("PHOTOS_MAX_COMMENTS_PER_HOUR", "60")),
+
+    /** Content types accepted for an upload, and the extension each is stored under. */
+    allowedTypes: {
+      "image/jpeg": "jpg",
+      "image/png": "png",
+      "image/webp": "webp",
+    } as Record<string, string>,
+
   },
 
   /** Both the CORS allow-list and the OAuth returnUrl allow-list, so login can't open-redirect. */

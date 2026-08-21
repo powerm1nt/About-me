@@ -10,6 +10,12 @@ terraform {
       source  = "hashicorp/google-beta"
       version = "~> 7.0"
     }
+    # Generates the database password and the session signing secret, so neither value is ever
+    # chosen by a human or written into a tfvars file.
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.6"
+    }
   }
 }
 

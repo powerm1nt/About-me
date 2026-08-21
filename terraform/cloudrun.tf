@@ -100,11 +100,74 @@ resource "google_cloud_run_v2_service" "api" {
         }
       }
 
+      env {
+        name  = "GOOGLE_CLIENT_ID"
+        value = var.google_client_id
+      }
+
+      env {
+        name = "GOOGLE_CLIENT_SECRET"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.google_client_secret.secret_id
+            version = "latest"
+          }
+        }
+      }
+
+      # The public origin better-auth builds its callback URLs from. It must match what is registered
+      # with GitHub and Google, so it is the custom domain rather than the run.app hostname.
+      env {
+        name  = "BETTER_AUTH_URL"
+        value = "https://${var.site_custom_domain_host}"
+      }
+
+      env {
+        name = "BETTER_AUTH_SECRET"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.better_auth_secret.secret_id
+            version = "latest"
+          }
+        }
+      }
+
+      # Assembled by Terraform, including the socket path, so the environment carries no password.
+      env {
+        name = "DATABASE_URL"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.database_url.secret_id
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name  = "SITE_OWNER_EMAILS"
+        value = var.site_owner_emails
+      }
+
+      volume_mounts {
+        name       = "cloudsql"
+        mount_path = "/cloudsql"
+      }
+
       resources {
         limits = {
           cpu    = "1"
           memory = "512Mi"
         }
+      }
+    }
+
+    # The connector mounts the instance as a unix socket inside the container; nothing opens a TCP
+    # connection to the database, which is why the instance needs no public IP.
+    volumes {
+      name = "cloudsql"
+
+      cloud_sql_instance {
+        instances = [google_sql_database_instance.main.connection_name]
       }
     }
   }

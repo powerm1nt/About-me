@@ -8,10 +8,34 @@ resource "google_storage_bucket" "assets" {
   # Required for the allUsers IAM binding below; ACLs can't express public-read under uniform access.
   uniform_bucket_level_access = true
 
-  # Content is authored through merged GitHub proposals, and every revision is reconstructable
-  # from the repo's patches/ folder — versioning here would only duplicate that history.
+  # Page history reads object generations directly: the editor saves markdown here with the author
+  # and message in custom metadata, and the history view diffs one generation against the previous
+  # one. This replaced reconstructing history from the repository's patches/ folder.
   versioning {
-    enabled = false
+    enabled = true
+  }
+
+  # Without this every superseded generation is kept and paid for forever. Ninety days of history is
+  # far more than the page history UI shows, and non-current versions only exist after an edit.
+  lifecycle_rule {
+    condition {
+      days_since_noncurrent_time = 90
+    }
+
+    action {
+      type = "Delete"
+    }
+  }
+
+  # A page edited repeatedly in one session would otherwise leave a generation per save.
+  lifecycle_rule {
+    condition {
+      num_newer_versions = 50
+    }
+
+    action {
+      type = "Delete"
+    }
   }
 
   cors {

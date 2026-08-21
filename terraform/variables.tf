@@ -133,3 +133,48 @@ variable "company_github_repository" {
   type        = string
   default     = "NukaWorks/Website"
 }
+
+variable "db_instance_name" {
+  description = "Cloud SQL instance holding accounts and sessions."
+  type        = string
+  default     = "nwrks-pg-prod"
+}
+
+variable "db_name" {
+  description = "Database within the Cloud SQL instance."
+  type        = string
+  default     = "aboutme"
+}
+
+variable "db_user" {
+  description = "Database role the API connects as. Its password is generated and kept in Secret Manager."
+  type        = string
+  default     = "app"
+}
+
+variable "db_tier" {
+  description = <<-EOT
+    Cloud SQL machine type. The shared-core tier is enough for an authentication database serving one
+    site; move to a dedicated-core tier before it carries anything latency-sensitive.
+  EOT
+  type        = string
+  default     = "db-f1-micro"
+}
+
+variable "google_client_id" {
+  description = <<-EOT
+    Client id of the Google OAuth client used for sign-in. Public, like the GitHub one: it travels in
+    the authorize URL the browser follows. The matching secret is added to Secret Manager by hand.
+  EOT
+  type        = string
+  default     = ""
+}
+
+variable "site_owner_emails" {
+  description = <<-EOT
+    Comma-separated email addresses allowed to moderate: delete anyone's photo or comment. Matched on
+    the address rather than the provider, so the same person moderates whichever way they signed in.
+  EOT
+  type        = string
+  default     = ""
+}

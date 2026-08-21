@@ -1,23 +1,25 @@
 import express, { type NextFunction, type Request, type Response } from "express";
 import path from "node:path";
+import { toNodeHandler } from "better-auth/node";
 import { config } from "./config.js";
-import { SESSION_HEADER } from "./services/sessions.js";
+import { auth } from "./services/auth.js";
 import { pagesRouter } from "./routes/pages.js";
-import { authRouter } from "./routes/auth.js";
-import { proposalsRouter } from "./routes/proposals.js";
+import { photosRouter } from "./routes/photos.js";
 import { wallpaperRouter } from "./routes/wallpaper.js";
 
 const app = express();
 
 // Cloud Run terminates TLS at the edge, so without this req.protocol reports "http" and the OAuth
-// redirect_uri stops matching the callback registered with GitHub.
+// redirect_uri stops matching the callback registered with the providers.
 app.set("trust proxy", 1);
 
-app.use(express.json({ limit: "1mb" }));
-
 /**
- * Hand-rolled CORS: a fixed origin allow-list plus one custom header. Requests without an Origin
- * get no CORS headers at all, which the wallpaper routes' no-store depends on.
+ * Hand-rolled CORS: a fixed origin allow-list. Requests without an Origin get no CORS headers at
+ * all, which the wallpaper routes' no-store depends on.
+ *
+ * Credentials are allowed because the session is now a cookie: without this header the browser
+ * drops it on any cross-origin call, and an allow-list of exact origins is what makes that safe —
+ * "*" and credentials are mutually exclusive for good reason.
  */
 app.use((req, res, next) => {
   const origin = req.header("origin");
@@ -26,8 +28,9 @@ app.use((req, res, next) => {
     res.setHeader("Access-Control-Allow-Origin", origin);
     // Per-origin allow-list, so caches must key on Origin.
     res.setHeader("Vary", "Origin");
-    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", `Content-Type,${SESSION_HEADER}`);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PATCH,PUT,DELETE,OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   }
 
   if (req.method === "OPTIONS") {
@@ -45,9 +48,18 @@ app.use("/api", (_req, res, next) => {
   next();
 });
 
+/**
+ * better-auth owns every /api/auth route and parses its own bodies from the raw stream. It is
+ * therefore mounted before express.json(), which would otherwise consume the request first and
+ * leave the handler waiting on a stream that never emits.
+ */
+app.all("/api/auth/*splat", toNodeHandler(auth));
+
+app.use(express.json({ limit: "1mb" }));
+
 app.use("/api/pages", pagesRouter);
-app.use("/api/auth", authRouter);
-app.use("/api/proposals", proposalsRouter);
+// No cache override: like and comment counts change per request and must never be shared-cached.
+app.use("/api/photos", photosRouter);
 app.use("/api/wallpaper", wallpaperRouter);
 
 // Production images include the Vite build at WEB_ROOT. API routes are mounted first so an
@@ -102,5 +114,11 @@ app.listen(config.port, () => {
   console.log(`API listening on port ${config.port}`);
   if (!config.storage.bucketName) {
     console.warn("GCS_BUCKET is not set — every page read will fail until it is.");
+  }
+  if (!config.database.url) {
+    console.warn("DATABASE_URL is not set — every sign-in will fail until it is.");
+  }
+  if (!config.auth.secret) {
+    console.warn("BETTER_AUTH_SECRET is not set — sessions cannot be signed.");
   }
 });
