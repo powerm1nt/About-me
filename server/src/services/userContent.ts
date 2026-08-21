@@ -20,6 +20,13 @@ import postcss, { type Rule, type AtRule, type Declaration } from "postcss";
 
 const marked = new Marked({ gfm: true, breaks: false });
 
+/** The container a profile's own stylesheet is confined to. Shared so the writer and the renderer
+ *  cannot disagree about what "scoped" means. */
+export const PROFILE_SCOPE = ".profile-custom";
+
+/** One post's container. Unique per post, so a stylesheet in a feed cannot restyle its neighbours. */
+export const postScope = (postId: string): string => `[data-post="${postId}"]`;
+
 /** Tags a post may use. Deliberately small: prose, structure, and images. */
 const ALLOWED_TAGS = [
   "p", "br", "hr", "span", "div", "section", "article",

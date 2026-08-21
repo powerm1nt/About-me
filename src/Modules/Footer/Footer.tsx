@@ -54,11 +54,11 @@ export default function Footer() {
           <div className="projAbout">
             <p>© {new Date().getUTCFullYear()} NukaWorks Solutions - All rights reserved.</p>
             <ExternalLink
-              href="https://github.com/powerm1nt/About-me"
-              label="About Me on GitHub"
+              href="https://github.com/powerm1nt/Hisuiki"
+              label="Hisuiki on GitHub"
               className="buildinfo"
             >
-              about-me<span>@</span>
+              hisuiki<span>@</span>
               {version}
             </ExternalLink>
           </div>

@@ -34,7 +34,8 @@ export interface PageRevision {
 }
 
 export interface ArticleMetadata {
-  filePath: string;
+  slug: string;
+  isHome: boolean;
   title: string;
   description: string;
   author: string;
@@ -98,4 +99,54 @@ export interface PhotoComment {
 
 export interface PhotoDetail extends PhotoPost {
   comments: PhotoComment[];
+}
+
+/** A link a profile adds to the header. Stored as JSON on the profile, always read and written whole. */
+export interface HeaderLink {
+  label: string;
+  href: string;
+}
+
+/** One image attached to a post. */
+export interface PostMediaSummary {
+  id: string;
+  path: string;
+  thumbPath: string | null;
+  width: number;
+  height: number;
+  alt: string;
+}
+
+/**
+ * A post as the feed and profile routes return it. `author`, `media` and `_count` are not optional:
+ * every route that serves this shape includes them, and typing them as optional pushed a null check
+ * into each call site instead.
+ */
+export interface PostSummary {
+  id: string;
+  slug: string | null;
+  title: string | null;
+  body: string;
+  renderedHtml: string | null;
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  author: {
+    id: string;
+    name: string;
+    image: string | null;
+    profile: { handle: string | null } | null;
+  };
+  media: PostMediaSummary[];
+  _count: { likes: number; comments: number; reposts: number };
+}
+
+/** A page a profile writes for itself, as listed in settings. */
+export interface ProfilePageSummary {
+  id: string;
+  slug: string;
+  title: string;
+  isHome: boolean;
+  inNav: boolean;
+  position: number;
 }

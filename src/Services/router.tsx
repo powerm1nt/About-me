@@ -21,6 +21,33 @@ const RouterContext = createContext<RouterValue>({
   navigate: () => {},
 });
 
+/** Returns the handle of the current profile, parsed from subdomain or /users/:handle */
+export function getSiteHandle(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  const host = window.location.hostname;
+  
+  const match = window.location.pathname.match(/^\/users\/([^/]+)/);
+  if (match) return match[1];
+
+  const parts = host.split(".");
+  if (parts.length >= 3) {
+    const subdomain = parts[0];
+    if (subdomain && !["www", "api", "cdn", "admin", "static", "localhost", "127"].includes(subdomain)) {
+      return subdomain;
+    }
+  }
+
+  return undefined;
+}
+
+export function injectHandlePrefix(path: string): string {
+  const match = window.location.pathname.match(/^\/users\/([^/]+)/);
+  if (match && path.startsWith("/") && !path.startsWith("/users/")) {
+    return `/users/${match[1]}${path === "/" ? "" : path}`;
+  }
+  return path;
+}
+
 export function RouterProvider({ children }: { children: ReactNode }) {
   const [pathname, setPathname] = useState(() => window.location.pathname);
 
@@ -31,6 +58,7 @@ export function RouterProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const navigate = useCallback((to: string, options?: { replace?: boolean }) => {
+    to = injectHandlePrefix(to);
     if (options?.replace) window.history.replaceState({}, "", to);
     else window.history.pushState({}, "", to);
     setPathname(new URL(to, window.location.href).pathname);
@@ -52,17 +80,18 @@ export function Link({
   ...rest
 }: AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) {
   const { navigate } = useRouter();
+  const injectedHref = injectHandlePrefix(href);
 
   return (
     <a
-      href={href}
+      href={injectedHref}
       onClick={(e) => {
         onClick?.(e);
         // Anything but a plain left-click means "open elsewhere" — let the browser have it.
         if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
         if (rest.target && rest.target !== "_self") return;
         e.preventDefault();
-        navigate(href);
+        navigate(injectedHref);
       }}
       {...rest}
     >
@@ -74,11 +103,12 @@ export function Link({
 /** A markdown page rendered by <FileViewer />. */
 export interface PageRoute {
   kind: "page";
-  /** Blob path this route renders, e.g. "blog/welcome.ja.md". */
-  filePath: string;
+  /** Blob path this route renders, e.g. "posts/welcome.ja.md". */
+  slug: string;
+  isHome: boolean;
   japanese: boolean;
-  /** True for the two blog index pages, which render <BlogIndex /> rather than an article. */
-  isBlogIndex: boolean;
+  /** True for the two blog index pages, which render <PostsIndex /> rather than an article. */
+  isPostsIndex: boolean;
 }
 
 /** The photo gallery, or one photo's own page when `photoId` is set. */
@@ -94,7 +124,17 @@ export interface SignInRoute {
   japanese: boolean;
 }
 
-export type Route = PageRoute | PhotosRoute | SignInRoute;
+export interface LandingRoute {
+  kind: "landing";
+  japanese: boolean;
+}
+
+export interface SettingsRoute {
+  kind: "settings";
+  japanese: boolean;
+}
+
+export type Route = PageRoute | PhotosRoute | SignInRoute | LandingRoute | SettingsRoute;
 
 /** Ids are minted by the API as 12 hex characters; anything else is not a photo. */
 const PHOTO_ID = /^[0-9a-f]{12}$/;
@@ -102,8 +142,8 @@ const PHOTO_ID = /^[0-9a-f]{12}$/;
 /**
  * Route table:
  *   /                  → README.md            /ja                  → README.ja.md
- *   /blog              → blog/index.md        /blog/ja             → blog/index.ja.md
- *   /blog/:slug        → blog/:slug.md        /blog/:slug/ja       → blog/:slug.ja.md
+ *   /blog              → posts/index.md        /posts/ja             → posts/index.ja.md
+ *   /posts/:slug        → posts/:slug.md        /posts/:slug/ja       → posts/:slug.ja.md
  *   /photos            → the gallery          /photos/ja           → the gallery, in Japanese
  *   /photos/:id        → one photo            /photos/:id/ja       → one photo, in Japanese
  *   /signin            → sign in              /signin/ja           → sign in, in Japanese
@@ -111,28 +151,40 @@ const PHOTO_ID = /^[0-9a-f]{12}$/;
  * Returns null for anything else, which renders the not-found page.
  */
 export function resolveRoute(pathname: string): Route | null {
-  const segments = pathname.replace(/\/+$/, "").split("/").filter(Boolean);
+  const allSegments = pathname.replace(/\/+$/, "").split("/").filter(Boolean);
+
+  let segments = allSegments;
+  if (segments[0] === "users" && segments.length >= 2) {
+    segments = segments.slice(2);
+  }
 
   const japanese = segments[segments.length - 1] === "ja";
   const path = japanese ? segments.slice(0, -1) : segments;
-  const suffix = japanese ? ".ja.md" : ".md";
+  
 
   if (path.length === 0) {
-    return { kind: "page", filePath: `README${suffix}`, japanese, isBlogIndex: false };
+    if (getSiteHandle()) {
+      return { kind: "page", slug: "README", isHome: true, japanese, isPostsIndex: false };
+    }
+    return { kind: "landing", japanese };
   }
 
-  if (path[0] === "blog") {
+  if (path[0] === "posts") {
     if (path.length === 1) {
-      return { kind: "page", filePath: `blog/index${suffix}`, japanese, isBlogIndex: true };
+      return { kind: "page", slug: "posts-index", isHome: false, japanese, isPostsIndex: true };
     }
     // Slugs are single-segment and lowercase-kebab (see the editor's slug validation).
     if (path.length === 2 && /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(path[1]!)) {
-      return { kind: "page", filePath: `blog/${path[1]}${suffix}`, japanese, isBlogIndex: false };
+      return { kind: "page", slug: path[1]!, isHome: false, japanese, isPostsIndex: false };
     }
   }
 
   if (path[0] === "signin" && path.length === 1) {
     return { kind: "signin", japanese };
+  }
+
+  if (path[0] === "settings" && path.length === 1) {
+    return { kind: "settings", japanese };
   }
 
   if (path[0] === "photos") {

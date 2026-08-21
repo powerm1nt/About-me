@@ -1,5 +1,5 @@
 import { apiUrl } from "./config";
-import type { ArticleMetadata, Page, PageRaw, PageRevision } from "./types";
+import type { ArticleMetadata, Page, PageRaw, PageRevision, PostSummary } from "./types";
 
 /** The API's problem document if there is one, so the UI can show why a write was refused. */
 export async function readErrorMessage(response: Response): Promise<string> {
@@ -12,14 +12,14 @@ export async function readErrorMessage(response: Response): Promise<string> {
   return `HTTP ${response.status}`;
 }
 
-export async function fetchPage(path: string): Promise<Page> {
-  const response = await fetch(apiUrl(`/api/pages?path=${encodeURIComponent(path)}`));
-  if (!response.ok) throw new Error(`Could not load '${path}' (HTTP ${response.status})`);
+export async function fetchPage(slug: string, isHome: boolean, author?: string): Promise<Page> {
+  const response = await fetch(apiUrl(`/api/posts/resolve?slug=${encodeURIComponent(slug)}&isHome=${isHome}${author ? `&author=${encodeURIComponent(author)}` : ""}`));
+  if (!response.ok) throw new Error(`Could not load '${slug}' (HTTP ${response.status})`);
   return (await response.json()) as Page;
 }
 
-export async function fetchArticles(): Promise<ArticleMetadata[]> {
-  const response = await fetch(apiUrl("/api/pages/articles"));
+export async function fetchArticles(author?: string): Promise<ArticleMetadata[]> {
+  const response = await fetch(apiUrl(`/api/posts/articles${author ? `?author=${encodeURIComponent(author)}` : ""}`));
   if (!response.ok) throw new Error(await readErrorMessage(response));
   return (await response.json()) as ArticleMetadata[];
 }
@@ -36,8 +36,8 @@ export async function previewMarkdown(markdown: string): Promise<string> {
   return result.html ?? "";
 }
 
-export async function fetchRawPage(path: string): Promise<PageRaw> {
-  const response = await fetch(apiUrl(`/api/pages/raw?path=${encodeURIComponent(path)}`));
+export async function fetchRawPage(slug: string, isHome: boolean, author?: string): Promise<PageRaw> {
+  const response = await fetch(apiUrl(`/api/posts/raw?slug=${encodeURIComponent(slug)}&isHome=${isHome}${author ? `&author=${encodeURIComponent(author)}` : ""}`));
   if (!response.ok) throw new Error(await readErrorMessage(response));
   return (await response.json()) as PageRaw;
 }
@@ -76,4 +76,34 @@ export async function fetchPageVersion(path: string, generation: string): Promis
   if (!response.ok) throw new Error(await readErrorMessage(response));
   const body = (await response.json()) as { rawContent: string };
   return body.rawContent ?? "";
+}
+
+export async function createPost(body: {
+  title?: string;
+  slug?: string;
+  body: string;
+}): Promise<PostSummary> {
+  const response = await fetch(apiUrl("/api/posts"), {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) throw new Error(await readErrorMessage(response));
+  return (await response.json()) as PostSummary;
+}
+
+export async function updatePost(id: string, body: {
+  title?: string;
+  slug?: string;
+  body: string;
+}): Promise<PostSummary> {
+  const response = await fetch(apiUrl(`/api/posts/${id}`), {
+    method: "PUT",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) throw new Error(await readErrorMessage(response));
+  return (await response.json()) as PostSummary;
 }

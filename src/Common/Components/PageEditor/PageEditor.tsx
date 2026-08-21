@@ -1,3 +1,4 @@
+import { getSiteHandle } from '../../../Services/router';
 import { useCallback, useEffect, useRef, useState } from "react";
 import Skeleton from "../Skeleton/Skeleton";
 import InfoBubble from "../InfoBubble/InfoBubble";
@@ -12,7 +13,8 @@ const NUMBERED_LIST_PREFIX = /^\d+\.\s+/;
 type EditorState = "loading" | "editing" | "submitting" | "success";
 
 export interface PageEditorProps {
-  filePath?: string;
+  slug?: string;
+  isHome?: boolean;
   isJapanese?: boolean;
   isNewFile?: boolean;
   onClose: () => void;
@@ -25,7 +27,8 @@ export interface PageEditorProps {
  * overwrite.
  */
 export default function PageEditor({
-  filePath = "",
+  slug = "",
+  isHome = false,
   isJapanese = false,
   isNewFile = false,
   onClose,
@@ -34,7 +37,7 @@ export default function PageEditor({
 
   const [state, setState] = useState<EditorState>("loading");
   const [activeTab, setActiveTab] = useState<"write" | "preview">("write");
-  const [slug, setSlug] = useState("");
+  const [newSlug, setNewSlug] = useState("");
   const [commitMessage, setCommitMessage] = useState("");
   const [description, setDescription] = useState("");
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
@@ -45,7 +48,7 @@ export default function PageEditor({
   const monacoHost = useRef<HTMLDivElement>(null);
   const editorRef = useRef<MonacoEditor | null>(null);
 
-  const effectivePath = isNewFile ? `blog/${slug}${isJapanese ? ".ja" : ""}.md` : filePath;
+  const effectivePath = isNewFile ? `posts/${slug}${isJapanese ? ".ja" : ""}.md` : slug;
   const isSlugValid = SLUG_PATTERN.test(slug);
   const canSave =
     state === "editing" && !loadFailed && commitMessage.trim() !== "" && (!isNewFile || isSlugValid);
@@ -67,7 +70,7 @@ export default function PageEditor({
         rawContent.current = `---\ntitle: ""\ndescription: ""\nauthor: "${author}"\n---\n\n`;
       } else {
         try {
-          const raw = await fetchRawPage(filePath);
+          const raw = await fetchRawPage(slug, isHome, getSiteHandle() || undefined);
           rawContent.current = raw.rawContent ?? "";
         } catch (err: unknown) {
           if (!active) return;
@@ -321,12 +324,12 @@ export default function PageEditor({
             id="new-article-slug"
             className="editor-slug-input"
             placeholder="my-first-post"
-            value={slug}
-            onChange={(e) => setSlug(e.target.value)}
+            value={newSlug}
+            onChange={(e) => setNewSlug(e.target.value)}
             maxLength={80}
           />
           <span className="editor-slug-preview">→ {effectivePath}</span>
-          {slug !== "" && !isSlugValid && (
+          {newSlug !== "" && !isSlugValid && (
             <span className="editor-slug-error">
               Lowercase letters, numbers and hyphens only (e.g. &quot;my-first-post&quot;).
             </span>

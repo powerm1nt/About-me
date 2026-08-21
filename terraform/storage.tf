@@ -59,3 +59,51 @@ resource "google_storage_bucket_iam_member" "assets_public" {
   role   = "roles/storage.legacyObjectReader"
   member = "allUsers"
 }
+
+resource "google_storage_bucket" "data" {
+  name     = "hisuiki-data-prod"
+  location = var.bucket_location
+
+  uniform_bucket_level_access = true
+
+  versioning {
+    enabled = true
+  }
+
+  lifecycle_rule {
+    condition {
+      days_since_noncurrent_time = 90
+    }
+    action {
+      type = "Delete"
+    }
+  }
+
+  lifecycle_rule {
+    condition {
+      num_newer_versions = 50
+    }
+    action {
+      type = "Delete"
+    }
+  }
+
+  cors {
+    origin          = ["https://${var.site_domain}", "https://${var.api_domain}"]
+    method          = ["GET", "HEAD", "PUT"]
+    response_header = ["Content-Type"]
+    max_age_seconds = 3600
+  }
+}
+
+resource "google_storage_bucket_iam_member" "api_data" {
+  bucket = google_storage_bucket.data.name
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${google_service_account.api.email}"
+}
+
+resource "google_storage_bucket_iam_member" "api_data_bucket" {
+  bucket = google_storage_bucket.data.name
+  role   = "roles/storage.legacyBucketReader"
+  member = "serviceAccount:${google_service_account.api.email}"
+}

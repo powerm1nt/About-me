@@ -7,17 +7,19 @@ import PageHistory from "../../Common/Components/PageHistory/PageHistory";
 import { Link } from "../../Services/router";
 import { useAuth } from "../../Services/auth";
 import { fetchArticles, fetchPage } from "../../Services/api";
-import { articleRoute, blogArticlesFor, isBlogArticlePath, isJapanesePath } from "../../Services/paths";
+import { getSiteHandle } from "../../Services/router";
+import { articleRoute, postsFor } from "../../Services/paths";
 import type { ArticleMetadata, Page } from "../../Services/types";
 
 export interface FileViewerProps {
-  /** Blob path of the page to show, e.g. "blog/welcome.ja.md". */
-  filePath: string;
+  /** Blob path of the page to show, e.g. "posts/welcome.ja.md". */
+  slug: string;
+  isHome: boolean;
   isJapanese?: boolean;
 }
 
 /** The reading pane: one markdown page, its metadata header, and the footer nav. */
-export default function FileViewer({ filePath, isJapanese = false }: FileViewerProps) {
+export default function FileViewer({ slug, isHome, isJapanese = false }: FileViewerProps) {
   const auth = useAuth();
 
   const [articles, setArticles] = useState<ArticleMetadata[]>([]);
@@ -25,20 +27,20 @@ export default function FileViewer({ filePath, isJapanese = false }: FileViewerP
   // Both are tagged with the path they belong to and matched against the current `filePath`, so
   // navigation resets them by derivation rather than through an effect.
   const [loaded, setLoaded] = useState<{ path: string; page: Page | null; error: string | null }>({
-    path: filePath,
+    path: slug,
     page: null,
     error: null,
   });
   const [pane, setPane] = useState<{ path: string; mode: "read" | "edit" | "history" }>({
-    path: filePath,
+    path: slug,
     mode: "read",
   });
 
-  const { page, error } = loaded.path === filePath ? loaded : { page: null, error: null };
-  const mode = pane.path === filePath ? pane.mode : "read";
+  const { page, error } = loaded.path === slug ? loaded : { page: null, error: null };
+  const mode = pane.path === slug ? pane.mode : "read";
 
-  const japanese = isJapanese || isJapanesePath(filePath);
-  const isBlogPost = isBlogArticlePath(filePath);
+  const japanese = isJapanese;
+  const isBlogPost = !isHome;
 
   useEffect(() => {
     let active = true;
@@ -59,14 +61,14 @@ export default function FileViewer({ filePath, isJapanese = false }: FileViewerP
   useEffect(() => {
     let active = true;
 
-    fetchPage(filePath)
+    fetchPage(slug, isHome, getSiteHandle() || undefined)
       .then((loadedPage) => {
-        if (active) setLoaded({ path: filePath, page: loadedPage, error: null });
+        if (active) setLoaded({ path: slug, page: loadedPage, error: null });
       })
       .catch((err: unknown) => {
         if (active) {
           setLoaded({
-            path: filePath,
+            path: slug,
             page: null,
             error: err instanceof Error ? err.message : String(err),
           });
@@ -76,22 +78,22 @@ export default function FileViewer({ filePath, isJapanese = false }: FileViewerP
     return () => {
       active = false;
     };
-  }, [filePath]);
+  }, [slug, isHome]);
 
   const { prevArticle, nextArticle } = useMemo(() => {
-    const list = blogArticlesFor(articles, japanese);
-    const index = list.findIndex((a) => a.filePath === filePath);
+    const list = postsFor(articles, japanese);
+    const index = list.findIndex((a) => a.slug === slug);
     return {
       prevArticle: index > 0 ? list[index - 1]! : null,
       nextArticle: index >= 0 && index < list.length - 1 ? list[index + 1]! : null,
     };
-  }, [articles, japanese, filePath]);
+  }, [articles, japanese, slug]);
 
   // .file-content's entrance is a mount-time CSS animation, so it only replays on a remount.
   // Keying on the path and the load phase replays it for the skeleton, the content, and each nav.
   const phase = error !== null ? "error" : page === null ? "loading" : "ready";
 
-  const showPane = (next: "read" | "edit" | "history") => setPane({ path: filePath, mode: next });
+  const showPane = (next: "read" | "edit" | "history") => setPane({ path: slug, mode: next });
 
   const startEditing = () => {
     if (!auth.isSignedIn) {
@@ -104,9 +106,24 @@ export default function FileViewer({ filePath, isJapanese = false }: FileViewerP
   return (
     <main className="main-content">
       <div className="main-content-container">
-        <div className="file-content" data-phase={phase} key={`${filePath}:${phase}`}>
+        <div className="file-content" data-phase={phase} key={`${slug}:${phase}`}>
           {error !== null ? (
-            <InfoBubble title={`Error: ${error}`} className="md-component-danger" />
+            (error.includes("404") && isHome) ? (
+              <div className="profile-feed-fallback">
+                 <h2>{isJapanese ? "プロフィール" : "Profile"}</h2>
+                 <p style={{marginBottom: "2rem"}}>{isJapanese ? "このユーザーはまだREADMEを作成していません。" : "This user hasn't created a profile README yet."}</p>
+                 <button className="editor-btn editor-btn-primary" onClick={() => window.location.href = "/"}>
+                   {isJapanese ? "フィードに戻る" : "Go to For You feed"}
+                 </button>
+                 {auth.isSignedIn && (
+                   <button className="editor-btn" style={{ marginLeft: "1rem" }} onClick={() => showPane("edit")}>
+                     {isJapanese ? "READMEを作成する" : "Create README"}
+                   </button>
+                 )}
+              </div>
+            ) : (
+              <InfoBubble title={`Error: ${error}`} className="md-component-danger" />
+            )
           ) : page === null ? (
             <>
               <div className="article-header-meta" aria-hidden="true">
@@ -178,9 +195,9 @@ export default function FileViewer({ filePath, isJapanese = false }: FileViewerP
               </div>
 
               {mode === "edit" ? (
-                <PageEditor filePath={filePath} isJapanese={japanese} onClose={() => showPane("read")} />
+                <PageEditor slug={slug} isHome={isHome} isJapanese={japanese} onClose={() => showPane("read")} />
               ) : mode === "history" ? (
-                <PageHistory filePath={filePath} isJapanese={japanese} onClose={() => showPane("read")} />
+                <PageHistory slug={slug} isHome={isHome} isJapanese={japanese} onClose={() => showPane("read")} />
               ) : (
                 <>
                   {page.meta.description && (
@@ -194,7 +211,7 @@ export default function FileViewer({ filePath, isJapanese = false }: FileViewerP
                 <div className="article-nav-row">
                   <div className="nav-cell nav-cell-prev">
                     {prevArticle && (
-                      <Link href={articleRoute(prevArticle.filePath)} className="nav-link prev-link">
+                      <Link href={articleRoute(prevArticle.slug)} className="nav-link prev-link">
                         ← {prevArticle.title}
                       </Link>
                     )}
@@ -203,26 +220,26 @@ export default function FileViewer({ filePath, isJapanese = false }: FileViewerP
                   <div className="nav-cell nav-cell-middle">
                     {isBlogPost && (
                       <>
-                        <Link href={japanese ? "/blog/ja" : "/blog"} className="breadcrumb-link">
-                          Blog Index
+                        <Link href={japanese ? "/posts/ja" : "/posts"} className="breadcrumb-link">
+                          Posts Index
                         </Link>
                         <span className="nav-separator">|</span>
                       </>
                     )}
-                    {filePath !== "README.md" ? (
+                    {!isHome ? (
                       <Link href={japanese ? "/ja" : "/"} className="breadcrumb-link">
                         Home
                       </Link>
                     ) : (
-                      <Link href="/blog" className="breadcrumb-link">
-                        Explore Blog →
+                      <Link href="/posts" className="breadcrumb-link">
+                        Explore Posts →
                       </Link>
                     )}
                   </div>
 
                   <div className="nav-cell nav-cell-next">
                     {nextArticle && (
-                      <Link href={articleRoute(nextArticle.filePath)} className="nav-link next-link">
+                      <Link href={articleRoute(nextArticle.slug)} className="nav-link next-link">
                         {nextArticle.title} →
                       </Link>
                     )}

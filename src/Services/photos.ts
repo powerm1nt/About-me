@@ -1,3 +1,4 @@
+import { getSiteHandle } from "./router";
 import { readErrorMessage } from "./api";
 import { apiUrl } from "./config";
 import type { PhotoComment, PhotoDetail, PhotoPost } from "./types";
@@ -21,8 +22,10 @@ async function readJson<T>(response: Response): Promise<T> {
   return (await response.json()) as T;
 }
 
+
 export async function fetchPhotos(author?: string): Promise<PhotoPost[]> {
-  const query = author ? `?author=${encodeURIComponent(author)}` : "";
+  const finalAuthor = author ?? getSiteHandle();
+  const query = finalAuthor ? `?author=${encodeURIComponent(finalAuthor)}` : "";
   const response = await fetch(apiUrl(`/api/photos${query}`), send());
   const body = await readJson<{ posts: PhotoPost[] }>(response);
   return body.posts ?? [];

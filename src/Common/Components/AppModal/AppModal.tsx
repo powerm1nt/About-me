@@ -87,7 +87,7 @@ export default function AppModal() {
         ref={modalRef}
         onClick={(e) => e.stopPropagation()}
       >
-        <p className="app-modal-kicker">leaving nuka.works</p>
+        <p className="app-modal-kicker">leaving hisuiki.com</p>
         <h2 className="app-modal-title" id="app-modal-title">
           {shown.label}
         </h2>

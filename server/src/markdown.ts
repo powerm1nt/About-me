@@ -21,9 +21,9 @@ const COMPONENT_TAGS: Record<string, string> = {
   Danger: "danger",
 };
 
-/** Self-closing components with no body: <BlogIndex /> */
+/** Self-closing components with no body: <PostsIndex /> */
 const SELF_CLOSING_TAGS: Record<string, string> = {
-  BlogIndex: "blog-index",
+  PostsIndex: "posts-index",
 };
 
 /**
@@ -91,7 +91,7 @@ function injectComponentSentinels(markdown: string): string {
 /**
  * Rewrites asset paths in rendered HTML so they resolve straight to the CDN bucket:
  *   src="public/foo.jpg"   → src="<cdn>/foo.jpg"
- *   href="./blog/foo.mdx"  → href="/blog/foo"  (or "/blog/foo/ja")
+ *   href="./posts/foo.mdx"  → href="/posts/foo"  (or "/posts/foo/ja")
  */
 function rewriteAssetPaths(html: string, assetBase: string): string {
   let result = html.replace(/src="public\/([^"]+)"/g, (_m, rest: string) => `src="${assetBase}/${rest}"`);
@@ -99,10 +99,10 @@ function rewriteAssetPaths(html: string, assetBase: string): string {
   result = result.replace(/href="\.\/(blog\/[^"]+\.(?:mdx?))"/g, (_m, filePath: string) => {
     const isJa = /\.ja\.mdx?$/.test(filePath);
     const name = filePath
-      .slice("blog/".length)
+      .slice("posts/".length)
       .replace(/\.ja\.mdx?$/, "")
       .replace(/\.mdx?$/, "");
-    return `href="${isJa ? `/blog/${name}/ja` : `/blog/${name}`}"`;
+    return `href="${isJa ? `/posts/${name}/ja` : `/posts/${name}`}"`;
   });
 
   // A 1×1 placeholder and a class to style, rather than the browser's broken-image glyph.

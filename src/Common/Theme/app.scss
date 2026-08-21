@@ -94,7 +94,8 @@ body { padding: 0; margin: 0; background-color: transparent; }
   .wallpaper-image, .wallpaper-scrim { transition: none; }
 }
 /* Without this the positioned wallpaper paints over the in-flow content. */
-.metro-header, .main-content, .main-footer { position: relative; z-index: 1; }
+.metro-header { position: relative; z-index: 100; }
+.main-content, .main-footer { position: relative; z-index: 1; }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: var(--color-surface); border-radius: 0; }
 ::-webkit-scrollbar-thumb { background: var(--color-accent-strong); border-radius: 0; }
@@ -292,19 +293,19 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 .buildinfo { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.8rem; color: var(--color-text-faint); text-decoration: none; }
 .buildinfo:hover { color: #ffffff; }
 .buildinfo span { margin: 0 0.15em; }
-.blog-index-container { margin: 1.5em 0; }
-.blog-index-container h2 { font-size: 1.3rem; color: #ffffff; margin: 0; }
-.blog-index-header { display: flex; align-items: center; justify-content: space-between; gap: 1em; flex-wrap: wrap; margin-bottom: 1em; border-bottom: 1px solid #ffffff; padding-bottom: 0.4em; }
-.blog-index-header .editor-btn { font-size: 0.8rem; padding: 0.4em 0.9em; white-space: nowrap; }
-.blog-index-list { display: flex; flex-direction: column; gap: 1em; }
-.blog-index-card { background: transparent; border: none; border-bottom: 1px solid rgba(255,255,255,0.12); border-radius: 0; padding: 0.8em 0; }
-.blog-card-title { margin: 0 0 0.3em 0; font-size: 1.15rem; }
-.blog-card-title a { color: #ffffff; text-decoration: underline dotted; }
-.blog-card-title a:hover { text-decoration: underline; }
-.blog-card-desc { color: var(--color-text-secondary); font-size: 0.95rem; line-height: 1.5; margin: 0 0 0.6em 0; }
-.blog-card-meta { display: flex; align-items: center; gap: 1em; flex-wrap: wrap; font-size: 0.85rem; color: var(--color-text-muted); }
-.blog-card-author { font-weight: 500; color: var(--color-text-secondary); }
-.blog-card-last-edited { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.85rem; color: var(--color-text-secondary); display: inline-flex; align-items: center; gap: 0.4em; }
+.posts-index-container { margin: 1.5em 0; }
+.posts-index-container h2 { font-size: 1.3rem; color: #ffffff; margin: 0; }
+.posts-index-header { display: flex; align-items: center; justify-content: space-between; gap: 1em; flex-wrap: wrap; margin-bottom: 1em; border-bottom: 1px solid #ffffff; padding-bottom: 0.4em; }
+.posts-index-header .editor-btn { font-size: 0.8rem; padding: 0.4em 0.9em; white-space: nowrap; }
+.posts-index-list { display: flex; flex-direction: column; gap: 1em; }
+.posts-index-card { background: transparent; border: none; border-bottom: 1px solid rgba(255,255,255,0.12); border-radius: 0; padding: 0.8em 0; }
+.posts-card-title { margin: 0 0 0.3em 0; font-size: 1.15rem; }
+.posts-card-title a { color: #ffffff; text-decoration: underline dotted; }
+.posts-card-title a:hover { text-decoration: underline; }
+.posts-card-desc { color: var(--color-text-secondary); font-size: 0.95rem; line-height: 1.5; margin: 0 0 0.6em 0; }
+.posts-card-meta { display: flex; align-items: center; gap: 1em; flex-wrap: wrap; font-size: 0.85rem; color: var(--color-text-muted); }
+.posts-card-author { font-weight: 500; color: var(--color-text-secondary); }
+.posts-card-last-edited { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.85rem; color: var(--color-text-secondary); display: inline-flex; align-items: center; gap: 0.4em; }
 /* Info/warning/tip/danger banners — a thin colored edge and a soft tint, no box. */
 .cmpns-info-bubble {
   display: flex; align-items: flex-start; gap: 1em;
@@ -578,3 +579,29 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 .signin-signed-in { margin: 0; font-size: 0.95rem; font-weight: 300; color: var(--color-text-secondary); }
 /* The "home" action is a link styled as a button, so it needs the button's own box back. */
 .signin-panel a.editor-btn { display: inline-flex; align-items: center; text-decoration: none; color: var(--color-text); }
+
+/* Metro Dropdown Menu */
+.metro-dropdown-item {
+  display: block;
+  padding: 12px 20px;
+  color: var(--color-text);
+  text-decoration: none;
+  font-size: 1.1em;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+  font-family: inherit;
+  transition: background-color 0.1s ease;
+}
+
+.metro-dropdown-item:hover,
+.metro-dropdown-item:focus {
+  background-color: var(--color-accent-soft);
+  outline: none;
+}
+
+.metro-dropdown-item:hover {
+  text-decoration: none;
+}

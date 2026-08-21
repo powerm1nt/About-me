@@ -57,13 +57,15 @@ app.use("/api", (_req, res, next) => {
  * and no bucket — so a static import crash-loops it on boot.
  */
 if (config.servesApi) {
-  const [{ toNodeHandler }, { auth }, { pagesRouter }, { photosRouter }, { wallpaperRouter }] =
+  const [{ toNodeHandler }, { auth }, { pagesRouter }, { photosRouter }, { wallpaperRouter }, { profileRouter }, { postsRouter }] =
     await Promise.all([
       import("better-auth/node"),
       import("./services/auth.js"),
       import("./routes/pages.js"),
       import("./routes/photos.js"),
       import("./routes/wallpaper.js"),
+      import("./routes/profile.js"),
+      import("./routes/posts.js"),
     ]);
 
   app.all("/api/auth/*splat", toNodeHandler(auth));
@@ -74,6 +76,8 @@ if (config.servesApi) {
   // No cache override: like and comment counts change per request and must never be shared-cached.
   app.use("/api/photos", photosRouter);
   app.use("/api/wallpaper", wallpaperRouter);
+  app.use("/api/profile", profileRouter);
+  app.use("/api/posts", postsRouter);
 }
 
 // Production images include the Vite build at WEB_ROOT. API routes are mounted first so an

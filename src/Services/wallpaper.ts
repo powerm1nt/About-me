@@ -9,7 +9,21 @@ export const FALLBACK_WALLPAPER_URL = "/assets/default2.png";
  * Today's Bing picture of the day, proxied through the API so the browser never hotlinks bing.com
  * and the image stays sampleable into a canvas for the palette.
  */
+import { getSiteHandle } from "./router";
+
 export async function resolveWallpaperUrl(): Promise<string> {
+  const handle = getSiteHandle();
+  if (handle) {
+    try {
+      const pRes = await fetch(apiUrl(`/api/profile/${handle}`));
+      if (pRes.ok) {
+        const profile = await pRes.json();
+        if (profile.wallpaperPath) return profile.wallpaperPath.startsWith("/") ? apiUrl(profile.wallpaperPath) : profile.wallpaperPath;
+      }
+    } catch {
+      // A profile that will not load falls through to the default wallpaper below.
+    }
+  }
   try {
     const response = await fetch(apiUrl("/api/wallpaper/bing"));
     if (response.ok) {

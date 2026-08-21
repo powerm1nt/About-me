@@ -2,12 +2,12 @@ import { Fragment, useEffect, useMemo, useRef } from "react";
 // The "common" bundle: the full build registers ~190 languages and dwarfs the rest of the app.
 import hljs from "highlight.js/lib/common";
 import InfoBubble from "../InfoBubble/InfoBubble";
-import BlogIndex from "../BlogIndex/BlogIndex";
+import PostsIndex from "../PostsIndex/PostsIndex";
 import { useExternalLink } from "../../../Services/externalLink";
 import { useRouter } from "../../../Services/router";
 
 /**
- * Renders the HTML the API produces for a markdown page. Custom tags (`<Info>`, `<BlogIndex />`)
+ * Renders the HTML the API produces for a markdown page. Custom tags (`<Info>`, `<PostsIndex />`)
  * arrive as HTML comment sentinels:
  *
  *     <!--md-component:info:Some title-->…rendered body html…<!--/md-component-->
@@ -15,7 +15,7 @@ import { useRouter } from "../../../Services/router";
  * which are split out and replaced with the real component, the plain HTML either side injected.
  */
 
-// Type may contain hyphens (e.g. "blog-index"); title ends at -->
+// Type may contain hyphens (e.g. "posts-index"); title ends at -->
 const SENTINEL_RX = /<!--md-component:([\w-]+):([^>]*?)-->([\s\S]*?)<!--\/md-component-->/g;
 
 interface Segment {
@@ -54,8 +54,8 @@ function renderComponent(segment: Segment, isJapanese: boolean) {
     case "tip":
     case "danger":
       return <InfoBubble title={segment.title} className={className} html={segment.content} />;
-    case "blog-index":
-      return <BlogIndex isJapanese={isJapanese} />;
+    case "posts-index":
+      return <PostsIndex isJapanese={isJapanese} />;
     default:
       // A component this build doesn't know yet — drop it rather than showing the markers.
       return null;

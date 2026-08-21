@@ -1,29 +1,24 @@
-/** Conversions between blob file paths ("blog/welcome.ja.md") and routes ("/blog/welcome/ja"). */
+const JA_SUFFIX = ".ja";
 
-export const JA_SUFFIX = ".ja.md";
+export const isJapanesePath = (slug: string): boolean => slug.endsWith(JA_SUFFIX);
 
-export const isJapanesePath = (filePath: string): boolean => filePath.endsWith(JA_SUFFIX);
+export const isPostsIndexPath = (slug: string): boolean =>
+  slug === "posts-index" || slug === "posts-index.ja";
 
-export const isBlogIndexPath = (filePath: string): boolean =>
-  filePath === "blog/index.md" || filePath === "blog/index.ja.md";
+export const isPostArticlePath = (slug: string, isHome: boolean): boolean =>
+  !isHome && !isPostsIndexPath(slug);
 
-export const isBlogArticlePath = (filePath: string): boolean =>
-  filePath.startsWith("blog/") && !isBlogIndexPath(filePath);
-
-/** "blog/welcome.ja.md" → "/blog/welcome/ja"; "blog/welcome.md" → "/blog/welcome". */
-export function articleRoute(filePath: string): string {
-  const ja = isJapanesePath(filePath);
-  const withoutDir = filePath.startsWith("blog/") ? filePath.slice("blog/".length) : filePath;
-  const slug = ja ? withoutDir.slice(0, -JA_SUFFIX.length) : withoutDir.replace(/\.md$/, "");
-  return ja ? `/blog/${slug}/ja` : `/blog/${slug}`;
+export function articleRoute(slug: string): string {
+  const ja = isJapanesePath(slug);
+  const coreSlug = ja ? slug.slice(0, -JA_SUFFIX.length) : slug;
+  return `/posts/${coreSlug}${ja ? "/ja" : ""}`;
 }
 
-/** The list of blog articles for one language, in the order the prev/next nav walks them. */
-export function blogArticlesFor<T extends { filePath: string }>(
+export function postsFor<T extends { slug: string; isHome?: boolean }>(
   articles: T[],
   japanese: boolean
 ): T[] {
   return articles.filter(
-    (a) => isBlogArticlePath(a.filePath) && isJapanesePath(a.filePath) === japanese
+    (a) => isPostArticlePath(a.slug, a.isHome ?? false) && isJapanesePath(a.slug) === japanese
   );
 }

@@ -14,7 +14,8 @@ import {
 } from "../../../Services/history";
 
 export interface PageHistoryProps {
-  filePath: string;
+  slug: string;
+  isHome: boolean;
   isJapanese?: boolean;
   onClose: () => void;
 }
@@ -52,7 +53,7 @@ async function renderMarkdown(markdown: string): Promise<string> {
  * A page's edit history: one entry per stored object generation, newest first, each labelled with
  * the message its author wrote in the editor. Selecting one shows what that save changed.
  */
-export default function PageHistory({ filePath, isJapanese = false, onClose }: PageHistoryProps) {
+export default function PageHistory({ slug, isJapanese = false, onClose }: PageHistoryProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [revisions, setRevisions] = useState<PageRevision[]>([]);
@@ -66,7 +67,7 @@ export default function PageHistory({ filePath, isJapanese = false, onClose }: P
   useEffect(() => {
     let active = true;
 
-    getRevisions(filePath)
+    getRevisions(slug)
       .then((revs) => {
         if (active) setRevisions(revs);
       })
@@ -80,7 +81,7 @@ export default function PageHistory({ filePath, isJapanese = false, onClose }: P
     return () => {
       active = false;
     };
-  }, [filePath]);
+  }, [slug]);
 
   const select = async (rev: PageRevision, index: number) => {
     if (selected === rev.generation) {
@@ -97,7 +98,7 @@ export default function PageHistory({ filePath, isJapanese = false, onClose }: P
     try {
       // Newest first, so the revision that came before this one is the next entry in the list.
       const previous = revisions[index + 1]?.generation ?? null;
-      setHunks(await getRevisionDiff(filePath, rev.generation, previous));
+      setHunks(await getRevisionDiff(slug, rev.generation, previous));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {

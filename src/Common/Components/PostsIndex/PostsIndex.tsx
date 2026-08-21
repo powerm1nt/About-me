@@ -4,15 +4,15 @@ import PageEditor from "../PageEditor/PageEditor";
 import { Link } from "../../../Services/router";
 import { useAuth } from "../../../Services/auth";
 import { fetchArticles } from "../../../Services/api";
-import { articleRoute, blogArticlesFor } from "../../../Services/paths";
+import { articleRoute, postsFor } from "../../../Services/paths";
 import type { ArticleMetadata } from "../../../Services/types";
 
-export interface BlogIndexProps {
+export interface PostsIndexProps {
   isJapanese?: boolean;
 }
 
-/** The article list rendered in place of a `<BlogIndex />` tag, plus the "Add new article" entry. */
-export default function BlogIndex({ isJapanese = false }: BlogIndexProps) {
+/** The article list rendered in place of a `<PostsIndex />` tag, plus the "Add new article" entry. */
+export default function PostsIndex({ isJapanese = false }: PostsIndexProps) {
   const auth = useAuth();
 
   const [allArticles, setAllArticles] = useState<ArticleMetadata[]>([]);
@@ -40,7 +40,7 @@ export default function BlogIndex({ isJapanese = false }: BlogIndexProps) {
   }, []);
 
   const articles = useMemo(
-    () => blogArticlesFor(allArticles, isJapanese),
+    () => postsFor(allArticles, isJapanese),
     [allArticles, isJapanese]
   );
 
@@ -53,8 +53,8 @@ export default function BlogIndex({ isJapanese = false }: BlogIndexProps) {
   };
 
   return (
-    <div className="blog-index-container">
-      <div className="blog-index-header">
+    <div className="posts-index-container">
+      <div className="posts-index-header">
         <h2>Articles</h2>
         {!isCreating && (
           <button type="button" className="editor-btn editor-btn-primary" onClick={startCreating}>
@@ -66,9 +66,9 @@ export default function BlogIndex({ isJapanese = false }: BlogIndexProps) {
       {isCreating ? (
         <PageEditor isNewFile isJapanese={isJapanese} onClose={() => setIsCreating(false)} />
       ) : loading ? (
-        <div className="blog-index-list" aria-hidden="true">
+        <div className="posts-index-list" aria-hidden="true">
           {[0, 1, 2, 3].map((i) => (
-            <div className="blog-index-card" key={i}>
+            <div className="posts-index-card" key={i}>
               <Skeleton className="skeleton-title" width="55%" />
               <Skeleton className="skeleton-line" width="80%" />
               <Skeleton className="skeleton-meta" width="100px" />
@@ -82,18 +82,18 @@ export default function BlogIndex({ isJapanese = false }: BlogIndexProps) {
       ) : articles.length === 0 ? (
         <p className="loading-text">No articles found.</p>
       ) : (
-        <div className="blog-index-list">
+        <div className="posts-index-list">
           {articles.map((art) => (
-            <article className="blog-index-card" key={art.filePath}>
-              <h3 className="blog-card-title">
-                <Link href={articleRoute(art.filePath)}>{art.title}</Link>
+            <article className="posts-index-card" key={art.slug}>
+              <h3 className="posts-card-title">
+                <Link href={articleRoute(art.slug)}>{art.title}</Link>
               </h3>
-              {art.description && <p className="blog-card-desc">{art.description}</p>}
-              <div className="blog-card-meta">
-                {art.author && <span className="blog-card-author">By {art.author}</span>}
+              {art.description && <p className="posts-card-desc">{art.description}</p>}
+              <div className="posts-card-meta">
+                {art.author && <span className="posts-card-author">By {art.author}</span>}
                 {art.lastEdited && (
                   <span
-                    className="blog-card-last-edited"
+                    className="posts-card-last-edited"
                     title={`Created: ${art.created || art.lastEdited}`}
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

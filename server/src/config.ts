@@ -44,7 +44,7 @@ export const config = {
       ? `${cdnBaseUrl}/${prefix}`
       : `https://storage.googleapis.com/${env("GCS_BUCKET")}/${prefix}`,
 
-    /** Maps a logical page path ("blog/welcome.md") to its full object name. */
+    /** Maps a logical page path ("posts/welcome.md") to its full object name. */
     objectName: (path: string): string => {
       const clean = path.replace(/^\/+/, "");
       return prefix ? `${prefix}/${clean}` : clean;
@@ -123,7 +123,7 @@ export const config = {
   /** Both the CORS allow-list and the OAuth returnUrl allow-list, so login can't open-redirect. */
   allowedOrigins: env(
     "CORS_ALLOWED_ORIGINS",
-    "http://localhost:5173,https://blog.nuka.works"
+    "http://localhost:5173,https://posts.nuka.works"
   )
     .split(",")
     .map((o) => o.trim().replace(/\/+$/, ""))

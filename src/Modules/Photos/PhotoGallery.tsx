@@ -74,7 +74,7 @@ export default function PhotoGallery({ isJapanese }: PhotoGalleryProps) {
 
   return (
     <div className="photo-gallery">
-      <div className="blog-index-header">
+      <div className="posts-index-header">
         <h2>{text.heading}</h2>
         {!isComposing && (
           <button type="button" className="editor-btn editor-btn-primary" onClick={startComposing}>
