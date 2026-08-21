@@ -9,17 +9,17 @@ import { injectAssetCssVariables } from "./Services/wallpaper";
 
 function pageTitle(pathname: string): string {
   const route = resolveRoute(pathname);
-  if (!route) return "Not found — powerm1nt";
+  if (!route) return "Not found — Hisuiki";
   if (route.kind === "photos") {
-    return route.photoId ? "Photo — powerm1nt" : "Photos — powerm1nt";
+    return route.photoId ? "Photo — Hisuiki" : "Photos — Hisuiki";
   }
-  if (route.kind === "signin") return "Sign in — powerm1nt";
-  if (route.isBlogIndex) return "Blog — powerm1nt";
+  if (route.kind === "signin") return "Sign in — Hisuiki";
+  if (route.isBlogIndex) return "Blog — Hisuiki";
   if (route.filePath.startsWith("blog/")) {
     const slug = route.filePath.slice("blog/".length).replace(/(\.ja)?\.md$/, "");
-    return `${slug} — powerm1nt`;
+    return `${slug} — Hisuiki`;
   }
-  return "Emi — powerm1nt";
+  return "Emi — Hisuiki";
 }
 
 function NotFound() {
