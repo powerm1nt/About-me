@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import Skeleton from "../Skeleton/Skeleton";
 import InfoBubble from "../InfoBubble/InfoBubble";
-import ExternalLink from "../ExternalLink/ExternalLink";
 import MdContentRenderer from "../MdContentRenderer/MdContentRenderer";
 import { previewMarkdown } from "../../../Services/api";
 import {
@@ -11,7 +10,7 @@ import {
   hunkOldText,
   type DiffHunk,
   type DiffLineType,
-  type RevisionSummary,
+  type PageRevision,
 } from "../../../Services/history";
 
 export interface PageHistoryProps {
@@ -50,15 +49,15 @@ async function renderMarkdown(markdown: string): Promise<string> {
 }
 
 /**
- * A page's edit history, read from the repo's patches/ folder: every merged proposal left one patch
- * file, so the commits touching patches/{page}/ are the revision list.
+ * A page's edit history: one entry per stored object generation, newest first, each labelled with
+ * the message its author wrote in the editor. Selecting one shows what that save changed.
  */
 export default function PageHistory({ filePath, isJapanese = false, onClose }: PageHistoryProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [revisions, setRevisions] = useState<RevisionSummary[]>([]);
+  const [revisions, setRevisions] = useState<PageRevision[]>([]);
 
-  const [selectedSha, setSelectedSha] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [hunks, setHunks] = useState<DiffHunk[]>([]);
   const [tab, setTab] = useState<"text" | "preview">("text");
@@ -83,20 +82,22 @@ export default function PageHistory({ filePath, isJapanese = false, onClose }: P
     };
   }, [filePath]);
 
-  const select = async (rev: RevisionSummary) => {
-    if (selectedSha === rev.sha) {
-      setSelectedSha(null);
+  const select = async (rev: PageRevision, index: number) => {
+    if (selected === rev.generation) {
+      setSelected(null);
       return;
     }
 
-    setSelectedSha(rev.sha);
+    setSelected(rev.generation);
     setTab("text");
     setDetailLoading(true);
     setHunks([]);
     setPreviews({});
 
     try {
-      setHunks(await getRevisionDiff(rev.sha, filePath));
+      // Newest first, so the revision that came before this one is the next entry in the list.
+      const previous = revisions[index + 1]?.generation ?? null;
+      setHunks(await getRevisionDiff(filePath, rev.generation, previous));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -135,28 +136,27 @@ export default function PageHistory({ filePath, isJapanese = false, onClose }: P
       ) : error !== null ? (
         <InfoBubble title={`Could not load history: ${error}`} />
       ) : revisions.length === 0 ? (
-        <p className="loading-text">No proposed edits have been merged for this page yet.</p>
+        <p className="loading-text">This page has not been edited since versions started being kept.</p>
       ) : (
         <ul className="history-list">
-          {revisions.map((rev) => (
-            <li className="history-item" key={rev.sha}>
+          {revisions.map((rev, index) => (
+            <li className="history-item" key={rev.generation}>
               <button
                 type="button"
-                className={`history-entry ${rev.sha === selectedSha ? "is-active" : ""}`.trim()}
-                onClick={() => void select(rev)}
+                className={`history-entry ${rev.generation === selected ? "is-active" : ""}`.trim()}
+                onClick={() => void select(rev, index)}
               >
-                {rev.authorAvatarUrl && (
-                  <img src={rev.authorAvatarUrl} className="history-avatar" alt={rev.authorLogin} />
-                )}
                 <span className="history-entry-body">
-                  <span className="history-message">{firstLine(rev.message)}</span>
+                  <span className="history-message">
+                    {firstLine(rev.message) || "Saved without a message"}
+                  </span>
                   <span className="history-meta">
-                    {rev.authorLogin} · {formatDate(rev.date)}
+                    {rev.authorName || "unknown"} · {formatDate(rev.date)}
                   </span>
                 </span>
               </button>
 
-              {rev.sha === selectedSha && (
+              {rev.generation === selected && (
                 <div className="history-detail">
                   <div className="editor-tabs">
                     <button
@@ -173,9 +173,11 @@ export default function PageHistory({ filePath, isJapanese = false, onClose }: P
                     >
                       Preview
                     </button>
-                    <ExternalLink href={rev.htmlUrl} label="Commit on GitHub" className="history-view-commit">
-                      View commit ↗
-                    </ExternalLink>
+                    {rev.description && (
+                      <span className="history-view-commit" title={rev.description}>
+                        {firstLine(rev.description)}
+                      </span>
+                    )}
                   </div>
 
                   {detailLoading ? (

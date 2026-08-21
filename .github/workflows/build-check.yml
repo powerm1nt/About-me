@@ -1,7 +1,6 @@
 name: Build check
 
-# Compile check only: no credentials, no deploy, no secrets. Skips propose/* branches, which carry
-# patches rather than code.
+# Compile check only: no credentials, no deploy, no secrets.
 on:
   push:
     branches:
@@ -10,8 +9,6 @@ on:
     branches:
       - develop
       - main
-    paths-ignore:
-      - "patches/**"
 
 jobs:
   build:
@@ -37,6 +34,10 @@ jobs:
       # `pnpm build` runs tsc --noEmit first, so this typechecks the frontend too.
       - name: Build frontend
         run: pnpm build
+
+      # The API's typecheck and build both run `prisma generate` first, which needs no database —
+      # the generated client is gitignored, so without it a fresh checkout has nothing to compile
+      # against.
 
       - name: Typecheck API
         run: pnpm --filter aboutme-server typecheck

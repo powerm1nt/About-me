@@ -18,8 +18,7 @@ export default function BlogIndex({ isJapanese = false }: BlogIndexProps) {
   const [allArticles, setAllArticles] = useState<ArticleMetadata[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // ?resume=create means they clicked "Add new article" while signed out — resume it.
-  const [isCreating, setIsCreating] = useState(auth.resumeAction === "create");
+  const [isCreating, setIsCreating] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -47,7 +46,7 @@ export default function BlogIndex({ isJapanese = false }: BlogIndexProps) {
 
   const startCreating = () => {
     if (!auth.isSignedIn) {
-      auth.redirectToLogin("create");
+      auth.redirectToLogin();
       return;
     }
     setIsCreating(true);

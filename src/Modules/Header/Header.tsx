@@ -13,9 +13,11 @@ export default function Header({ isJapanese }: HeaderProps) {
 
   const isHomeActive = pathname === "/" || pathname === "/ja";
   const isBlogActive = pathname.toLowerCase().startsWith("/blog");
+  const isPhotosActive = pathname.toLowerCase().startsWith("/photos");
 
   const homeHref = isJapanese ? "/ja" : "/";
   const blogHref = isJapanese ? "/blog/ja" : "/blog";
+  const photosHref = isJapanese ? "/photos/ja" : "/photos";
 
   return (
     <header className="metro-header">
@@ -26,6 +28,12 @@ export default function Header({ isJapanese }: HeaderProps) {
           </Link>
           <Link href={blogHref} className={`pivot-item ${isBlogActive ? "is-active" : ""}`.trim()}>
             {isJapanese ? "ブログ" : "Blog"}
+          </Link>
+          <Link
+            href={photosHref}
+            className={`pivot-item ${isPhotosActive ? "is-active" : ""}`.trim()}
+          >
+            {isJapanese ? "フォト" : "Photos"}
           </Link>
           <ExternalLink
             href="https://github.com/powerm1nt"

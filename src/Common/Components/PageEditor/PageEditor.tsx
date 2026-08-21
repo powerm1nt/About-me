@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Skeleton from "../Skeleton/Skeleton";
 import InfoBubble from "../InfoBubble/InfoBubble";
-import ExternalLink from "../ExternalLink/ExternalLink";
 import MdContentRenderer from "../MdContentRenderer/MdContentRenderer";
-import { createProposal, fetchRawPage, previewMarkdown } from "../../../Services/api";
+import { fetchRawPage, previewMarkdown, savePage } from "../../../Services/api";
 import { useAuth } from "../../../Services/auth";
 import { loadMonaco, type MonacoEditor, type MonacoRange } from "../../../Services/monaco";
-import type { ProposalResult } from "../../../Services/types";
 
 const SLUG_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const NUMBERED_LIST_PREFIX = /^\d+\.\s+/;
@@ -21,8 +19,10 @@ export interface PageEditorProps {
 }
 
 /**
- * The "propose changes" editor. Nothing here writes to the site: the API diffs the edit against
- * live content and opens a PR from the signed-in visitor's own GitHub account.
+ * The page editor. Saving writes the markdown straight to the bucket — there is no pull request in
+ * the loop any more — but the message field stayed: it is stored on the object and is what labels
+ * the revision in the page history, so an edit is still a described change rather than a silent
+ * overwrite.
  */
 export default function PageEditor({
   filePath = "",
@@ -40,7 +40,6 @@ export default function PageEditor({
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
-  const [result, setResult] = useState<ProposalResult | null>(null);
 
   const rawContent = useRef("");
   const monacoHost = useRef<HTMLDivElement>(null);
@@ -48,14 +47,14 @@ export default function PageEditor({
 
   const effectivePath = isNewFile ? `blog/${slug}${isJapanese ? ".ja" : ""}.md` : filePath;
   const isSlugValid = SLUG_PATTERN.test(slug);
-  const canPropose =
+  const canSave =
     state === "editing" && !loadFailed && commitMessage.trim() !== "" && (!isNewFile || isSlugValid);
 
   // A new article is stamped with whoever is signed in, not a fixed site-owner name.
   const authorDisplayName = useCallback((): string => {
     const user = auth.user;
     if (!user) return "";
-    return user.name ? `${user.name} (${user.login})` : user.login;
+    return user.name || user.email.split("@")[0] || "";
   }, [auth.user]);
 
   // The exact stored bytes, so the diff is generated against what the patch will apply to.
@@ -256,20 +255,19 @@ export default function PageEditor({
     if (tab === "preview") void refreshPreview();
   };
 
-  const propose = async () => {
-    if (!canPropose || !editorRef.current) return;
+  const save = async () => {
+    if (!canSave || !editorRef.current) return;
 
     setState("submitting");
     setError(null);
 
     try {
-      const proposal = await createProposal(auth.sessionId, {
+      await savePage({
         path: effectivePath,
-        newContent: editorRef.current.getValue(),
+        content: editorRef.current.getValue(),
         commitMessage: commitMessage.trim(),
         description: description.trim(),
       });
-      setResult(proposal);
       setState("success");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
@@ -304,11 +302,7 @@ export default function PageEditor({
       <div className="page-editor">
         <div className="editor-success">
           <p>
-            Proposal opened —{" "}
-            <ExternalLink href={result!.pullRequestUrl} label="Pull Request on GitHub">
-              view the pull request on GitHub
-            </ExternalLink>
-            .
+            Saved. The page is live, and this edit is now the newest entry in its history.
           </p>
           <button type="button" className="editor-btn editor-btn-primary" onClick={onClose}>
             Done
@@ -409,7 +403,7 @@ export default function PageEditor({
         />
       </div>
 
-      {error !== null && <InfoBubble title={`Could not propose changes: ${error}`} />}
+      {error !== null && <InfoBubble title={`Could not save: ${error}`} />}
 
       <div className="editor-actions">
         <button
@@ -420,8 +414,8 @@ export default function PageEditor({
         >
           Cancel
         </button>
-        <button type="button" className="editor-btn editor-btn-primary" onClick={propose} disabled={!canPropose}>
-          {state === "submitting" ? "Opening pull request…" : "Propose changes"}
+        <button type="button" className="editor-btn editor-btn-primary" onClick={() => void save()} disabled={!canSave}>
+          {state === "submitting" ? "Saving…" : isNewFile ? "Publish" : "Save changes"}
         </button>
       </div>
     </div>

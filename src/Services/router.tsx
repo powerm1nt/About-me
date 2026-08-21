@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 
-/** A history-API router in place of a routing dependency: five route shapes, no nested layouts. */
+/** A history-API router in place of a routing dependency: a handful of route shapes, no nested layouts. */
 
 interface RouterValue {
   pathname: string;
@@ -71,7 +71,9 @@ export function Link({
   );
 }
 
-export interface Route {
+/** A markdown page rendered by <FileViewer />. */
+export interface PageRoute {
+  kind: "page";
   /** Blob path this route renders, e.g. "blog/welcome.ja.md". */
   filePath: string;
   japanese: boolean;
@@ -79,11 +81,32 @@ export interface Route {
   isBlogIndex: boolean;
 }
 
+/** The photo gallery, or one photo's own page when `photoId` is set. */
+export interface PhotosRoute {
+  kind: "photos";
+  japanese: boolean;
+  photoId: string | null;
+}
+
+/** Sign in or create an account. */
+export interface SignInRoute {
+  kind: "signin";
+  japanese: boolean;
+}
+
+export type Route = PageRoute | PhotosRoute | SignInRoute;
+
+/** Ids are minted by the API as 12 hex characters; anything else is not a photo. */
+const PHOTO_ID = /^[0-9a-f]{12}$/;
+
 /**
  * Route table:
  *   /                  → README.md            /ja                  → README.ja.md
  *   /blog              → blog/index.md        /blog/ja             → blog/index.ja.md
  *   /blog/:slug        → blog/:slug.md        /blog/:slug/ja       → blog/:slug.ja.md
+ *   /photos            → the gallery          /photos/ja           → the gallery, in Japanese
+ *   /photos/:id        → one photo            /photos/:id/ja       → one photo, in Japanese
+ *   /signin            → sign in              /signin/ja           → sign in, in Japanese
  *
  * Returns null for anything else, which renders the not-found page.
  */
@@ -95,16 +118,29 @@ export function resolveRoute(pathname: string): Route | null {
   const suffix = japanese ? ".ja.md" : ".md";
 
   if (path.length === 0) {
-    return { filePath: `README${suffix}`, japanese, isBlogIndex: false };
+    return { kind: "page", filePath: `README${suffix}`, japanese, isBlogIndex: false };
   }
 
   if (path[0] === "blog") {
     if (path.length === 1) {
-      return { filePath: `blog/index${suffix}`, japanese, isBlogIndex: true };
+      return { kind: "page", filePath: `blog/index${suffix}`, japanese, isBlogIndex: true };
     }
     // Slugs are single-segment and lowercase-kebab (see the editor's slug validation).
     if (path.length === 2 && /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(path[1]!)) {
-      return { filePath: `blog/${path[1]}${suffix}`, japanese, isBlogIndex: false };
+      return { kind: "page", filePath: `blog/${path[1]}${suffix}`, japanese, isBlogIndex: false };
+    }
+  }
+
+  if (path[0] === "signin" && path.length === 1) {
+    return { kind: "signin", japanese };
+  }
+
+  if (path[0] === "photos") {
+    if (path.length === 1) {
+      return { kind: "photos", japanese, photoId: null };
+    }
+    if (path.length === 2 && PHOTO_ID.test(path[1]!)) {
+      return { kind: "photos", japanese, photoId: path[1]! };
     }
   }
 
