@@ -1,9 +1,9 @@
 {
-  "short_name": "About me",
-  "name": "About me — Blog & Portfolio",
+  "short_name": "Hisuiki",
+  "name": "Hisuiki — Blog & Portfolio",
   "icons": [
     {
-      "src": "https://nwrks-cdn.public.prod.nuka.works/static/pfp.jpg",
+      "src": "https://cdn.hisuiki.com/static/pfp.jpg",
       "sizes": "512x512",
       "type": "image/jpeg"
     }
