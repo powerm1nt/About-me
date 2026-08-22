@@ -16,6 +16,43 @@ import type { Widget, WidgetKind, WidgetStyle } from "./profile";
  * the raw source, on this page or anybody else's.
  */
 
+/**
+ * The faces a widget can be set in.
+ *
+ * A named set rather than a free-text family, for the same reason every other style field is a fixed
+ * word: the value ends up in a font-family declaration, and one that came from a stored document
+ * could otherwise carry whatever it liked into the stylesheet.
+ *
+ * All of them are stacks of faces the machine already has. Nothing here fetches: a widget that pulls
+ * a font from a third party tells that third party who is reading the page, which is not a thing a
+ * profile should do to its visitors without asking.
+ */
+export const FONTS: Record<string, { label: string; stack: string }> = {
+  system: { label: "Default", stack: "" },
+  sans: { label: "Sans", stack: '"Segoe UI", system-ui, -apple-system, sans-serif' },
+  serif: { label: "Serif", stack: 'Georgia, "Times New Roman", Times, serif' },
+  mono: { label: "Mono", stack: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" },
+  rounded: { label: "Rounded", stack: 'ui-rounded, "SF Pro Rounded", "Segoe UI", sans-serif' },
+  condensed: { label: "Condensed", stack: '"Arial Narrow", "Roboto Condensed", sans-serif' },
+  display: { label: "Display", stack: 'Impact, Haettenschweiler, "Arial Black", sans-serif' },
+};
+
+export const FONT_KEYS = Object.keys(FONTS);
+
+/**
+ * The Windows Phone accent palette.
+ *
+ * Offered as swatches because picking a colour that belongs with the rest of the page is a different
+ * job from picking any colour at all, and a native colour input only does the second. The input is
+ * still there beside them for when none of these is the one.
+ */
+export const PALETTE = [
+  "#a4c400", "#60a917", "#008a00", "#00aba9", "#1ba1e2",
+  "#0050ef", "#6a00ff", "#aa00ff", "#f472d0", "#d80073",
+  "#a20025", "#e51400", "#fa6800", "#f0a30a", "#e3c800",
+  "#825a2c", "#6d8764", "#647687", "#76608a", "#87794e",
+] as const;
+
 export const BORDERS = ["none", "hairline", "solid", "accent"] as const;
 export const SHADOWS = ["none", "soft", "hard"] as const;
 
@@ -25,8 +62,13 @@ export type Shadow = (typeof SHADOWS)[number];
 /** How far the blur slider goes. Past this it stops being frosted glass and becomes a grey panel. */
 export const MAX_BLUR = 40;
 
-/** The look a widget has when it has never been touched: the app's own. */
-export const DEFAULT_STYLE: Required<Omit<WidgetStyle, "css" | "scopedCss" | "accent">> = {
+/**
+ * The look a widget has when it has never been touched: the app's own.
+ *
+ * Font and accent are absent rather than defaulted, because "not set" is a meaningful state for
+ * both — a widget with no font inherits the page's, and one with no accent inherits the theme's.
+ */
+export const DEFAULT_STYLE: Required<Omit<WidgetStyle, "css" | "scopedCss" | "accent" | "font">> = {
   blur: 16,
   opacity: 0.55,
   border: "none",
@@ -62,6 +104,8 @@ export function readStyle(raw: unknown): WidgetStyle | undefined {
   };
 
   if (typeof value.accent === "string" && HEX.test(value.accent)) style.accent = value.accent;
+  // A key into the table above, never a family. Anything else is simply not a font this app has.
+  if (typeof value.font === "string" && value.font in FONTS) style.font = value.font;
   if (typeof value.css === "string") style.css = value.css.slice(0, 20_000);
   // Written by the server, never by the editor. A client-supplied value would defeat the point of
   // there being a scoped version at all, so it is only carried when it looks like one.
@@ -117,6 +161,7 @@ export const isDefaultStyle = (style: WidgetStyle): boolean =>
   style.border === DEFAULT_STYLE.border &&
   style.shadow === DEFAULT_STYLE.shadow &&
   !style.accent &&
+  !style.font &&
   !style.css?.trim();
 
 /**
@@ -136,6 +181,9 @@ export function styleVariables(style: WidgetStyle): CSSProperties {
     variables["--color-accent"] = style.accent;
     variables["--color-accent-strong"] = style.accent;
   }
+
+  const stack = style.font ? FONTS[style.font]?.stack : "";
+  if (stack) variables["--widget-font"] = stack;
 
   return variables as CSSProperties;
 }

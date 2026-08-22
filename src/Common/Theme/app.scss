@@ -1073,6 +1073,8 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
    sets. The fallbacks are the app's own look, so a widget nobody has touched is unchanged and no
    stored value is needed for the common case. */
 .widget {
+  /* Unset unless the Inspector names one, so a widget inherits the page's face by default. */
+  font-family: var(--widget-font, inherit);
   background: rgba(16, 12, 48, var(--widget-veil-alpha, 0.55));
   /* The whole value comes from the board, including the word "none" when the blur is off — see
      backdropFilter() in Services/widgetStyle for why zero has to remove the property rather than set
@@ -1306,4 +1308,60 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   background: var(--color-surface);
   border: 2px solid var(--color-accent);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+
+/* ── Settings ──────────────────────────────────────────────────────────
+   The account and nothing else: how a page looks is decided on the page, in the Inspector. */
+.settings-form { display: flex; flex-direction: column; gap: 1rem; margin-top: 2rem; }
+.settings-form small { font-size: 0.78rem; color: var(--color-text-muted); }
+.settings-rule { margin: 2rem 0; border: none; border-top: 1px solid var(--color-surface-veil); }
+.settings-danger-title { color: var(--color-danger); }
+.settings-danger {
+  padding: 1rem;
+  margin-top: 1rem;
+  border: 1px solid var(--color-danger);
+  background: var(--color-danger-bg);
+}
+.settings-danger p { margin-top: 0; }
+.settings-delete {
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+  color: #ffffff;
+}
+
+
+/* ── Inspector: font and colour ────────────────────────────────────────
+   Both are shown rather than named: a list of font names set in one font, or a hex field with no
+   swatches, asks you to imagine the result of every choice. */
+.inspector-font-preview {
+  margin: -0.4em 0 0;
+  padding: 0.5em 0.6em;
+  background: rgba(255, 255, 255, 0.05);
+  border-left: 2px solid var(--color-accent);
+  font-size: 0.95rem;
+  line-height: 1.4;
+  color: var(--color-text);
+}
+.inspector-swatches {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 3px;
+}
+.inspector-swatch {
+  aspect-ratio: 1;
+  min-width: 0;
+  padding: 0;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: transform 0.1s ease-in-out, border-color 0.1s ease-in-out;
+}
+.inspector-swatch:hover { transform: scale(1.15); }
+/* A ring rather than a tick: a mark drawn on the swatch would be unreadable on half the palette. */
+.inspector-swatch.is-active { border-color: #ffffff; outline: 1px solid var(--color-text); outline-offset: 1px; }
+.inspector-swatch:focus-visible { outline: 2px dotted var(--color-text); outline-offset: 2px; }
+.inspector-hex {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
 }

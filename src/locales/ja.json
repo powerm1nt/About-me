@@ -176,7 +176,11 @@
       "block": "縦",
       "both": "両方"
     },
-    "scrollNote": "CSS では片方の軸だけをスクロールさせることはできません。コンテナからはみ出すもの（角のバッジ、メニューなど）は両方向で切り取られます。"
+    "scrollNote": "CSS では片方の軸だけをスクロールさせることはできません。コンテナからはみ出すもの（角のバッジ、メニューなど）は両方向で切り取られます。",
+    "font": "フォント",
+    "fontSample": "いろはにほへと The quick brown fox 0123",
+    "custom": "任意の色",
+    "inherited": "継承"
   },
   "webamp": {
     "untitled": "無題",
@@ -192,5 +196,21 @@
     "duplicate": "複製",
     "wrap": "コンテナに入れる",
     "wrapMany": "{{count}} 個をコンテナに入れる"
+  },
+  "settings": {
+    "title": "アカウント",
+    "handle": "ハンドル",
+    "handleHint": "英小文字、数字、ハイフンのみ。",
+    "headline": "見出し",
+    "bio": "自己紹介",
+    "pronouns": "代名詞",
+    "location": "場所",
+    "publicEmail": "公開メールアドレス",
+    "publicEmailHint": "プロフィールに表示されます。空欄にすると非表示です。",
+    "save": "保存する",
+    "advanced": "詳細設定",
+    "deleteWarning": "アカウントを削除すると、すべての投稿と設定が完全に消去されます。元に戻すことはできません。",
+    "delete": "アカウントを削除する",
+    "deleteConfirm": "本当にアカウントを削除しますか？"
   }
 }

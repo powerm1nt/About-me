@@ -180,7 +180,7 @@ function Shell() {
       ) : route.kind === "settings" ? (
         <main className="main-content">
           <div className="main-content-container">
-            <Settings isJapanese={route.japanese} />
+            <Settings />
           </div>
         </main>
       ) : route.kind === "signin" ? (

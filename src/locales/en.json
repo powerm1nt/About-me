@@ -176,7 +176,11 @@
       "block": "Up and down",
       "both": "Both"
     },
-    "scrollNote": "CSS cannot scroll one axis while the other stays visible, so anything reaching outside this container — a corner badge, a menu — will be clipped on both."
+    "scrollNote": "CSS cannot scroll one axis while the other stays visible, so anything reaching outside this container — a corner badge, a menu — will be clipped on both.",
+    "font": "Font",
+    "fontSample": "The quick brown fox jumps over the lazy dog",
+    "custom": "Custom colour",
+    "inherited": "inherited"
   },
   "webamp": {
     "untitled": "Untitled",
@@ -192,5 +196,21 @@
     "duplicate": "Duplicate",
     "wrap": "Wrap into",
     "wrapMany": "Wrap {{count}} into"
+  },
+  "settings": {
+    "title": "Account",
+    "handle": "Handle",
+    "handleHint": "Lowercase letters, numbers and hyphens.",
+    "headline": "Headline",
+    "bio": "Bio",
+    "pronouns": "Pronouns",
+    "location": "Location",
+    "publicEmail": "Public email",
+    "publicEmailHint": "Shown on your profile. Leave empty to hide it.",
+    "save": "Save changes",
+    "advanced": "Advanced",
+    "deleteWarning": "Deleting your account permanently removes all your posts and settings. This cannot be undone.",
+    "delete": "Delete account",
+    "deleteConfirm": "Are you sure you want to delete your account?"
   }
 }

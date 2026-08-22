@@ -87,6 +87,8 @@ export interface WidgetStyle {
   shadow?: "none" | "soft" | "hard";
   /** Overrides the accent colour for this widget and everything inside it. */
   accent?: string;
+  /** A key into widgetStyle's FONTS table, never a font-family string of its own. */
+  font?: string;
   /** What the author wrote in the Inspector's Advanced tab. Never rendered as-is. */
   css?: string;
   /**

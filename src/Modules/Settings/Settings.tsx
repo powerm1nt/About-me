@@ -1,97 +1,93 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import InfoBubble from "../../Common/Components/InfoBubble/InfoBubble";
 import Skeleton from "../../Common/Components/Skeleton/Skeleton";
 import { useAuth } from "../../Services/auth";
 import { apiUrl } from "../../Services/config";
-import { fetchMyProfile, updateMyProfile, ProfileData } from "../../Services/profile";
+import { fetchMyProfile, updateMyProfile, type ProfileData } from "../../Services/profile";
 
-export interface SettingsProps {
-  isJapanese: boolean;
-}
-
-export default function Settings({ isJapanese }: SettingsProps) {
+/**
+ * The account, and nothing else.
+ *
+ * Everything about how a page looks has moved to where it is looked at: widgets are styled in the
+ * Inspector, the header and footer are arranged on the page itself, and links are widgets rather
+ * than a JSON field. What is left here is what a form is actually good for — the handful of facts
+ * about a person that are not part of any particular page.
+ */
+export default function Settings() {
+  const { t } = useTranslation();
   const auth = useAuth();
-  
-  const [, setProfile] = useState<ProfileData | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   const [handle, setHandle] = useState("");
   const [headline, setHeadline] = useState("");
   const [bio, setBio] = useState("");
-  const [customCss, setCustomCss] = useState("");
-  const [accentColor, setAccentColor] = useState("");
-  const [wallpaperPath, setWallpaperPath] = useState("");
-  const [showProfileLink, setShowProfileLink] = useState(true);
-  const [headerLinks, setHeaderLinks] = useState("");
+  const [pronouns, setPronouns] = useState("");
+  const [location, setLocation] = useState("");
+  const [publicEmail, setPublicEmail] = useState("");
 
   useEffect(() => {
-    if (!auth.initializing && !auth.isSignedIn) {
-      auth.redirectToLogin();
-    }
+    if (!auth.initializing && !auth.isSignedIn) auth.redirectToLogin();
   }, [auth.isSignedIn, auth.initializing, auth]);
 
+  const load = (data: ProfileData) => {
+    setHandle(data.handle ?? "");
+    setHeadline(data.headline ?? "");
+    setBio(data.bio ?? "");
+    setPronouns(data.pronouns ?? "");
+    setLocation(data.location ?? "");
+    setPublicEmail(data.publicEmail ?? "");
+  };
+
   useEffect(() => {
+    if (!auth.isSignedIn) return;
+
     let active = true;
-    if (auth.isSignedIn) {
-      fetchMyProfile()
-        .then(async (data) => {
-          if (active) {
-            setProfile(data);
-            setHandle(data.handle || "");
-            setHeadline(data.headline || "");
-            setBio(data.bio || "");
-            setCustomCss(data.customCss || "");
-            setAccentColor(data.accentColor || "");
-            setWallpaperPath(data.wallpaperPath || "");
-            setShowProfileLink(data.showProfileLink !== false);
-            setHeaderLinks(data.headerLinks ? JSON.stringify(data.headerLinks, null, 2) : "[]");
+    fetchMyProfile()
+      .then((data) => {
+        if (!active) return;
+        load(data);
+        setLoading(false);
+      })
+      .catch((err: unknown) => {
+        if (!active) return;
+        setError(err instanceof Error ? err.message : String(err));
+        setLoading(false);
+      });
 
-
-            setLoading(false);
-          }
-        })
-        .catch((err: unknown) => {
-          if (active) {
-            setError(err instanceof Error ? err.message : String(err));
-            setLoading(false);
-          }
-        });
-    }
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [auth.isSignedIn]);
 
   if (auth.initializing || (!auth.isSignedIn && loading)) {
-    return <div className="file-content" data-phase="loading"><Skeleton width="100%" height="200px" /></div>;
+    return (
+      <div className="file-content" data-phase="loading">
+        <Skeleton width="100%" height="200px" />
+      </div>
+    );
   }
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     setError(null);
+
     try {
       const data = await updateMyProfile({
         handle: handle.trim() || null,
         headline: headline.trim() || null,
         bio: bio.trim() || null,
-        customCss: customCss.trim() || null,
-        accentColor: accentColor.trim() || null,
-        wallpaperPath: wallpaperPath.trim() || null,
-        showProfileLink,
-        headerLinks: (() => { try { return JSON.parse(headerLinks || "[]"); } catch { throw new Error("Invalid JSON in Header Links"); } })(),
+        pronouns: pronouns.trim() || null,
+        location: location.trim() || null,
+        publicEmail: publicEmail.trim() || null,
       });
-      setProfile(data);
-      setHandle(data.handle || "");
-      setHeadline(data.headline || "");
-      setBio(data.bio || "");
-            setCustomCss(data.customCss || "");
-            setAccentColor(data.accentColor || "");
-            setWallpaperPath(data.wallpaperPath || "");
-            setShowProfileLink(data.showProfileLink !== false);
-            setHeaderLinks(data.headerLinks ? JSON.stringify(data.headerLinks, null, 2) : "[]");
-
-
+      load(data);
+      setSaved(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -99,134 +95,127 @@ export default function Settings({ isJapanese }: SettingsProps) {
     }
   };
 
+  const remove = async () => {
+    if (!window.confirm(t("settings.deleteConfirm"))) return;
+
+    try {
+      await fetch(apiUrl("/api/profile/me"), { method: "DELETE", credentials: "include" });
+      window.location.href = "/";
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
   return (
     <div className="file-content" data-phase="ready">
-      <h1>{isJapanese ? "プロフィール設定" : "Profile Settings"}</h1>
-      {error && <InfoBubble title={error} className="md-component-danger" />}
-      
+      <h1>{t("settings.title")}</h1>
+      {error !== null && <InfoBubble title={error} className="md-component-danger" />}
+
       {loading ? (
         <Skeleton width="100%" height="200px" />
       ) : (
-        <form onSubmit={(e) => void submit(e)} style={{ marginTop: "2rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
+        <form className="settings-form" onSubmit={(e) => void submit(e)}>
           <label className="photo-field">
-            <span>{isJapanese ? "ハンドル" : "Handle (e.g. your-name)"}</span>
+            <span>{t("settings.handle")}</span>
             <input
               className="editor-commit-input"
               value={handle}
-              onChange={(e) => setHandle(e.target.value)}
+              onChange={(e) => {
+                setHandle(e.target.value);
+                setSaved(false);
+              }}
               pattern="^[a-z0-9-]+$"
-              title="Lowercase alphanumeric and hyphens only"
+              title={t("settings.handleHint")}
               minLength={3}
               maxLength={30}
             />
+            <small>{t("settings.handleHint")}</small>
           </label>
+
           <label className="photo-field">
-            <span>{isJapanese ? "ヘッドライン" : "Headline"}</span>
+            <span>{t("settings.headline")}</span>
             <input
               className="editor-commit-input"
               value={headline}
-              onChange={(e) => setHeadline(e.target.value)}
               maxLength={100}
+              onChange={(e) => {
+                setHeadline(e.target.value);
+                setSaved(false);
+              }}
             />
           </label>
+
           <label className="photo-field">
-            <span>{isJapanese ? "自己紹介" : "Bio"}</span>
+            <span>{t("settings.bio")}</span>
             <textarea
               className="editor-commit-input"
               value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              style={{ minHeight: "100px", resize: "vertical" }}
               maxLength={500}
-            />
-          </label>
-          
-          
-          <hr style={{ margin: "2rem 0", borderColor: "var(--color-surface-veil)" }} />
-          <h2>{isJapanese ? "カスタマイズ" : "Customization"}</h2>
-          
-          
-          <label className="photo-field">
-            <span>{isJapanese ? "ヘッダーリンク (JSON)" : "Header Links (JSON)"}</span>
-            <textarea
-              className="editor-commit-input"
-              value={headerLinks}
-              onChange={(e) => setHeaderLinks(e.target.value)}
-              style={{ minHeight: "100px", resize: "vertical", fontFamily: "monospace" }}
-              placeholder='[{"url": "https://twitter.com/...", "label": "Twitter"}]'
-            />
-          </label>
-<label className="photo-field">
-            <span>{isJapanese ? "プロフィールリンクを表示" : "Show Profile Link in Header"}</span>
-            <input
-              type="checkbox"
-              checked={showProfileLink}
-              onChange={(e) => setShowProfileLink(e.target.checked)}
-              style={{ width: "auto", marginLeft: "1rem" }}
-            />
-          </label>
-          
-          
-          <label className="photo-field">
-            <span>{isJapanese ? "壁紙のURL" : "Wallpaper URL"}</span>
-            <input
-              className="editor-commit-input"
-              value={wallpaperPath}
-              onChange={(e) => setWallpaperPath(e.target.value)}
-              placeholder="/assets/default2.png or https://..."
+              style={{ minHeight: "100px", resize: "vertical" }}
+              onChange={(e) => {
+                setBio(e.target.value);
+                setSaved(false);
+              }}
             />
           </label>
 
           <label className="photo-field">
-            <span>{isJapanese ? "アクセントカラー (HEX)" : "Accent Color (HEX, e.g. #ff0000)"}</span>
+            <span>{t("settings.pronouns")}</span>
             <input
               className="editor-commit-input"
-              value={accentColor}
-              onChange={(e) => setAccentColor(e.target.value)}
-              pattern="^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$"
+              value={pronouns}
+              maxLength={40}
+              onChange={(e) => {
+                setPronouns(e.target.value);
+                setSaved(false);
+              }}
             />
           </label>
-          
+
           <label className="photo-field">
-            <span>{isJapanese ? "カスタム CSS" : "Custom CSS (Scoped automatically)"}</span>
-            <textarea
+            <span>{t("settings.location")}</span>
+            <input
               className="editor-commit-input"
-              value={customCss}
-              onChange={(e) => setCustomCss(e.target.value)}
-              style={{ minHeight: "150px", resize: "vertical", fontFamily: "monospace" }}
+              value={location}
+              maxLength={80}
+              onChange={(e) => {
+                setLocation(e.target.value);
+                setSaved(false);
+              }}
             />
+          </label>
+
+          <label className="photo-field">
+            <span>{t("settings.publicEmail")}</span>
+            <input
+              className="editor-commit-input"
+              type="email"
+              value={publicEmail}
+              maxLength={120}
+              onChange={(e) => {
+                setPublicEmail(e.target.value);
+                setSaved(false);
+              }}
+            />
+            <small>{t("settings.publicEmailHint")}</small>
           </label>
 
           <div className="editor-actions">
-            {saving && <span className="editor-status">{isJapanese ? "保存中…" : "Saving..."}</span>}
+            {saved && <span className="editor-status">{t("save.saved")}</span>}
             <button type="submit" className="editor-btn editor-btn-primary" disabled={saving}>
-              {isJapanese ? "保存する" : "Save Changes"}
-            </button>
-          </div>
-        
-          
-          <hr style={{ margin: "2rem 0", borderColor: "var(--color-surface-veil)" }} />
-          <h2 style={{ color: "var(--color-danger)" }}>{isJapanese ? "詳細設定" : "Advanced"}</h2>
-          <div style={{ padding: "1rem", border: "1px solid var(--color-danger)", borderRadius: "8px", background: "var(--color-danger-bg)", marginTop: "1rem" }}>
-            <p style={{ marginTop: 0 }}>{isJapanese ? "アカウントを削除すると、すべての投稿と設定が完全に消去されます。元に戻すことはできません。" : "Deleting your account will permanently remove all your posts and settings. This cannot be undone."}</p>
-            <button 
-              type="button" 
-              className="editor-btn" 
-              style={{ background: "var(--color-danger)", color: "white", borderColor: "var(--color-danger)" }}
-              onClick={async () => {
-                if (window.confirm(isJapanese ? "本当にアカウントを削除しますか？" : "Are you sure you want to delete your account?")) {
-                  try {
-                    await fetch(apiUrl('/api/profile/me'), { method: 'DELETE', credentials: 'include' });
-                    window.location.href = '/';
-                  } catch (e) {
-                    setError(String(e));
-                  }
-                }
-              }}
-            >
-              {isJapanese ? "アカウントを削除する" : "Delete Account"}
+              {saving ? t("save.saving") : t("settings.save")}
             </button>
           </div>
 
+          <hr className="settings-rule" />
+
+          <h2 className="settings-danger-title">{t("settings.advanced")}</h2>
+          <div className="settings-danger">
+            <p>{t("settings.deleteWarning")}</p>
+            <button type="button" className="editor-btn settings-delete" onClick={() => void remove()}>
+              {t("settings.delete")}
+            </button>
+          </div>
         </form>
       )}
     </div>

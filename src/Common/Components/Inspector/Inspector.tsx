@@ -9,7 +9,16 @@ import {
   isContainer,
   scrollOf,
 } from "../../../Services/layout";
-import { BORDERS, MAX_BLUR, SHADOWS, DEFAULT_STYLE, styleOf } from "../../../Services/widgetStyle";
+import {
+  BORDERS,
+  DEFAULT_STYLE,
+  FONTS,
+  FONT_KEYS,
+  MAX_BLUR,
+  PALETTE,
+  SHADOWS,
+  styleOf,
+} from "../../../Services/widgetStyle";
 import type { Widget, WidgetSize } from "../../../Services/profile";
 import Anchored from "../Anchored/Anchored";
 
@@ -288,14 +297,61 @@ export default function Inspector({ widget, anchor, onChange, onClose }: Inspect
                 </select>
               </label>
 
+              {/* Each option is drawn in its own face, and the line below shows it at reading size.
+                  A list of font names in one font asks you to remember what they look like. */}
               <label className="inspector-field">
+                <span>{t("inspector.font")}</span>
+                <select
+                  className="inspector-fonts"
+                  value={style.font ?? "system"}
+                  onChange={(e) =>
+                    setStyle({ font: e.target.value === "system" ? undefined : e.target.value })
+                  }
+                >
+                  {FONT_KEYS.map((key) => (
+                    <option key={key} value={key} style={{ fontFamily: FONTS[key]!.stack || undefined }}>
+                      {FONTS[key]!.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <p
+                className="inspector-font-preview"
+                style={{ fontFamily: (style.font && FONTS[style.font]?.stack) || undefined }}
+              >
+                {t("inspector.fontSample")}
+              </p>
+
+              <div className="inspector-field">
                 <span>{t("inspector.accent")}</span>
+
+                {/* Swatches first: picking a colour that belongs with the rest of the page is a
+                    different job from picking any colour at all, and a native input only does the
+                    second. It is still there underneath for when none of these is the one. */}
+                <div className="inspector-swatches" role="group" aria-label={t("inspector.accent")}>
+                  {PALETTE.map((colour) => (
+                    <button
+                      type="button"
+                      key={colour}
+                      className={`inspector-swatch ${style.accent === colour ? "is-active" : ""}`.trim()}
+                      style={{ background: colour }}
+                      aria-label={colour}
+                      aria-pressed={style.accent === colour}
+                      title={colour}
+                      onClick={() => setStyle({ accent: colour })}
+                    />
+                  ))}
+                </div>
+
                 <span className="inspector-colour">
                   <input
                     type="color"
+                    aria-label={t("inspector.custom")}
                     value={style.accent ?? "#5468e0"}
                     onChange={(e) => setStyle({ accent: e.target.value })}
                   />
+                  <code className="inspector-hex">{style.accent ?? t("inspector.inherited")}</code>
                   {/* Clearing it is a separate act: a colour input has no empty state to pick. */}
                   {style.accent && (
                     <button type="button" className="widget-btn" onClick={() => setStyle({ accent: undefined })}>
@@ -303,12 +359,12 @@ export default function Inspector({ widget, anchor, onChange, onClose }: Inspect
                     </button>
                   )}
                 </span>
-              </label>
+              </div>
 
               <button
                 type="button"
                 className="widget-btn inspector-reset"
-                onClick={() => setStyle({ ...DEFAULT_STYLE, accent: undefined })}
+                onClick={() => setStyle({ ...DEFAULT_STYLE, accent: undefined, font: undefined })}
               >
                 {t("inspector.reset")}
               </button>
