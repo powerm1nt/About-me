@@ -1,0 +1,127 @@
+{
+  "nav": {
+    "home": "Home",
+    "explore": "Explore",
+    "media": "Media"
+  },
+  "account": {
+    "menu": "User menu",
+    "profile": "Profile",
+    "customize": "Customize",
+    "settings": "Settings",
+    "signOut": "Sign out",
+    "signIn": "Sign in",
+    "needHandle": "Please set a handle in Settings first."
+  },
+  "board": {
+    "resize": "Resize",
+    "remove": "Remove",
+    "duplicate": "Duplicate",
+    "layout": "Layout",
+    "empty": "Empty container. Add widgets from the gallery, then drag them in.",
+    "confirmTitle": "Remove this widget?",
+    "confirmMessage": "It comes off the page straight away. You can add it again from the Widgets Gallery, but anything you typed into it is gone.",
+    "confirm": "remove",
+    "cancel": "cancel"
+  },
+  "gallery": {
+    "title": "Widgets Gallery",
+    "add": "Add to page"
+  },
+  "anchors": {
+    "top": "Top",
+    "left": "Left",
+    "center": "Centre",
+    "right": "Right",
+    "bottom": "Bottom"
+  },
+  "flows": {
+    "row": "row",
+    "wrap": "wrap",
+    "column": "column",
+    "grid": "grid"
+  },
+  "widgets": {
+    "container": {
+      "label": "Container",
+      "description": "Holds other widgets, in a row, a column or a grid."
+    },
+    "nav": {
+      "label": "Navigation",
+      "description": "A link to one of the site's own pages."
+    },
+    "link": {
+      "label": "Link",
+      "description": "A link of your own, anywhere you like."
+    },
+    "account": {
+      "label": "Account",
+      "description": "Your avatar, and the menu behind it."
+    },
+    "brand": {
+      "label": "Brand",
+      "description": "The NukaWorks mark."
+    },
+    "colophon": {
+      "label": "Colophon",
+      "description": "Copyright, build number and the About link."
+    },
+    "identity": {
+      "label": "Name and avatar",
+      "description": "Your avatar, name, handle and headline."
+    },
+    "links": {
+      "label": "Links",
+      "description": "The links you list on your profile."
+    },
+    "bio": {
+      "label": "Bio (README)",
+      "description": "Your README post, shown as the bio."
+    },
+    "heatmap": {
+      "label": "Activity",
+      "description": "A year of your posting activity."
+    },
+    "timeline": {
+      "label": "Posts and media",
+      "description": "Everything you have posted, in tabs."
+    },
+    "text": {
+      "label": "Text",
+      "description": "A heading and some words of your own."
+    }
+  },
+  "text": {
+    "heading": "Heading",
+    "body": "Text",
+    "sampleHeading": "A heading",
+    "sampleBody": "Words of your own, anywhere on your page."
+  },
+  "link": {
+    "label": "Label",
+    "href": "Address",
+    "untitled": "Link"
+  },
+  "profile": {
+    "posts": "Posts",
+    "media": "Media",
+    "empty": "Nothing posted yet.",
+    "notFound": "No such profile.",
+    "pronouns": "Pronouns",
+    "location": "Location",
+    "email": "Email"
+  },
+  "landing": {
+    "forYou": "For You",
+    "empty": "Nothing here yet.",
+    "error": "Could not load posts: "
+  },
+  "footer": {
+    "about": "About Hisuiki",
+    "rights": "© {{year}} NukaWorks Solutions - All rights reserved."
+  },
+  "save": {
+    "saving": "Saving…",
+    "saved": "Saved."
+  }
+}

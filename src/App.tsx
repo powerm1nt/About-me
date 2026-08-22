@@ -1,8 +1,14 @@
 import { useEffect, useState } from "react";
+import AnchorRegion from "./Common/Components/AnchorRegion/AnchorRegion";
 import AppModal from "./Common/Components/AppModal/AppModal";
 import Wallpaper from "./Common/Components/Wallpaper/Wallpaper";
-import { About, FileViewer, Footer, Header, Profile, Landing, Photos, Settings, SignIn } from "./Modules";
+import WidgetGallery from "./Common/Components/WidgetGallery/WidgetGallery";
+import { About, FileViewer, Profile, Landing, Photos, Settings, SignIn } from "./Modules";
 import { AuthProvider, useAuth } from "./Services/auth";
+import { PageLayoutProvider, usePageLayout } from "./Services/pageLayout";
+import { addWidget } from "./Services/layout";
+import { setLanguage } from "./Services/i18n";
+import { useTranslation } from "react-i18next";
 import { ExternalLinkProvider } from "./Services/externalLink";
 import { RouterProvider, resolveRoute, useRouter } from "./Services/router";
 import { fetchMyProfile } from "./Services/profile";
@@ -31,7 +37,7 @@ function pageTitle(pathname: string): string {
  * The signed-in person's own profile, opened for arranging. It resolves the handle from the session
  * rather than the URL, so /customize needs no handle in it and cannot be pointed at someone else.
  */
-function CustomizeOwnProfile({ isJapanese }: { isJapanese: boolean }) {
+function CustomizeOwnProfile() {
   const auth = useAuth();
   const [handle, setHandle] = useState<string | null>(null);
   const [missing, setMissing] = useState(false);
@@ -56,21 +62,21 @@ function CustomizeOwnProfile({ isJapanese }: { isJapanese: boolean }) {
   }, [auth.isSignedIn]);
 
   if (!auth.isSignedIn) {
-    return <p className="loading-text">{isJapanese ? "サインインしてください。" : "Sign in to customize your profile."}</p>;
+    return <p className="loading-text">{"Sign in to customize your profile."}</p>;
   }
 
   // Without a handle there is no profile to arrange yet, and settings is where one is chosen.
   if (missing) {
     return (
       <p className="loading-text">
-        {isJapanese ? "先に設定でハンドルを決めてください。" : "Choose a handle in Settings first."}
+        {"Choose a handle in Settings first."}
       </p>
     );
   }
 
   if (!handle) return <p className="loading-text">…</p>;
 
-  return <Profile handle={handle} isJapanese={isJapanese} editing />;
+  return <Profile handle={handle} editing />;
 }
 
 function NotFound() {
@@ -86,23 +92,60 @@ function NotFound() {
   );
 }
 
+/**
+ * The page's furniture, drawn from the layout document rather than from this file.
+ *
+ * There is no <Header /> and no <Footer /> any more. The top anchor holds a container of navigation
+ * widgets and the bottom one holds the brand and colophon, and either can be emptied, refilled or
+ * swapped with the other — nothing here knows which is which. The route still decides what goes in
+ * the middle, because that is what a route is for.
+ */
 function Shell() {
   const { pathname } = useRouter();
   const route = resolveRoute(pathname);
+  const { editing, anchors, setAnchor, saveState, saveError } = usePageLayout();
+  const { t } = useTranslation();
 
   useEffect(() => {
     document.title = pageTitle(pathname);
   }, [pathname]);
 
+  // Language is ambient rather than a prop on every component: a widget is placed by its owner and
+  // rendered by whichever surface it lands in, so it cannot rely on a prop being threaded down a
+  // path nobody controls.
+  useEffect(() => {
+    setLanguage(route?.japanese ? "ja" : "en");
+  }, [route?.japanese]);
+
   // The container a profile's stylesheet is scoped to on the server. It deliberately wraps the
-  // content and not <Header />, so a profile can restyle its own pages but never the app chrome it
-  // shares with everyone else.
+  // content and not the top anchor, so a profile can restyle its own pages but never the app chrome
+  // it shares with everyone else.
   const isProfileSite = getSiteHandle() !== null;
 
   return (
     <>
       <Wallpaper />
-      <Header isJapanese={route?.japanese ?? false} />
+
+      <header className="page-top">
+        <div className="page-rail">
+          <AnchorRegion anchor="top" flow="column" />
+        </div>
+      </header>
+
+      {/* The gallery belongs to the page, not to the profile: with the header and footer arrangeable
+          too, it has to be reachable while arranging any of them. */}
+      {editing && (
+        <div className="page-rail">
+          <WidgetGallery onAdd={(kind) => setAnchor("center", addWidget(anchors.center, kind))} />
+          {saveError !== null && <p className="editor-status is-error">{saveError}</p>}
+          {saveState !== "idle" && (
+            <p className="editor-status" role="status">
+              {saveState === "saving" ? t("save.saving") : t("save.saved")}
+            </p>
+          )}
+        </div>
+      )}
+
       <div className={isProfileSite ? "profile-custom" : undefined}>
       {route === null ? (
         <NotFound />
@@ -126,17 +169,17 @@ function Shell() {
         <main className="main-content">
           <div className="main-content-container">
             <div className="file-content" data-phase="ready" key={route.handle}>
-              <Profile handle={route.handle} isJapanese={route.japanese} />
+              <Profile handle={route.handle} />
             </div>
           </div>
         </main>
       ) : route.kind === "customize" ? (
-        // Customizing is the profile in edit mode, not a separate screen — the thing being arranged
-        // is the page itself.
+        // Customizing is the page in edit mode, not a separate screen — the thing being arranged is
+        // the page itself.
         <main className="main-content">
           <div className="main-content-container">
             <div className="file-content" data-phase="ready">
-              <CustomizeOwnProfile isJapanese={route.japanese} />
+              <CustomizeOwnProfile />
             </div>
           </div>
         </main>
@@ -158,7 +201,13 @@ function Shell() {
         <FileViewer slug={route.slug} isHome={route.isHome} isJapanese={route.japanese} />
       )}
       </div>
-      <Footer />
+
+      <footer className="page-bottom">
+        <div className="page-rail">
+          <AnchorRegion anchor="bottom" flow="column" />
+        </div>
+      </footer>
+
       <AppModal />
     </>
   );
@@ -211,9 +260,11 @@ export default function App() {
   return (
     <RouterProvider>
       <AuthProvider>
-        <ExternalLinkProvider>
-          <Shell />
-        </ExternalLinkProvider>
+        <PageLayoutProvider>
+          <ExternalLinkProvider>
+            <Shell />
+          </ExternalLinkProvider>
+        </PageLayoutProvider>
       </AuthProvider>
     </RouterProvider>
   );

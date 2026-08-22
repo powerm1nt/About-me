@@ -21,9 +21,11 @@
     "better-auth": "^1.7.1",
     "gray-matter": "^4.0.3",
     "highlight.js": "^11.11.1",
+    "i18next": "^26.4.0",
     "marked": "^18.0.7",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "react-i18next": "^17.0.12"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

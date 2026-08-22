@@ -1,0 +1,127 @@
+{
+  "nav": {
+    "home": "ホーム",
+    "explore": "みつける",
+    "media": "メディア"
+  },
+  "account": {
+    "menu": "ユーザーメニュー",
+    "profile": "プロフィール",
+    "customize": "カスタマイズ",
+    "settings": "設定",
+    "signOut": "サインアウト",
+    "signIn": "サインイン",
+    "needHandle": "先に設定でハンドルを決めてください。"
+  },
+  "board": {
+    "resize": "サイズ変更",
+    "remove": "削除",
+    "duplicate": "複製",
+    "layout": "レイアウト",
+    "empty": "空のコンテナです。ギャラリーからウィジェットを追加して、ここへドラッグしてください。",
+    "confirmTitle": "このウィジェットを削除しますか？",
+    "confirmMessage": "すぐにページから外れます。ウィジェットギャラリーから追加し直せますが、入力した内容は失われます。",
+    "confirm": "削除",
+    "cancel": "キャンセル"
+  },
+  "gallery": {
+    "title": "ウィジェットギャラリー",
+    "add": "ページに追加"
+  },
+  "anchors": {
+    "top": "上",
+    "left": "左",
+    "center": "中央",
+    "right": "右",
+    "bottom": "下"
+  },
+  "flows": {
+    "row": "横一列",
+    "wrap": "折り返し",
+    "column": "縦",
+    "grid": "グリッド"
+  },
+  "widgets": {
+    "container": {
+      "label": "コンテナ",
+      "description": "他のウィジェットを行・列・グリッドで並べます。"
+    },
+    "nav": {
+      "label": "ナビゲーション",
+      "description": "サイト内のページへのリンク。"
+    },
+    "link": {
+      "label": "リンク",
+      "description": "自分で決めるリンク。"
+    },
+    "account": {
+      "label": "アカウント",
+      "description": "アバターとメニュー。"
+    },
+    "brand": {
+      "label": "ブランド",
+      "description": "NukaWorks のロゴ。"
+    },
+    "colophon": {
+      "label": "奥付",
+      "description": "著作権表示、ビルド番号、About へのリンク。"
+    },
+    "identity": {
+      "label": "名前とアバター",
+      "description": "アバター、名前、ハンドル、見出し。"
+    },
+    "links": {
+      "label": "リンク集",
+      "description": "プロフィールに並べるリンク。"
+    },
+    "bio": {
+      "label": "自己紹介 (README)",
+      "description": "READMEの投稿を自己紹介として表示。"
+    },
+    "heatmap": {
+      "label": "アクティビティ",
+      "description": "1年間の投稿アクティビティ。"
+    },
+    "timeline": {
+      "label": "投稿とメディア",
+      "description": "投稿とメディアをタブで表示。"
+    },
+    "text": {
+      "label": "テキスト",
+      "description": "自分で書く見出しと本文。"
+    }
+  },
+  "text": {
+    "heading": "見出し",
+    "body": "本文",
+    "sampleHeading": "見出し",
+    "sampleBody": "自分で書いた文章をページに置けます。"
+  },
+  "link": {
+    "label": "ラベル",
+    "href": "アドレス",
+    "untitled": "リンク"
+  },
+  "profile": {
+    "posts": "投稿",
+    "media": "メディア",
+    "empty": "まだ投稿がありません。",
+    "notFound": "プロフィールが見つかりません。",
+    "pronouns": "代名詞",
+    "location": "場所",
+    "email": "メール"
+  },
+  "landing": {
+    "forYou": "おすすめ",
+    "empty": "まだ何もありません。",
+    "error": "投稿を読み込めませんでした: "
+  },
+  "footer": {
+    "about": "Hisuiki について",
+    "rights": "© {{year}} NukaWorks Solutions - All rights reserved."
+  },
+  "save": {
+    "saving": "保存中…",
+    "saved": "保存しました。"
+  }
+}

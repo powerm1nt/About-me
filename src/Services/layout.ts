@@ -1,18 +1,33 @@
-import type { ProfileLayout, Widget, WidgetKind, WidgetSize } from "./profile";
+import type { Anchor, AnchoredLayout, ProfileLayout, Widget, WidgetKind, WidgetSize } from "./profile";
 
 /**
- * A profile is a board of widgets.
+ * A page is a set of anchors, each holding widgets.
  *
- * The model is the one a phone home screen uses: widgets sit in a grid, each occupying a whole
- * number of columns, and the arrangement is their order plus their size — not pixel coordinates.
- * That is a deliberate limit. Coordinates would let someone compose something exact on a desktop
- * that a narrow screen then has to either scale down illegibly or scramble; sizes and order reflow
- * on their own, so the same board works on a phone without a second layout for it.
+ * There is no chrome any more. The header is not a header because it is a header — it is a container
+ * of widgets sitting at the top anchor, and it stops being a header the moment it is moved. The
+ * footer is the same container at the bottom. What makes something "the header" is only where it is
+ * anchored, which is why the anchors are the one fixed vocabulary here: everything else about a page
+ * is arrangeable, so the positions have to be nameable.
+ *
+ * Within an anchor the model is a phone home screen's: order, plus a size, plus — for a container —
+ * the direction its children run. Deliberately not coordinates. Coordinates would let someone
+ * compose something exact on a desktop that a narrow screen must then scale down illegibly or
+ * scramble; order and flow reflow on their own.
  */
 
-export const LAYOUT_VERSION = 2;
+export const LAYOUT_VERSION = 3;
 
-/** Columns on the widest layout. Narrower screens collapse this in CSS, not here. */
+export const ANCHORS: Anchor[] = ["top", "left", "center", "right", "bottom"];
+
+export const ANCHOR_LABELS: Record<Anchor, { en: string; ja: string }> = {
+  top: { en: "Top", ja: "上" },
+  left: { en: "Left", ja: "左" },
+  center: { en: "Centre", ja: "中央" },
+  right: { en: "Right", ja: "右" },
+  bottom: { en: "Bottom", ja: "下" },
+};
+
+/** Columns on the widest grid layout. Narrower screens collapse this in CSS, not here. */
 export const GRID_COLUMNS = 4;
 
 /** How many columns each size occupies at full width. */
@@ -24,6 +39,24 @@ export const SIZE_SPAN: Record<WidgetSize, number> = {
 
 export const SIZES: WidgetSize[] = ["small", "medium", "large"];
 
+/**
+ * How a container arranges what is inside it.
+ *
+ * "row" is a single line that neither wraps nor clips — the header bar, where the items are meant to
+ * sit beside each other. "wrap" is the same line allowed to fold onto a second when it runs out of
+ * room. "column" stacks. "grid" is the four-column board a profile's body uses.
+ */
+export type Flow = "row" | "wrap" | "column" | "grid";
+
+export const FLOWS: Flow[] = ["row", "wrap", "column", "grid"];
+
+export const FLOW_LABELS: Record<Flow, { en: string; ja: string }> = {
+  row: { en: "row", ja: "横一列" },
+  wrap: { en: "wrap", ja: "折り返し" },
+  column: { en: "column", ja: "縦" },
+  grid: { en: "grid", ja: "グリッド" },
+};
+
 interface WidgetSpec {
   label: { en: string; ja: string };
   /** One line for the gallery, shown only when the live preview has nothing to show. */
@@ -31,16 +64,67 @@ interface WidgetSpec {
   /**
    * Whether removing one should ask first. Any widget can be added again from the gallery, so this
    * is not about permanence — it is about how much is thrown away. A text widget holds a few words
-   * you can retype; a timeline or a heatmap is a piece of the page's structure, and losing it to a
-   * misplaced click is the kind of mistake worth one question.
+   * you can retype; a timeline, or a container with a page's worth of things inside it, is
+   * structure, and losing that to a misplaced click is worth one question.
    */
   confirmRemove: boolean;
   defaultSize: WidgetSize;
   /** Sizes that make sense — a timeline at one column is unreadable. */
   sizes: WidgetSize[];
+  /** Containers hold other widgets; everything else is a leaf. */
+  container?: boolean;
 }
 
 export const WIDGETS: Record<WidgetKind, WidgetSpec> = {
+  container: {
+    label: { en: "Container", ja: "コンテナ" },
+    description: {
+      en: "Holds other widgets, in a row, a column or a grid.",
+      ja: "他のウィジェットを行・列・グリッドで並べます。",
+    },
+    confirmRemove: true,
+    defaultSize: "large",
+    sizes: ["small", "medium", "large"],
+    container: true,
+  },
+  nav: {
+    label: { en: "Navigation", ja: "ナビゲーション" },
+    description: { en: "A link to one of the site's own pages.", ja: "サイト内のページへのリンク。" },
+    confirmRemove: true,
+    defaultSize: "small",
+    sizes: ["small"],
+  },
+  link: {
+    label: { en: "Link", ja: "リンク" },
+    description: { en: "A link of your own, anywhere you like.", ja: "自分で決めるリンク。" },
+    confirmRemove: false,
+    defaultSize: "small",
+    sizes: ["small"],
+  },
+  account: {
+    label: { en: "Account", ja: "アカウント" },
+    description: { en: "Your avatar, and the menu behind it.", ja: "アバターとメニュー。" },
+    confirmRemove: true,
+    defaultSize: "small",
+    sizes: ["small"],
+  },
+  brand: {
+    label: { en: "Brand", ja: "ブランド" },
+    description: { en: "The NukaWorks mark.", ja: "NukaWorks のロゴ。" },
+    confirmRemove: true,
+    defaultSize: "small",
+    sizes: ["small", "medium"],
+  },
+  colophon: {
+    label: { en: "Colophon", ja: "奥付" },
+    description: {
+      en: "Copyright, build number and the About link.",
+      ja: "著作権表示、ビルド番号、About へのリンク。",
+    },
+    confirmRemove: true,
+    defaultSize: "medium",
+    sizes: ["small", "medium", "large"],
+  },
   identity: {
     label: { en: "Name and avatar", ja: "名前とアバター" },
     description: { en: "Your avatar, name, handle and headline.", ja: "アバター、名前、ハンドル、見出し。" },
@@ -49,7 +133,7 @@ export const WIDGETS: Record<WidgetKind, WidgetSpec> = {
     sizes: ["medium", "large"],
   },
   links: {
-    label: { en: "Links", ja: "リンク" },
+    label: { en: "Links", ja: "リンク集" },
     description: { en: "The links you list on your profile.", ja: "プロフィールに並べるリンク。" },
     confirmRemove: true,
     defaultSize: "medium",
@@ -86,59 +170,190 @@ export const WIDGETS: Record<WidgetKind, WidgetSpec> = {
   },
 };
 
-export const DEFAULT_WIDGETS: Widget[] = [
-  { id: "identity", kind: "identity", size: "large" },
-  { id: "links", kind: "links", size: "medium" },
-  { id: "bio", kind: "bio", size: "large" },
-  { id: "heatmap", kind: "heatmap", size: "large" },
-  { id: "timeline", kind: "timeline", size: "large" },
-];
+/** The flow a container lays its children out with, defaulting to a row. */
+export const flowOf = (item: Widget): Flow => {
+  const stored = item.props?.flow;
+  return typeof stored === "string" && (FLOWS as string[]).includes(stored) ? (stored as Flow) : "row";
+};
+
+export const isContainer = (item: Widget): boolean => WIDGETS[item.kind].container === true;
+
+/**
+ * A fresh id.
+ *
+ * Every widget gets one, including the structural kinds: a page may hold as many timelines, text
+ * panels or containers as its owner wants, so identity cannot come from the kind.
+ */
+export const newId = (): string =>
+  `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+
+const make = (kind: WidgetKind, extra: Partial<Widget> = {}): Widget => ({
+  id: newId(),
+  kind,
+  size: WIDGETS[kind].defaultSize,
+  ...extra,
+});
+
+/**
+ * The page as it comes: a bar at the top, the profile down the middle, a colophon at the bottom.
+ * None of it is privileged — every part is a widget somebody can move, duplicate or delete.
+ */
+export function defaultAnchors(): AnchoredLayout {
+  return {
+    top: [
+      make("container", {
+        size: "large",
+        props: { flow: "row" },
+        children: [
+          make("nav", { props: { target: "home" } }),
+          make("nav", { props: { target: "explore" } }),
+          make("nav", { props: { target: "media" } }),
+          // Pushed to the far end of the bar rather than pinned there: it is an ordinary widget that
+          // happens to take up the slack, and dragging it inward makes it sit inline like the rest.
+          make("account", { props: { push: true } }),
+        ],
+      }),
+    ],
+    left: [],
+    center: [
+      make("identity", { size: "large" }),
+      make("links", { size: "medium" }),
+      make("bio", { size: "large" }),
+      make("heatmap", { size: "large" }),
+      make("timeline", { size: "large" }),
+    ],
+    right: [],
+    bottom: [
+      make("container", {
+        size: "large",
+        props: { flow: "row" },
+        children: [make("brand"), make("colophon", { props: { push: true } })],
+      }),
+    ],
+  };
+}
 
 const isKind = (value: unknown): value is WidgetKind =>
   typeof value === "string" && value in WIDGETS;
 
+export const isAnchor = (value: unknown): value is Anchor =>
+  typeof value === "string" && (ANCHORS as string[]).includes(value);
+
+/** Deep enough for a bar inside a column inside a page; shallow enough that nothing runs away. */
+const MAX_DEPTH = 4;
+
 /**
- * Reads a stored board into something safe to render.
+ * Reads one stored widget, and whatever is inside it, into something safe to render.
  *
  * The document is untrusted: it may predate a change to this file, or have been edited by hand.
- * Unknown widget kinds are dropped, sizes are clamped to what the widget supports, and repeated ids
- * are collapsed, since two widgets sharing an id cannot be told apart by a drag or a delete.
- *
- * A stored board is authoritative — whatever it says is the whole page. The default board is used
- * only when there is no widget list at all, which means a profile nobody has arranged yet. An empty
- * list is a different thing entirely: it is a board someone has emptied, and refilling it would be
- * undoing their work rather than helping.
+ * Unknown kinds are dropped, sizes are clamped to what the widget supports, and repeated ids are
+ * collapsed — two widgets sharing an id cannot be told apart by a drag or a delete. Nesting is
+ * bounded, because a container that contained itself would recurse until the stack gave out.
  */
-export function readLayout(layout: ProfileLayout | null | undefined): Widget[] {
-  const stored = layout?.widgets;
-  if (!Array.isArray(stored)) return DEFAULT_WIDGETS.map((widget) => ({ ...widget }));
+function readWidget(raw: unknown, seen: Set<string>, depth: number): Widget | null {
+  if (!raw || typeof raw !== "object") return null;
 
-  const seen = new Set<string>();
-  const widgets: Widget[] = [];
+  const value = raw as Partial<Widget>;
+  if (typeof value.id !== "string" || !isKind(value.kind)) return null;
+  if (seen.has(value.id)) return null;
+  seen.add(value.id);
 
-  for (const widget of stored) {
-    if (!widget || typeof widget.id !== "string" || !isKind(widget.kind)) continue;
-    if (seen.has(widget.id)) continue;
-    seen.add(widget.id);
+  const spec = WIDGETS[value.kind];
+  const result: Widget = {
+    id: value.id,
+    kind: value.kind,
+    size: value.size && spec.sizes.includes(value.size) ? value.size : spec.defaultSize,
+    props: value.props,
+  };
 
-    const spec = WIDGETS[widget.kind];
-    widgets.push({
-      id: widget.id,
-      kind: widget.kind,
-      size: spec.sizes.includes(widget.size) ? widget.size : spec.defaultSize,
-      props: widget.props,
-    });
+  if (spec.container) {
+    const children = Array.isArray(value.children) && depth < MAX_DEPTH ? value.children : [];
+    result.children = children
+      .map((child) => readWidget(child, seen, depth + 1))
+      .filter((child): child is Widget => child !== null);
   }
 
-  return widgets;
+  return result;
 }
 
-export const writeLayout = (widgets: Widget[]): ProfileLayout => ({
+const readList = (raw: unknown, seen: Set<string>): Widget[] =>
+  (Array.isArray(raw) ? raw : [])
+    .map((item) => readWidget(item, seen, 0))
+    .filter((item): item is Widget => item !== null);
+
+/**
+ * Reads a stored layout into the five anchors.
+ *
+ * A stored layout is authoritative — whatever it says is the whole page. The default is used only
+ * where nothing is stored at all, which means a page nobody has arranged yet. An empty list is a
+ * different thing entirely: it is an anchor someone has emptied, and refilling it would be undoing
+ * their work rather than helping.
+ */
+export function readLayout(layout: ProfileLayout | null | undefined): AnchoredLayout {
+  const stored = layout?.anchors;
+
+  if (stored && typeof stored === "object") {
+    const seen = new Set<string>();
+    const source = stored as Record<string, unknown>;
+    const result = {} as AnchoredLayout;
+    for (const anchor of ANCHORS) result[anchor] = readList(source[anchor], seen);
+    return result;
+  }
+
+  return migrate(layout);
+}
+
+/**
+ * Brings a layout written before anchors existed forward.
+ *
+ * The old document had a flat `widgets` list, which was the page's body, and a `header` list of ids
+ * naming what the strip showed. Both become anchors holding the same things in the same order, so a
+ * profile that was arranged once keeps its arrangement rather than being reset to the default for
+ * the crime of predating this file.
+ */
+function migrate(layout: ProfileLayout | null | undefined): AnchoredLayout {
+  const anchors = defaultAnchors();
+  if (!layout) return anchors;
+
+  if (Array.isArray(layout.widgets)) {
+    anchors.center = readList(layout.widgets, new Set<string>());
+  }
+
+  const header = layout.header;
+  if (!Array.isArray(header) || header.length === 0) return anchors;
+
+  const links = Array.isArray(layout.headerLinks) ? layout.headerLinks : [];
+  const children: Widget[] = [];
+
+  for (const entry of header) {
+    const id = typeof entry?.id === "string" ? entry.id : null;
+    if (!id) continue;
+
+    if (id === "avatar") {
+      children.push(make("account", { props: { push: true } }));
+    } else if (id.startsWith("nav:")) {
+      children.push(make("nav", { props: { target: id.slice(4) } }));
+    } else if (id.startsWith("link:")) {
+      // The old id joined the href and the label with a space. Matching it against the stored links
+      // finds the one it named without having to trust the id's own text.
+      const match = links.find((link) => `link:${link.href} ${link.label}` === id);
+      if (match) children.push(make("link", { props: { href: match.href, label: match.label } }));
+    }
+  }
+
+  if (children.length > 0) {
+    anchors.top = [make("container", { size: "large", props: { flow: "row" }, children })];
+  }
+
+  return anchors;
+}
+
+export const writeLayout = (anchors: AnchoredLayout): ProfileLayout => ({
   version: LAYOUT_VERSION,
-  widgets,
+  anchors,
 });
 
-/** Moves a widget to another position, returning a new array. */
+/** Moves a widget to another position within one list, returning a new array. */
 export function moveWidget(widgets: Widget[], from: number, to: number): Widget[] {
   if (from === to || from < 0 || to < 0 || from >= widgets.length || to >= widgets.length) {
     return widgets;
@@ -150,46 +365,66 @@ export function moveWidget(widgets: Widget[], from: number, to: number): Widget[
   return next;
 }
 
-/** Takes a widget off the board. It can always be added again from the gallery. */
+/** Takes a widget off the list. It can always be added again from the gallery. */
 export const removeWidget = (widgets: Widget[], id: string): Widget[] =>
-  widgets.filter((widget) => widget.id !== id);
+  widgets.filter((item) => item.id !== id);
 
-/**
- * A fresh id.
- *
- * Every widget gets one, including the structural kinds: a profile may hold as many timelines or
- * text panels as its owner wants, so identity cannot come from the kind.
- */
-const newId = (): string =>
-  `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
-
-/** Puts a widget on the board from the gallery, at the end where it can be seen and then moved. */
-export const addWidget = (widgets: Widget[], kind: WidgetKind): Widget[] => [
-  ...widgets,
-  { id: newId(), kind, size: WIDGETS[kind].defaultSize, props: {} },
-];
-
-/** Copies a widget, its size and its contents, and drops the copy in beside the original. */
-export function duplicateWidget(widgets: Widget[], id: string): Widget[] {
-  const index = widgets.findIndex((widget) => widget.id === id);
-  if (index === -1) return widgets;
-
-  const source = widgets[index]!;
-  const copy: Widget = {
+/** A copy sharing nothing with the original: typing into one must never change the other. */
+function copyWidget(source: Widget): Widget {
+  return {
     id: newId(),
     kind: source.kind,
     size: source.size,
     props: source.props ? { ...source.props } : undefined,
+    children: source.children?.map(copyWidget),
   };
+}
+
+/** Copies a widget, its size, its settings and everything inside it, beside the original. */
+export function duplicateWidget(widgets: Widget[], id: string): Widget[] {
+  const index = widgets.findIndex((item) => item.id === id);
+  if (index === -1) return widgets;
 
   const next = [...widgets];
-  next.splice(index + 1, 0, copy);
+  next.splice(index + 1, 0, copyWidget(widgets[index]!));
   return next;
 }
 
-/** The next size in the widget's own list, wrapping — what tapping a resize control does. */
-export function cycleSize(widget: Widget): WidgetSize {
-  const sizes = WIDGETS[widget.kind].sizes;
-  const index = sizes.indexOf(widget.size);
-  return sizes[(index + 1) % sizes.length] ?? widget.size;
+/** Puts a widget at the end of a list, where it can be seen and then moved. */
+export function addWidget(widgets: Widget[], kind: WidgetKind): Widget[] {
+  const created = make(kind, { props: {} });
+  if (WIDGETS[kind].container) {
+    created.props = { flow: "row" };
+    created.children = [];
+  }
+  return [...widgets, created];
 }
+
+/** Replaces one widget wherever it is, however deeply nested. */
+export function updateWidget(
+  widgets: Widget[],
+  id: string,
+  change: (item: Widget) => Widget,
+): Widget[] {
+  return widgets.map((item) => {
+    if (item.id === id) return change(item);
+    if (!item.children) return item;
+    return { ...item, children: updateWidget(item.children, id, change) };
+  });
+}
+
+/** The next size in the widget's own list, wrapping — what tapping a resize control does. */
+export function cycleSize(item: Widget): WidgetSize {
+  const sizes = WIDGETS[item.kind].sizes;
+  const index = sizes.indexOf(item.size);
+  return sizes[(index + 1) % sizes.length] ?? item.size;
+}
+
+/** The next flow in the list, wrapping — what tapping a container's layout control does. */
+export function cycleFlow(item: Widget): Flow {
+  const index = FLOWS.indexOf(flowOf(item));
+  return FLOWS[(index + 1) % FLOWS.length] ?? "row";
+}
+
+/** What the gallery offers: everything there is. */
+export const galleryKinds = (): WidgetKind[] => Object.keys(WIDGETS) as WidgetKind[];

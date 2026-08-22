@@ -16,7 +16,6 @@ const TEXT = {
   en: {
     forYou: "For You",
     empty: "Nothing here yet.",
-    exploreLead: "Everything being posted, newest first — no ranking, no algorithm.",
     error: "Could not load posts: ",
     aboutTitle: "What Hisuiki is",
     aboutLead:
@@ -28,7 +27,6 @@ const TEXT = {
   ja: {
     forYou: "おすすめ",
     empty: "まだ何もありません。",
-    exploreLead: "投稿されたすべて。新しい順、並べ替えなし。",
     error: "投稿を読み込めませんでした: ",
     aboutTitle: "Hisuikiとは",
     aboutLead: "Hisuikiはメディア共有とブログのプラットフォームです。写真を投稿し、記事を書き、他の人の投稿にコメントできます。",
@@ -109,13 +107,10 @@ export default function Landing({ isJapanese, tab }: LandingProps) {
 
   return (
     <div className="file-content landing" data-phase="ready">
-      {/* Explore is the same feed with ranking off, reached from the header rather than a tab bar
-          here — one surface, two orderings, no second list of the same posts. */}
-      {tab === "home" ? (
-        <PostComposer isJapanese={isJapanese} onPosted={onPosted} />
-      ) : (
-        <p className="landing-lead">{text.exploreLead}</p>
-      )}
+      {/* Explore is the same feed with the ranking off. It carries no caption: the tab it was
+          reached from already says what it is, and a line explaining the page to someone who chose
+          it is the sort of thing you stop reading after the first visit. */}
+      {tab === "home" && <PostComposer isJapanese={isJapanese} onPosted={onPosted} />}
 
       {error !== null ? (
         <InfoBubble title={`${text.error}${error}`} className="md-component-danger" />
