@@ -2,56 +2,61 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { WidgetProps } from "../../Types";
 
-/**
- * One classic window, in pixels.
- *
- * Winamp's windows are a fixed 275 by 116; nothing about them reflows, which is why the widget
- * reserves exactly as much as the open ones need and centres them rather than trying to fill
- * whatever space the board gave it. Webamp centres its windows inside the element it is handed, so
- * a host any larger leaves the player adrift in the middle of an empty box.
- */
+/** One classic window. Winamp's are a fixed 275 by 116 and nothing about them reflows. */
 const WINDOW_WIDTH = 275;
 const WINDOW_HEIGHT = 116;
 
 /**
- * Winamp, on the page, by way of Webamp.
+ * Winamp, by way of Webamp. Loaded on demand — it is about a megabyte, and a page without one
+ * should not pay for it.
  *
- * Loaded on demand rather than bundled. Webamp is around a megabyte of JavaScript with an emulated
- * skin renderer inside it, and a page whose owner has not put one on it should not pay for that —
- * so the import happens when the widget mounts, not when the app does.
- *
- * It is the real player everywhere it appears, including while the page is being arranged and in the
- * gallery. What changes in those places is only that it stops taking the pointer: Webamp's windows
- * are draggable in their own right, and two drag implementations over the same pixels means neither
- * works, so the player is made transparent to the pointer and the drag lands on the widget instead.
- * The instance stays alive across that, since tearing down an audio context to grey out a control
- * would stop whatever was playing.
- *
- * Its own window controls are disabled. Closing a window inside a widget leaves an empty box with no
- * titlebar left to reopen it from, and "minimise" means nothing for something already in a page
- * rather than on a desktop. The close is refused through Webamp's own onWillClose rather than only
- * hidden, so the context menu and the keyboard cannot get around it either.
+ * Webamp centres its windows inside the element it is handed, so the host has to be exactly the size
+ * of the stack before it mounts. A host measured at zero, or squeezed narrower than 275 by its
+ * column, centres to a negative offset and the player ends up outside its own widget. So it waits
+ * for a real width, and scales down rather than being cropped when there is less than 275 to work
+ * with.
  */
 export default function Webamp({ widget, editing, preview }: WidgetProps) {
   const { t } = useTranslation();
+  const frame = useRef<HTMLDivElement>(null);
   const host = useRef<HTMLDivElement>(null);
   const [failed, setFailed] = useState(false);
+  const [scale, setScale] = useState(0);
 
   const src = String(widget.props?.src ?? "").trim();
   const title = String(widget.props?.title ?? "").trim();
   const artist = String(widget.props?.artist ?? "").trim();
 
-  // Just the player, unless asked for more. All three windows stacked is nearly 350px of a page for
-  // something most people want as a play button and a track name; the other two are worth having,
-  // but worth choosing.
   const equalizer = widget.props?.equalizer === true;
   const playlist = widget.props?.playlist === true;
   const height = WINDOW_HEIGHT * (1 + (equalizer ? 1 : 0) + (playlist ? 1 : 0));
 
-  // Deliberately not a reason to unmount: the player keeps running while the page is arranged.
+  // Still there while arranging, just not taking the pointer: two drag implementations over the
+  // same pixels means neither works.
   const inert = editing || preview;
 
   useEffect(() => {
+    const node = frame.current;
+    if (!node || typeof ResizeObserver === "undefined") {
+      setScale(1);
+      return;
+    }
+
+    const measure = () => {
+      const width = node.clientWidth;
+      if (width > 0) setScale(Math.min(1, width / WINDOW_WIDTH));
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    // Nothing mounts until the host is the size Webamp will centre against.
+    if (scale === 0) return;
+
     let disposed = false;
     let player: { dispose: () => void } | null = null;
 
@@ -60,56 +65,38 @@ export default function Webamp({ widget, editing, preview }: WidgetProps) {
 
       try {
         const { default: WebampPlayer } = await import("webamp");
-
-        // Checked after the await, so a widget removed while the chunk was loading does not get a
-        // player attached to a node that has left the document.
         if (disposed || !host.current) return;
 
-        // Only http(s), and only a URL that parses. This comes out of a stored document, not from
-        // the field that last wrote it.
         let track: { url: string; metaData: { title: string; artist: string } } | undefined;
         if (src) {
           try {
             const url = new URL(src, window.location.href);
             if (url.protocol === "https:" || url.protocol === "http:") {
-              track = {
-                url: url.toString(),
-                metaData: { title: title || t("webamp.untitled"), artist },
-              };
+              track = { url: url.toString(), metaData: { title: title || t("webamp.untitled"), artist } };
             }
           } catch {
-            // Not a URL. The player still opens; it just starts with an empty playlist.
+            // Not a URL; the player opens with an empty playlist.
           }
         }
 
         const instance = new WebampPlayer({
           initialTracks: track ? [track] : undefined,
-          // Relative offsets: Webamp centres the whole set inside the host, so these only stack the
-          // open windows against each other. An omitted window starts closed.
           windowLayout: {
             main: { position: { top: 0, left: 0 } },
             ...(equalizer ? { equalizer: { position: { top: WINDOW_HEIGHT, left: 0 } } } : {}),
             ...(playlist
-              ? {
-                  playlist: {
-                    position: { top: WINDOW_HEIGHT * (equalizer ? 2 : 1), left: 0 },
-                  },
-                }
+              ? { playlist: { position: { top: WINDOW_HEIGHT * (equalizer ? 2 : 1), left: 0 } } }
               : {}),
           },
         });
 
-        // Refused rather than merely hidden. A widget whose player has been closed is an empty box,
-        // and there is no titlebar left to reopen it from.
+        // Refused rather than hidden: a closed window leaves an empty widget with no way back.
         instance.onWillClose((cancel) => cancel());
 
         player = instance;
         await instance.renderWhenReady(host.current);
-
         if (disposed) instance.dispose();
       } catch {
-        // A chunk that will not load, or a browser Webamp cannot run in. Say so rather than leaving
-        // an empty box that reads as a layout bug.
         if (!disposed) setFailed(true);
       }
     })();
@@ -118,16 +105,24 @@ export default function Webamp({ widget, editing, preview }: WidgetProps) {
       disposed = true;
       player?.dispose();
     };
-  }, [src, title, artist, equalizer, playlist, t]);
+    // Deliberately not keyed on `scale`: remounting on every resize would restart playback. The
+    // first non-zero measurement is what it waits for.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scale > 0, src, title, artist, equalizer, playlist, t]);
 
   if (failed) return <p className="webamp-widget is-failed">{t("webamp.failed")}</p>;
 
-  // Sized to the stack exactly, so Webamp's centring lands where the widget expects it.
   return (
-    <div
-      className={`webamp-widget ${inert ? "is-inert" : ""}`.trim()}
-      ref={host}
-      style={{ width: WINDOW_WIDTH, height }}
-    />
+    <div className="webamp-frame" ref={frame} style={{ height: height * (scale || 1) }}>
+      <div
+        className={`webamp-widget ${inert ? "is-inert" : ""}`.trim()}
+        ref={host}
+        style={{
+          width: WINDOW_WIDTH,
+          height,
+          transform: scale && scale < 1 ? `scale(${scale})` : undefined,
+        }}
+      />
+    </div>
   );
 }

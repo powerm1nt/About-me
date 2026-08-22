@@ -1227,7 +1227,11 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
    whatever element it is given: a host any larger leaves the player adrift in the middle of an empty
    box, which is what made the widget look broken at anything above its smallest size. Centred here
    so the extra room a wider widget has goes around the player rather than under it. */
-.webamp-widget { position: relative; margin: 0 auto; }
+/* The frame owns the layout height; the host stays exactly the size Webamp centres against and is
+   scaled down when the column is narrower than a Winamp window. */
+.webamp-frame { position: relative; width: 100%; min-width: 0; }
+.webamp-widget { position: relative; margin: 0 auto; transform-origin: top left; }
+.webamp-frame > .webamp-widget { position: absolute; top: 0; left: 0; margin: 0; }
 
 /* Winamp's own window controls, disabled. Closing a window inside a widget leaves an empty box with
    no titlebar left to reopen it from, and "minimise" means nothing for something already inside a
