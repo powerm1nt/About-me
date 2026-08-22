@@ -126,6 +126,8 @@ export interface SignInRoute {
 
 export interface LandingRoute {
   kind: "landing";
+  /** home = the feed, explore = outside it, about = what Hisuiki is. */
+  tab: "home" | "explore" | "about";
   japanese: boolean;
 }
 
@@ -137,7 +139,8 @@ export interface SettingsRoute {
 export type Route = PageRoute | PhotosRoute | SignInRoute | LandingRoute | SettingsRoute;
 
 /** Ids are minted by the API as 12 hex characters; anything else is not a photo. */
-const PHOTO_ID = /^[0-9a-f]{12}$/;
+/** Posts and media are addressed by UUID: a slug names a post only within one author's profile. */
+const POST_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Route table:
@@ -166,17 +169,23 @@ export function resolveRoute(pathname: string): Route | null {
     if (getSiteHandle()) {
       return { kind: "page", slug: "README", isHome: true, japanese, isPostsIndex: false };
     }
-    return { kind: "landing", japanese };
+    return { kind: "landing", tab: "home", japanese };
   }
 
   if (path[0] === "posts") {
+    // No index of its own: the feed on the landing page is the list of posts, so /posts is the
+    // same surface rather than a second one showing the same rows in a different order.
     if (path.length === 1) {
-      return { kind: "page", slug: "posts-index", isHome: false, japanese, isPostsIndex: true };
+      return { kind: "landing", tab: "home", japanese };
     }
     // Slugs are single-segment and lowercase-kebab (see the editor's slug validation).
     if (path.length === 2 && /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(path[1]!)) {
       return { kind: "page", slug: path[1]!, isHome: false, japanese, isPostsIndex: false };
     }
+  }
+
+  if (path.length === 1 && (path[0] === "explore" || path[0] === "about")) {
+    return { kind: "landing", tab: path[0], japanese };
   }
 
   if (path[0] === "signin" && path.length === 1) {
@@ -187,11 +196,12 @@ export function resolveRoute(pathname: string): Route | null {
     return { kind: "settings", japanese };
   }
 
-  if (path[0] === "photos") {
+  // "media" is the name; "photos" stays as an alias so links already shared keep resolving.
+  if (path[0] === "media" || path[0] === "photos") {
     if (path.length === 1) {
       return { kind: "photos", japanese, photoId: null };
     }
-    if (path.length === 2 && PHOTO_ID.test(path[1]!)) {
+    if (path.length === 2 && POST_ID.test(path[1]!)) {
       return { kind: "photos", japanese, photoId: path[1]! };
     }
   }

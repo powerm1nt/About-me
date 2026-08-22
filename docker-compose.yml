@@ -71,6 +71,8 @@ services:
       DATABASE_URL: postgresql://hisuiki:hisuiki@postgres:5432/hisuiki
       GCS_BUCKET: hisuiki-assets-prod
       GCS_PREFIX: static
+      # User-authored content: post bodies and uploaded media, kept apart from the site's own assets.
+      GCS_DATA_BUCKET: hisuiki-data-prod
       GCS_API_ENDPOINT: http://gcs:4443
       CDN_BASE_URL: http://localhost:4444/storage/v1/b/hisuiki-assets-prod/o
       CORS_ALLOWED_ORIGINS: http://localhost:8080

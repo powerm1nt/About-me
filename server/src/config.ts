@@ -30,6 +30,13 @@ export const config = {
     prefix,
 
     /**
+     * Bucket holding user-authored content: post and page markdown, and uploaded media. Separate
+     * from the assets bucket, which holds the site's own chrome — the two have different lifecycles
+     * and different deletion rules, and deleting an account should empty one and not touch the other.
+     */
+    dataBucketName: env("GCS_DATA_BUCKET", "hisuiki-data-prod"),
+
+    /**
      * Overrides where the storage client sends its requests. Empty in production, where it talks to
      * Google; set to a fake-gcs-server in the local compose stack so development never reads or
      * writes the real bucket by accident.

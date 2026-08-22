@@ -16,6 +16,9 @@ if ! command -v gcloud >/dev/null 2>&1; then
 fi
 
 mkdir -p "$DEST"
+# fake-gcs-server derives its buckets from the directories under /data, so the data bucket has to
+# exist even when it is empty — otherwise the first post fails with a 404 from the emulator.
+mkdir -p "$(dirname "$DEST")/hisuiki-data-prod"
 echo "Copying gs://${BUCKET} into ${DEST} ..."
 gcloud storage rsync -r "gs://${BUCKET}" "$DEST"
 

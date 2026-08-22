@@ -62,7 +62,7 @@ function Shell() {
       ) : route.kind === "landing" ? (
         <main className="main-content">
           <div className="main-content-container">
-            <Landing isJapanese={route.japanese} />
+            <Landing isJapanese={route.japanese} tab={route.tab} />
           </div>
         </main>
       ) : route.kind === "photos" ? (

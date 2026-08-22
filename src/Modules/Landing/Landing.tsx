@@ -1,129 +1,205 @@
-import { useEffect, useState } from "react";
-import type { PostSummary } from "../../Services/types";
-import { useAuth } from "../../Services/auth";
-
-
-import { apiUrl, assetUrl } from "../../Services/config";
+import { useCallback, useEffect, useState } from "react";
+import PostComposer from "../../Common/Components/PostComposer/PostComposer";
 import Skeleton from "../../Common/Components/Skeleton/Skeleton";
 import SmartImage from "../../Common/Components/SmartImage/SmartImage";
+import InfoBubble from "../../Common/Components/InfoBubble/InfoBubble";
+import { fetchFeed } from "../../Services/api";
+import { assetUrl } from "../../Services/config";
+import { Link } from "../../Services/router";
+import type { PostSummary } from "../../Services/types";
 
 export interface LandingProps {
   isJapanese: boolean;
+  tab: "home" | "explore" | "about";
 }
 
-export default function Landing({ isJapanese }: LandingProps) {
-  const [posts, setPosts] = useState<PostSummary[]>([]);
-  const [loading, setLoading] = useState(true);
+const TEXT = {
+  en: {
+    home: "Home",
+    explore: "Explore",
+    about: "About",
+    empty: "Nothing here yet.",
+    exploreLead: "Everything being posted, newest first — no ranking, no algorithm.",
+    error: "Could not load posts: ",
+    aboutTitle: "What Hisuiki is",
+    aboutLead:
+      "Hisuiki is a media sharing and blogging platform. Post photos, write articles, and comment on what other people share.",
+    aboutProfile: "Every account gets its own space at {handle}.hisuiki.com — its own pages, its own wallpaper, its own stylesheet.",
+    aboutOwnership: "Your writing is stored as plain markdown files you can fetch and keep, and every edit is kept as a version.",
+    signedOutHint: "Sign in to post, comment, and make the place yours.",
+  },
+  ja: {
+    home: "ホーム",
+    explore: "みつける",
+    about: "Hisuikiとは",
+    empty: "まだ何もありません。",
+    exploreLead: "投稿されたすべて。新しい順、並べ替えなし。",
+    error: "投稿を読み込めませんでした: ",
+    aboutTitle: "Hisuikiとは",
+    aboutLead: "Hisuikiはメディア共有とブログのプラットフォームです。写真を投稿し、記事を書き、他の人の投稿にコメントできます。",
+    aboutProfile: "アカウントごとに {handle}.hisuiki.com の専用スペースがあります。ページも壁紙もスタイルも自分のものです。",
+    aboutOwnership: "書いたものはマークダウンのファイルとして保存され、編集のたびにバージョンが残ります。",
+    signedOutHint: "サインインすると、投稿・コメント・カスタマイズができます。",
+  },
+} as const;
 
-  const auth = useAuth();
-  const [composerBody, setComposerBody] = useState("");
-  const [composerPosting, setComposerPosting] = useState(false);
+/** A relative time, because a feed is read in terms of "how long ago", not calendar dates. */
+function timeAgo(iso: string, japanese: boolean): string {
+  const seconds = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  const units: [number, string, string][] = [
+    [60, "s", "秒"],
+    [3600, "m", "分"],
+    [86400, "h", "時間"],
+    [604800, "d", "日"],
+  ];
 
-  const handlePost = async () => {
-    if (!composerBody.trim()) return;
-    setComposerPosting(true);
-    try {
-      const res = await fetch(apiUrl("/api/posts"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ body: composerBody })
-      });
-      if (res.ok) {
-        setComposerBody("");
-        // Reload feed
-        const data = await fetch(apiUrl("/api/posts")).then(r => r.json());
-        setPosts(data.posts || []);
-      }
-    } catch (e) {
-      alert("Failed to post");
-    } finally {
-      setComposerPosting(false);
+  for (const [limit, short, ja] of units) {
+    if (seconds < limit) {
+      const divisor = limit === 60 ? 1 : limit / 60;
+      return `${Math.floor(seconds / divisor)}${japanese ? ja : short}`;
     }
-  };
+  }
+  return new Intl.DateTimeFormat(japanese ? "ja-JP" : "en-US", { month: "short", day: "numeric" })
+    .format(new Date(iso));
+}
 
+/**
+ * The signed-out and signed-in landing surface.
+ *
+ * "home" is the feed with the composer on top. "explore" is the same content without whatever
+ * ranking home applies — deliberately the plain reverse-chronological view, so there is always a way
+ * to see what is actually being posted rather than what an algorithm chose. "about" explains the
+ * site to someone who has just arrived.
+ */
+export default function Landing({ isJapanese, tab }: LandingProps) {
+  const text = isJapanese ? TEXT.ja : TEXT.en;
+
+  // Tagged with the tab it was loaded for, so switching tabs resets the feed by derivation rather
+  // than through an effect that sets state synchronously and cascades a render.
+  const [loaded, setLoaded] = useState<{
+    tab: string;
+    posts: PostSummary[] | null;
+    error: string | null;
+  }>({ tab, posts: null, error: null });
+
+  const { posts, error } = loaded.tab === tab ? loaded : { posts: null, error: null };
+  const loading = posts === null && error === null;
+
+  const showsFeed = tab !== "about";
 
   useEffect(() => {
+    if (!showsFeed) return;
+
     let active = true;
-    fetch(apiUrl("/api/posts"))
-      .then(r => r.json())
-      .then(data => {
-        if (active) {
-          setPosts(data.posts || []);
-          setLoading(false);
-        }
+
+    fetchFeed(tab === "explore" ? { sort: "recent" } : {})
+      .then((next) => {
+        if (active) setLoaded({ tab, posts: next, error: null });
       })
-      .catch(() => {
-        if (active) setLoading(false);
+      .catch((err: unknown) => {
+        if (active) {
+          setLoaded({ tab, posts: null, error: err instanceof Error ? err.message : String(err) });
+        }
       });
-    return () => { active = false; };
+
+    return () => {
+      active = false;
+    };
+  }, [showsFeed, tab]);
+
+  // Prepended rather than refetched: the post is already in hand, and a refetch can race the write.
+  const onPosted = useCallback((post: PostSummary) => {
+    setLoaded((current) => ({ ...current, posts: [post, ...(current.posts ?? [])] }));
   }, []);
 
   return (
-    <div className="file-content" data-phase="ready">
-      <h1>Hisuiki</h1>
-      <p>{isJapanese ? "Hisuikiへようこそ" : "Welcome to Hisuiki"}</p>
-      
-      <div style={{ marginTop: "2rem" }}>
-        
-      {auth.isSignedIn && (
-        <div style={{ background: "var(--color-surface)", padding: "1rem", borderRadius: "8px", border: "1px solid var(--color-surface-border)", marginTop: "2rem", display: "flex", gap: "1rem", flexDirection: "column" }}>
-          <textarea 
-            placeholder={isJapanese ? "いまどうしてる？" : "What's happening?"}
-            value={composerBody}
-            onChange={e => setComposerBody(e.target.value)}
-            style={{ width: "100%", minHeight: "80px", background: "transparent", border: "none", color: "var(--color-text)", fontSize: "1.1em", resize: "vertical", outline: "none" }}
-          />
-          <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid var(--color-surface-veil)", paddingTop: "1rem" }}>
-             <div>
-                {/* Media buttons could go here */}
-             </div>
-             <button 
-               className="editor-btn editor-btn-primary" 
-               onClick={() => void handlePost()}
-               disabled={!composerBody.trim() || composerPosting}
-               style={{ padding: "0.5rem 1.5rem", borderRadius: "20px", fontWeight: "bold" }}
-             >
-               {composerPosting ? "..." : (isJapanese ? "ポストする" : "Post")}
-             </button>
-          </div>
-        </div>
-      )}
+    <div className="file-content landing" data-phase="ready">
+      <nav className="landing-tabs" aria-label={text.home}>
+        <Link href={isJapanese ? "/ja" : "/"} className={`landing-tab ${tab === "home" ? "is-active" : ""}`.trim()}>
+          {text.home}
+        </Link>
+        <Link href={isJapanese ? "/explore/ja" : "/explore"} className={`landing-tab ${tab === "explore" ? "is-active" : ""}`.trim()}>
+          {text.explore}
+        </Link>
+        <Link href={isJapanese ? "/about/ja" : "/about"} className={`landing-tab ${tab === "about" ? "is-active" : ""}`.trim()}>
+          {text.about}
+        </Link>
+      </nav>
 
-        <h2 style={{marginTop: "2rem"}}>{isJapanese ? "フィード" : "For You"}</h2>
-        {loading ? <Skeleton width="100%" height="200px" /> : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "2rem", marginTop: "1rem" }}>
-            {posts.length === 0 ? (
-              <p>{isJapanese ? "まだ投稿がありません。" : "No posts yet."}</p>
-            ) : (
-              posts.map(post => (
-                <div key={post.id} style={{ border: "1px solid var(--color-surface-border)", padding: "1rem", borderRadius: "8px", background: "var(--color-surface)" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
-                    {post.author.image && <SmartImage src={post.author.image} alt="" width="32px" height="32px" style={{ borderRadius: "50%" }} />}
-                    <strong>{post.author.name || post.author.profile?.handle || "Someone"}</strong>
-                    <span style={{ opacity: 0.7, fontSize: "0.85em" }}>@{post.author.profile?.handle || post.author.id}</span>
-                  </div>
-                  {post.title && <h3 style={{ marginTop: 0 }}>{post.title}</h3>}
-                  {/* The first image only: a feed card is a preview, and the post's own page shows
-                      the rest. thumbPath is null until a thumbnail has been generated, in which case
-                      the full image stands in. */}
-                  {post.media[0] && (
-                    <div style={{ marginBottom: "1rem" }}>
+      {tab === "about" ? (
+        <section className="landing-about">
+          <h1>{text.aboutTitle}</h1>
+          <p className="landing-lead">{text.aboutLead}</p>
+          <p>{text.aboutProfile}</p>
+          <p>{text.aboutOwnership}</p>
+        </section>
+      ) : (
+        <>
+          {tab === "home" ? (
+            <PostComposer isJapanese={isJapanese} onPosted={onPosted} />
+          ) : (
+            <p className="landing-lead">{text.exploreLead}</p>
+          )}
+
+          {error !== null ? (
+            <InfoBubble title={`${text.error}${error}`} className="md-component-danger" />
+          ) : loading ? (
+            <div className="feed" aria-hidden="true">
+              {[0, 1, 2].map((i) => (
+                <article className="feed-post" key={i}>
+                  <Skeleton className="skeleton-meta" width="140px" />
+                  <Skeleton className="skeleton-line" width="95%" />
+                  <Skeleton className="skeleton-line" width="70%" />
+                </article>
+              ))}
+            </div>
+          ) : (posts ?? []).length === 0 ? (
+            <p className="loading-text">{text.empty}</p>
+          ) : (
+            <div className="feed">
+              {(posts ?? []).map((post) => {
+                const handle = post.author.profile?.handle;
+                return (
+                  <article className="feed-post" key={post.id} data-post={post.id}>
+                    <header className="feed-post-head">
+                      {post.author.image && (
+                        <img className="feed-avatar" src={post.author.image} alt="" width={40} height={40} />
+                      )}
+                      <span className="feed-author">{post.author.name || handle || "Someone"}</span>
+                      {handle && <span className="feed-handle">@{handle}</span>}
+                      <span className="feed-time">{timeAgo(post.createdAt, isJapanese)}</span>
+                    </header>
+
+                    {post.title && <h3 className="feed-title">{post.title}</h3>}
+
+                    {/* The first image only: a card is a preview, and the post's page has the rest. */}
+                    {post.media[0] && (
                       <SmartImage
                         src={assetUrl(post.media[0].thumbPath ?? post.media[0].path)}
                         alt={post.media[0].alt}
                         block
-                        style={{ maxWidth: "100%", borderRadius: "4px" }}
                       />
-                    </div>
-                  )}
-                  <div dangerouslySetInnerHTML={{ __html: post.renderedHtml || post.body }} />
-                </div>
-              ))
-            )}
-          </div>
-        )}
-      </div>
+                    )}
+
+                    {/* Server-sanitised: renderUserContent strips anything outside its allow-list
+                        and scopes the post's own stylesheet to this data-post container. */}
+                    <div
+                      className="feed-body"
+                      dangerouslySetInnerHTML={{ __html: post.renderedHtml ?? "" }}
+                    />
+
+                    <footer className="feed-post-foot">
+                      <span>♥ {post._count.likes}</span>
+                      <span>💬 {post._count.comments}</span>
+                      <span>↻ {post._count.reposts}</span>
+                    </footer>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

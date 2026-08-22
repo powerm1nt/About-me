@@ -107,3 +107,24 @@ export async function updatePost(id: string, body: {
   if (!response.ok) throw new Error(await readErrorMessage(response));
   return (await response.json()) as PostSummary;
 }
+
+/**
+ * The feed. `author` scopes it to one profile, `kind: "media"` to posts carrying images — the media
+ * tab is this same route rather than a second one, because a media post is a post.
+ */
+export async function fetchFeed(
+  options: { author?: string; kind?: "media"; sort?: "recent" } = {}
+): Promise<PostSummary[]> {
+  const query = new URLSearchParams();
+  if (options.author) query.set("author", options.author);
+  if (options.kind) query.set("kind", options.kind);
+  // Explore asks for this: the plain reverse-chronological view, outside whatever home ranks.
+  if (options.sort) query.set("sort", options.sort);
+
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  const response = await fetch(apiUrl(`/api/posts${suffix}`), { credentials: "include" });
+  if (!response.ok) throw new Error(await readErrorMessage(response));
+
+  const body = (await response.json()) as { posts?: PostSummary[] };
+  return body.posts ?? [];
+}

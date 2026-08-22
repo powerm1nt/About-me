@@ -7,6 +7,7 @@
  * loops to Prisma queries.
  */
 import { prisma } from "./prisma.js";
+import { readContent, saveContent } from "./content.js";
 
 export interface PhotoAuthor {
   id: string;
@@ -51,6 +52,16 @@ export async function listPosts(): Promise<PhotoPost[]> {
     orderBy: { publishedAt: "desc" },
   });
 
+  // Captions live in the bucket with every other body. Fetched together rather than per row, so a
+  // gallery of fifty costs fifty parallel reads instead of fifty sequential ones.
+  const captions = new Map<string, string>(
+    await Promise.all(
+      posts.map(async (p) =>
+        [p.id, p.bodyPath ? ((await readContent(p.bodyPath)) ?? "") : ""] as [string, string]
+      )
+    )
+  );
+
   return posts.map((p) => {
     const media = p.media[0];
     return {
@@ -59,7 +70,7 @@ export async function listPosts(): Promise<PhotoPost[]> {
       thumb: media?.thumbPath ?? "",
       width: media?.width ?? 0,
       height: media?.height ?? 0,
-      caption: p.body,
+      caption: captions.get(p.id) ?? "",
       alt: media?.alt ?? "",
       tags: [],
       author: {
@@ -97,7 +108,13 @@ export async function updatePosts(
         data: {
           id: nextPost.id,
           authorId: nextPost.author.id,
-          body: nextPost.caption,
+          bodyPath: await saveContent({
+            userId: nextPost.author.id,
+            kind: "posts",
+            id: nextPost.id,
+            markdown: nextPost.caption,
+            message: "Posted",
+          }),
           publishedAt: new Date(nextPost.postedAt),
           createdAt: new Date(nextPost.postedAt),
           updatedAt: new Date(nextPost.editedAt),
@@ -122,7 +139,13 @@ export async function updatePosts(
         await prisma.post.update({
           where: { id: nextPost.id },
           data: {
-            body: nextPost.caption,
+            bodyPath: await saveContent({
+              userId: nextPost.author.id,
+              kind: "posts",
+              id: nextPost.id,
+              markdown: nextPost.caption,
+              message: "Edited",
+            }),
             updatedAt: new Date(nextPost.editedAt),
             media: {
               update: {

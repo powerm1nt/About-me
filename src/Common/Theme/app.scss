@@ -605,3 +605,46 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 .metro-dropdown-item:hover {
   text-decoration: none;
 }
+
+/* ── Landing: tabs, composer, feed ───────────────────────────────────── */
+.landing-tabs { display: flex; gap: 0.4em; border-bottom: 1px solid rgba(255,255,255,0.12); margin-bottom: 1.4em; }
+.landing-tab {
+  padding: 0.7em 1.2em; font-size: 0.95rem; font-weight: 600; text-transform: lowercase;
+  color: var(--color-text-muted); text-decoration: none; border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+.landing-tab:hover { color: #ffffff; text-decoration: none; }
+.landing-tab.is-active { color: #ffffff; border-bottom-color: var(--color-accent); }
+.landing-lead { color: var(--color-text-secondary); font-weight: 300; margin-bottom: 1.4em; }
+.landing-about h1 { font-size: 1.6rem; margin-bottom: 0.6em; }
+.landing-about p { color: var(--color-text-secondary); font-weight: 300; line-height: 1.65; margin: 0 0 0.9em; }
+
+/* Composer — a textarea and three buttons, not a second editor. */
+.composer { display: flex; flex-direction: column; gap: 0.7em; padding: 1em 0 1.2em; border-bottom: 1px solid rgba(255,255,255,0.12); margin-bottom: 1.4em; }
+.composer-signed-out { align-items: flex-start; }
+.composer-input {
+  width: 100%; background: transparent; border: none; resize: vertical;
+  color: var(--color-text); font-family: inherit; font-size: 1.05rem; line-height: 1.5; outline: none;
+}
+.composer-input::placeholder { color: var(--color-text-faint); }
+.composer-input:focus { outline: none; }
+.composer-actions { display: flex; align-items: center; justify-content: space-between; gap: 1em; }
+.composer-tools { display: flex; gap: 0.3em; }
+.composer-submit { display: flex; align-items: center; gap: 0.8em; }
+.composer-count { font-size: 0.8rem; color: var(--color-text-faint); font-variant-numeric: tabular-nums; }
+.composer-error { margin: 0; font-size: 0.85rem; color: var(--color-danger); }
+
+/* Feed */
+.feed { display: flex; flex-direction: column; }
+.feed-post { padding: 1.2em 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
+.feed-post-head { display: flex; align-items: center; gap: 0.6em; margin-bottom: 0.6em; flex-wrap: wrap; }
+.feed-avatar { border-radius: 100%; object-fit: cover; border: 1px solid rgba(255,255,255,0.25); flex-shrink: 0; }
+.feed-author { font-weight: 600; color: var(--color-text); }
+.feed-handle, .feed-time { font-size: 0.85rem; color: var(--color-text-muted); }
+/* Pushed right so the timestamp reads as metadata rather than part of the name. */
+.feed-time { margin-left: auto; }
+.feed-title { margin: 0 0 0.4em; font-size: 1.1rem; }
+.feed-body { color: var(--color-text-secondary); font-weight: 300; line-height: 1.6; overflow-wrap: anywhere; }
+.feed-body > :first-child { margin-top: 0; }
+.feed-body > :last-child { margin-bottom: 0; }
+.feed-post-foot { display: flex; gap: 1.6em; margin-top: 0.8em; font-size: 0.85rem; color: var(--color-text-muted); font-variant-numeric: tabular-nums; }

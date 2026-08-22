@@ -39,13 +39,14 @@ export default function Header({ isJapanese }: HeaderProps) {
 
   const activePath = pathname.replace(/^\/users\/[^/]+/, "") || "/";
   const isHomeActive = activePath === "/" || activePath === "/ja";
-  const isPostsActive = activePath.toLowerCase().startsWith("/posts");
-  const isPhotosActive = activePath.toLowerCase().startsWith("/photos");
+  // "photos" is still matched: it remains a route alias, so a shared link keeps highlighting Media.
+  const isMediaActive = /^\/(media|photos)/.test(activePath.toLowerCase());
+  const isExploreActive = activePath.toLowerCase().startsWith("/explore");
   const isSettingsActive = activePath.toLowerCase().startsWith("/settings");
 
   const homeHref = isJapanese ? "/ja" : "/";
-  const postsHref = isJapanese ? "/posts/ja" : "/posts";
-  const photosHref = isJapanese ? "/photos/ja" : "/photos";
+  const mediaHref = isJapanese ? "/media/ja" : "/media";
+  const exploreHref = isJapanese ? "/explore/ja" : "/explore";
 
   const title = auth.isSignedIn && auth.user ? auth.user.name || "Hisuiki" : "Hisuiki";
   
@@ -57,14 +58,17 @@ export default function Header({ isJapanese }: HeaderProps) {
           <Link href={homeHref} className={`pivot-item ${isHomeActive ? "is-active" : ""}`.trim()}>
             {isJapanese ? "ホーム" : "Home"}
           </Link>
-          <Link href={postsHref} className={`pivot-item ${isPostsActive ? "is-active" : ""}`.trim()}>
-            {isJapanese ? "投稿" : "Posts"}
+          <Link
+            href={exploreHref}
+            className={`pivot-item ${isExploreActive ? "is-active" : ""}`.trim()}
+          >
+            {isJapanese ? "みつける" : "Explore"}
           </Link>
           <Link
-            href={photosHref}
-            className={`pivot-item ${isPhotosActive ? "is-active" : ""}`.trim()}
+            href={mediaHref}
+            className={`pivot-item ${isMediaActive ? "is-active" : ""}`.trim()}
           >
-            {isJapanese ? "フォト" : "Photos"}
+            {isJapanese ? "メディア" : "Media"}
           </Link>
 
           {auth.isSignedIn && (

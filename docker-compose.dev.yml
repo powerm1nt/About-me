@@ -80,6 +80,8 @@ services:
       DATABASE_URL: postgresql://hisuiki:hisuiki@postgres:5432/hisuiki
       GCS_BUCKET: hisuiki-assets-prod
       GCS_PREFIX: static
+      # User-authored content: post bodies and uploaded media, kept apart from the site's own assets.
+      GCS_DATA_BUCKET: hisuiki-data-prod
       GCS_API_ENDPOINT: http://gcs:4443
       # Relative, through the frontend's /local-gcs proxy: an absolute localhost URL is unreachable
       # from any machine but this one.

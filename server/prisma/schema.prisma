@@ -144,9 +144,17 @@ model Post {
   slug  String?
   title String?
 
-  /// The source the author wrote. renderedHtml is the sanitised output, cached so a feed of fifty
-  /// posts is not fifty markdown renders.
-  body         String
+  /// Object path of the markdown source in the data bucket, e.g. "{userId}/posts/{id}.md".
+  ///
+  /// The source is not stored in this column. It lives in the bucket because the bucket versions it
+  /// — which is what gives a post an edit history — and because a user's own files should stay
+  /// files they can fetch, keep, or move. The row holds the pointer and the metadata worth querying.
+  bodyPath     String?
+  /// Retained only so a database this change could not read cannot lose content. Nothing writes it;
+  /// drop it once every row has a bodyPath. See the post_body_to_bucket migration.
+  body         String?
+  /// Sanitised output, cached so a feed of fifty posts is not fifty markdown renders plus fifty
+  /// bucket reads. Rebuilt whenever the source is written.
   renderedHtml String?
 
   publishedAt DateTime?
@@ -232,7 +240,10 @@ model ProfilePage {
 
   slug         String
   title        String
-  body         String
+  /// Object path of the markdown source in the data bucket, as on Post.
+  bodyPath     String?
+  /// Retained for the same reason as Post.body.
+  body         String?
   renderedHtml String?
   isHome       Boolean @default(false)
   /// Whether the page appears in the profile's own navigation, and in what order.

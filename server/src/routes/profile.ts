@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { prisma } from "../services/prisma.js";
 import { Prisma } from "../generated/prisma/client.js";
-import { getViewer } from "../services/identity.js";
+import { displayName, getViewer } from "../services/identity.js";
+import { saveContent } from "../services/content.js";
 import { PROFILE_SCOPE, scopeCss } from "../services/userContent.js";
 import { consumeQuota } from "../services/rateLimit.js";
 
@@ -163,16 +164,26 @@ profileRouter.post("/me/pages", async (req, res) => {
   }
 
   const { renderUserContent } = await import("../services/userContent.js");
-  const rendered = renderUserContent(body, { scopeSelector: `.post-content` });
+  const { randomUUID } = await import("node:crypto");
+  const id = randomUUID();
+  const bodyPath = await saveContent({
+    userId: viewer.id,
+    kind: "pages",
+    id,
+    markdown: body,
+    message: "Created",
+    authorName: displayName(viewer),
+  });
 
-  const { randomBytes } = await import("node:crypto");
+  const rendered = renderUserContent(body, { scopeSelector: `[data-page="${id}"]` });
+
   const page = await prisma.profilePage.create({
     data: {
-      id: randomBytes(6).toString("hex"),
+      id,
       userId: viewer.id,
       slug,
       title: title || slug,
-      body,
+      bodyPath,
       renderedHtml: rendered.html + (rendered.css ? `\n<style>${rendered.css}</style>` : ""),
       inNav: inNav ?? true,
       isHome: isHome ?? false,
@@ -201,8 +212,16 @@ profileRouter.put("/me/pages/:id", async (req, res) => {
   if (body !== undefined) {
     if (typeof body !== "string" || !body.trim()) return res.status(400).json({ error: "Page body cannot be empty" });
     const { renderUserContent } = await import("../services/userContent.js");
-    const rendered = renderUserContent(body, { scopeSelector: `.post-content` });
-    data.body = body;
+    // Scoped to this page specifically, so one page's stylesheet cannot reach another.
+    const rendered = renderUserContent(body, { scopeSelector: `[data-page="${existing.id}"]` });
+    data.bodyPath = await saveContent({
+      userId: viewer.id,
+      kind: "pages",
+      id: existing.id,
+      markdown: body,
+      message: typeof req.body.message === "string" ? req.body.message : "Edited",
+      authorName: displayName(viewer),
+    });
     data.renderedHtml = rendered.html + (rendered.css ? `\n<style>${rendered.css}</style>` : "");
   }
 
