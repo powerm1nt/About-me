@@ -30,7 +30,7 @@ import { readStyle } from "./widgetStyle";
  * scramble; order and flow reflow on their own.
  */
 
-export const LAYOUT_VERSION = 3;
+export const LAYOUT_VERSION = 4;
 
 export const ANCHORS: Anchor[] = ["top", "left", "center", "right", "bottom"];
 
@@ -124,6 +124,16 @@ export const WIDGETS: Record<WidgetKind, WidgetSpec> = {
     defaultSize: "large",
     sizes: ["small", "medium", "large"],
     container: true,
+  },
+  content: {
+    label: { en: "Page content", ja: "ページの内容" },
+    description: {
+      en: "Whatever the current page shows — the feed, a profile, settings.",
+      ja: "現在のページの内容（フィード、プロフィール、設定など）。",
+    },
+    confirmRemove: true,
+    defaultSize: "large",
+    sizes: ["large"],
   },
   title: {
     label: { en: "Title", ja: "タイトル" },
@@ -302,34 +312,37 @@ export function defaultAnchors(): AnchoredLayout {
     top: [
       make("container", {
         size: "large",
-        props: { flow: "row" },
+        props: { flow: "row", anchor: "top" },
         children: [
           make("title", { props: { action: "route", route: "home" } }),
           make("title", { props: { action: "route", route: "explore" } }),
           make("title", { props: { action: "route", route: "media" } }),
-          // Pushed to the far end of the bar rather than pinned there: it is an ordinary widget that
-          // happens to take up the slack, and dragging it inward makes it sit inline like the rest.
           make("account", { props: { push: true } }),
         ],
       }),
     ],
     left: [],
-    center: [
-      make("identity", { size: "large" }),
-      make("links", { size: "medium" }),
-      make("bio", { size: "large" }),
-      make("heatmap", { size: "large" }),
-      make("timeline", { size: "large" }),
-    ],
+    center: [make("content", { size: "large", props: { anchor: "center" } })],
     right: [],
     bottom: [
       make("container", {
         size: "large",
-        props: { flow: "row" },
+        props: { flow: "row", anchor: "bottom" },
         children: [make("brand"), make("colophon", { props: { push: true } })],
       }),
     ],
   };
+}
+
+/** The page: one container, laid out in anchor slots, holding everything. */
+export function defaultRoot(): Widget {
+  const anchors = defaultAnchors();
+  return make("container", {
+    size: "large",
+    props: { flow: "anchors" },
+    slots: { top: { shadow: "soft" }, bottom: { shadow: "soft" } },
+    children: ANCHORS.flatMap((anchor) => anchors[anchor]),
+  });
 }
 
 const isKind = (value: unknown): value is WidgetKind =>
@@ -431,7 +444,15 @@ const readList = (raw: unknown, seen: Set<string>): Widget[] =>
  * different thing entirely: it is an anchor someone has emptied, and refilling it would be undoing
  * their work rather than helping.
  */
-export function readLayout(layout: ProfileLayout | null | undefined): AnchoredLayout {
+export function readLayout(layout: ProfileLayout | null | undefined): Widget {
+  const root = layout?.root ? readWidget(layout.root, new Set<string>(), 0) : null;
+  if (root && isContainer(root)) return root;
+
+  return rootFromAnchors(readAnchors(layout));
+}
+
+/** The five-list shape, for documents written before the page became one container. */
+function readAnchors(layout: ProfileLayout | null | undefined): AnchoredLayout {
   const stored = layout?.anchors;
 
   if (stored && typeof stored === "object") {
@@ -443,6 +464,48 @@ export function readLayout(layout: ProfileLayout | null | undefined): AnchoredLa
   }
 
   return migrate(layout);
+}
+
+/**
+ * Folds five boards into one.
+ *
+ * An anchor holding a single container already is that slot's container, so it is tagged and kept
+ * rather than wrapped in a second one. Anything else is wrapped, which is what gives the slot
+ * something to style.
+ */
+function rootFromAnchors(anchors: AnchoredLayout): Widget {
+  const children: Widget[] = [];
+
+  for (const anchor of ANCHORS) {
+    const widgets = anchors[anchor] ?? [];
+    if (widgets.length === 0) continue;
+
+    const only = widgets.length === 1 ? widgets[0] : undefined;
+    if (only && isContainer(only)) {
+      children.push({ ...only, props: { ...only.props, anchor } });
+      continue;
+    }
+
+    if (only) {
+      children.push({ ...only, props: { ...only.props, anchor } });
+      continue;
+    }
+
+    children.push(
+      make("container", {
+        size: "large",
+        props: { flow: anchor === "center" ? "grid" : "column", anchor },
+        children: widgets,
+      }),
+    );
+  }
+
+  return make("container", {
+    size: "large",
+    props: { flow: "anchors" },
+    slots: { top: { shadow: "soft" }, bottom: { shadow: "soft" } },
+    children,
+  });
 }
 
 /**
@@ -693,6 +756,60 @@ export function moveToContainer(
   return result;
 }
 
+/* --- The same tree operations, against the single root. --- */
+
+const asRoot = (root: Widget, children: Widget[]): Widget => ({ ...root, children });
+
+export const removeFromTree = (root: Widget, id: string): Widget => {
+  const found = extractWidget(root.children ?? [], id);
+  return found ? asRoot(root, found.remaining) : root;
+};
+
+export function moveIntoContainer(root: Widget, id: string, containerId: string): Widget {
+  if (id === containerId || id === root.id) return root;
+
+  const found = extractWidget(root.children ?? [], id);
+  if (!found) return root;
+
+  // The root is a container too, so dropping onto it appends rather than nesting.
+  if (containerId === root.id) return asRoot(root, [...found.remaining, found.widget]);
+
+  const inserted = insertIntoContainer(found.remaining, containerId, found.widget);
+  return inserted.inserted ? asRoot(root, inserted.widgets) : root;
+}
+
+export function insertInTree(root: Widget, containerId: string, widget: Widget): Widget {
+  if (containerId === root.id) {
+    const children = root.children ?? [];
+    return children.some((w) => w.id === widget.id) ? root : asRoot(root, [...children, widget]);
+  }
+
+  const inserted = insertIntoContainer(root.children ?? [], containerId, widget);
+  return inserted.inserted ? asRoot(root, inserted.widgets) : root;
+}
+
+/** Whether the tree already holds this widget inside that container. */
+export function treeHasChild(root: Widget, containerId: string, childId: string): boolean {
+  if (containerId === root.id) return (root.children ?? []).some((w) => w.id === childId);
+
+  const search = (widgets: Widget[]): boolean =>
+    widgets.some((item) =>
+      item.id === containerId
+        ? (item.children ?? []).some((c) => c.id === childId)
+        : item.children
+          ? search(item.children)
+          : false,
+    );
+
+  return search(root.children ?? []);
+}
+
+/** Replaces one widget anywhere in the tree, the root included. */
+export function updateInTree(root: Widget, id: string, change: (item: Widget) => Widget): Widget {
+  if (root.id === id) return change(root);
+  return asRoot(root, updateWidget(root.children ?? [], id, change));
+}
+
 /** Where the wallpaper comes from, defaulting to the picture of the day. */
 export function readPage(raw: unknown): PageSettings {
   const source = raw && typeof raw === "object" ? (raw as PageSettings) : {};
@@ -720,14 +837,9 @@ export function readPage(raw: unknown): PageSettings {
   return { wallpaper: { source: kind, url } };
 }
 
-export const writeLayout = (
-  anchors: AnchoredLayout,
-  boards?: Record<Anchor, BoardSettings>,
-  page?: PageSettings,
-): ProfileLayout => ({
+export const writeLayout = (root: Widget, page?: PageSettings): ProfileLayout => ({
   version: LAYOUT_VERSION,
-  anchors,
-  boards,
+  root,
   page,
 });
 

@@ -5,6 +5,7 @@ import Bio from "./Bio/Bio";
 import Brand from "./Brand/Brand";
 import Colophon from "./Colophon/Colophon";
 import Container from "./Container/Container";
+import Content from "./Content/Content";
 import Heatmap from "./Heatmap/Heatmap";
 import Identity from "./Identity/Identity";
 import Links from "./Links/Links";
@@ -28,6 +29,7 @@ import Webamp from "./Webamp/Webamp";
  */
 export const WIDGET_REGISTRY: WidgetRegistry = {
   container: Container,
+  content: Content,
   title: Title,
   account: Account,
   brand: Brand,

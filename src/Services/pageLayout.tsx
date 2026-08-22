@@ -9,59 +9,40 @@ import {
   type ReactNode,
 } from "react";
 import {
-  ANCHORS,
-  defaultAnchors,
-  extractWidget,
-  insertIntoContainer,
+  defaultRoot,
+  insertInTree,
   makeWidget,
-  containsChild,
-  moveToAnchor,
-  moveToContainer,
-  readBoards,
+  moveIntoContainer,
   readLayout,
   readPage,
+  removeFromTree,
+  treeHasChild,
+  updateInTree,
   writeLayout,
 } from "./layout";
 import { fetchMyProfile, updateMyProfile } from "./profile";
-import type { Anchor, AnchoredLayout, BoardSettings, PageSettings, Widget, WidgetKind } from "../Types";
+import type { PageSettings, Widget, WidgetKind } from "../Types";
 import type { WidgetDrag } from "./widgetDrag";
 import { useAuth } from "./auth";
 
 interface PageLayoutValue {
-  anchors: AnchoredLayout;
-  /**
-   * Replaces one anchor's widgets, arming the autosave.
-   *
-   * Takes an updater as well as a list, the way setState does. That is what lets the boards hand out
-   * change handlers with a stable identity: a handler that closes over the current list has to be
-   * rebuilt whenever the list changes, and rebuilding it on every render defeats memoising the
-   * widgets underneath it.
-   */
-  setAnchor: (anchor: Anchor, widgets: Widget[] | ((prev: Widget[]) => Widget[])) => void;
-  /** How each anchor's own board is laid out, as distinct from any container inside it. */
-  boards: Record<Anchor, BoardSettings>;
-  setBoard: (anchor: Anchor, settings: BoardSettings) => void;
-  /** Settings for the page as a whole: the wallpaper, for now. */
+  /** The page: one container holding everything. */
+  root: Widget;
+  setRoot: (next: Widget | ((prev: Widget) => Widget)) => void;
+  /** Replaces one widget anywhere in the tree. */
+  replaceWidget: (id: string, next: Widget) => void;
+  /** Moves a widget into a container, from wherever in the tree it currently is. */
+  moveWidgetToContainer: (id: string, containerId: string) => void;
   page: PageSettings;
   setPage: (page: PageSettings) => void;
-  /** Moves a widget from one anchor to another, for a drag that crosses boards. */
-  moveWidget: (id: string, from: Anchor, to: Anchor) => void;
-  /** Moves a widget into a container's children list. */
-  moveWidgetToContainer: (id: string, targetContainerId: string) => void;
-  /** What is being dragged right now, so every anchor can offer itself as a target. */
+  /** What is being dragged, so any container can offer itself as a target. */
   dragging: WidgetDrag | null;
   announceDrag: (drag: WidgetDrag | null) => void;
-  /** Inserts a preview widget live into target anchor during drag from gallery. */
-  insertPreviewWidget: (id: string, kind: WidgetKind, targetAnchor: Anchor) => void;
-  /** Inserts a preview widget live into target container during drag from gallery. */
-  insertPreviewIntoContainer: (id: string, kind: WidgetKind, targetContainerId: string) => void;
-  /** Cleans up an unfinalized preview widget from all anchors if drag is cancelled. */
+  /** Puts the widget being dragged from the gallery where it would land, live. */
+  insertPreview: (id: string, kind: WidgetKind, containerId: string) => void;
   cancelPreview: () => void;
-  /** Finalizes the previewed widget in place on drop. */
   finalizePreview: () => void;
-  /** Throws away every customisation and goes back to the page the app ships. */
   reset: () => void;
-  /** True while the owner is arranging the page. */
   editing: boolean;
   setEditing: (editing: boolean) => void;
 }
@@ -71,61 +52,46 @@ interface SaveStatusValue {
   saveError: string | null;
 }
 
-/**
- * Two contexts, not one.
- *
- * Save status changes twice per save — to "saving" and back — and the boards do not care about it.
- * While they shared a context, every autosave re-rendered every widget on the page, twice, a second
- * after each edit. What a component subscribes to should be what it actually reads.
- */
-const emptyBoards = (): Record<Anchor, BoardSettings> => readBoards(undefined);
+const noop = () => {};
 
 const PageLayoutContext = createContext<PageLayoutValue>({
-  anchors: defaultAnchors(),
-  setAnchor: () => {},
-  boards: emptyBoards(),
-  setBoard: () => {},
+  root: defaultRoot(),
+  setRoot: noop,
+  replaceWidget: noop,
+  moveWidgetToContainer: noop,
   page: { wallpaper: { source: "bing" } },
-  setPage: () => {},
-  moveWidget: () => {},
-  moveWidgetToContainer: () => {},
+  setPage: noop,
   dragging: null,
-  announceDrag: () => {},
-  insertPreviewWidget: () => {},
-  insertPreviewIntoContainer: () => {},
-  cancelPreview: () => {},
-  finalizePreview: () => {},
-  reset: () => {},
+  announceDrag: noop,
+  insertPreview: noop,
+  cancelPreview: noop,
+  finalizePreview: noop,
+  reset: noop,
   editing: false,
-  setEditing: () => {},
+  setEditing: noop,
 });
 
+/** Save status is its own context: it changes twice per save and no board reads it. */
 const SaveStatusContext = createContext<SaveStatusValue>({ saveState: "idle", saveError: null });
 
 /**
- * The one layout document, for every anchor on the page.
+ * The one layout document.
  *
- * The header, the footer and the body are three anchors of the same document, so they cannot each
- * own a copy: two components fetching the same profile and writing back their own half would mean
- * whichever saved last erased the other. It is loaded once here and written once here.
- *
- * Saving is automatic and debounced. There is no Save button because the page is the editor — a
- * page you arrange by dragging things around it has no natural moment to press one — and the
- * debounce matters because a drag now reorders on every pointer move and a text widget changes on
- * every keystroke, so one gesture would otherwise be a burst of requests.
+ * The whole page is a single container, so there is one tree to load, one to write, and one set of
+ * settings for all of it — rather than five boards each holding a slice and each able to overwrite
+ * the others on save.
  */
 export function PageLayoutProvider({ children }: { children: ReactNode }) {
   const auth = useAuth();
 
-  const [anchors, setAnchors] = useState<AnchoredLayout>(defaultAnchors);
-  const [boards, setBoards] = useState<Record<Anchor, BoardSettings>>(emptyBoards);
+  const [root, setRootState] = useState<Widget>(defaultRoot);
   const [page, setPageState] = useState<PageSettings>(() => readPage(undefined));
   const [editing, setEditing] = useState(false);
-  // Nothing is saved until the page has actually been touched, so merely opening Customize never
-  // writes the layout back over itself.
   const [dirty, setDirty] = useState(false);
+  const [dragging, setDragging] = useState<WidgetDrag | null>(null);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
+  const previewId = useRef<string | null>(null);
 
   useEffect(() => {
     if (!auth.isSignedIn) return;
@@ -133,33 +99,27 @@ export function PageLayoutProvider({ children }: { children: ReactNode }) {
     let active = true;
     fetchMyProfile()
       .then((profile) => {
-        // A layout that arrived after the first edit would throw that edit away.
+        // A layout arriving after the first edit would throw that edit away.
         if (!active || dirty) return;
-        setAnchors(readLayout(profile.layout));
-        setBoards(readBoards(profile.layout?.boards));
+        setRootState(readLayout(profile.layout));
         setPageState(readPage(profile.layout?.page));
       })
       .catch(() => {
-        // The default page is a working page; someone signed in but unreachable still gets one.
+        // The default page is a working page.
       });
 
     return () => {
       active = false;
     };
-    // Deliberately not keyed on `dirty`: this runs when the session changes, and reads dirty only to
-    // avoid clobbering. Re-running on every edit would refetch the profile mid-drag.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auth.isSignedIn]);
 
   useEffect(() => {
     if (!dirty || !auth.isSignedIn) return;
 
-    // "Saving" is announced when the write actually starts, not when the timer is set: setting state
-    // synchronously in an effect body cascades a render, and during a drag this re-runs on every
-    // swap.
     const timer = window.setTimeout(() => {
       setSaveState("saving");
-      updateMyProfile({ layout: writeLayout(anchors, boards, page) })
+      updateMyProfile({ layout: writeLayout(root, page) })
         .then(() => {
           setSaveState("saved");
           setSaveError(null);
@@ -171,127 +131,45 @@ export function PageLayoutProvider({ children }: { children: ReactNode }) {
     }, 1200);
 
     return () => window.clearTimeout(timer);
-  }, [dirty, anchors, boards, page, auth.isSignedIn]);
+  }, [dirty, root, page, auth.isSignedIn]);
 
-  // Stable across renders, so a board holding onto it is not re-rendered by its identity changing.
-  const setAnchor = useCallback(
-    (anchor: Anchor, widgets: Widget[] | ((prev: Widget[]) => Widget[])) => {
-      setAnchors((current) => ({
-        ...current,
-        [anchor]: typeof widgets === "function" ? widgets(current[anchor]) : widgets,
-      }));
-      setDirty(true);
-    },
-    [],
-  );
-
-  const setBoard = useCallback((anchor: Anchor, settings: BoardSettings) => {
-    setBoards((current) => ({ ...current, [anchor]: { ...current[anchor], ...settings } }));
+  const setRoot = useCallback((next: Widget | ((prev: Widget) => Widget)) => {
+    setRootState((current) => (typeof next === "function" ? next(current) : next));
     setDirty(true);
   }, []);
 
-  const [dragging, setDragging] = useState<WidgetDrag | null>(null);
-  const announceDrag = useCallback((drag: WidgetDrag | null) => setDragging(drag), []);
-
-  const moveWidget = useCallback((id: string, from: Anchor, to: Anchor) => {
-    setAnchors((current) => moveToAnchor(current, id, from, to));
+  const replaceWidget = useCallback((id: string, next: Widget) => {
+    setRootState((current) => updateInTree(current, id, () => next));
     setDirty(true);
   }, []);
 
-  const moveWidgetToContainer = useCallback((id: string, targetContainerId: string) => {
-    setAnchors((current) => moveToContainer(current, id, targetContainerId));
+  const moveWidgetToContainer = useCallback((id: string, containerId: string) => {
+    setRootState((current) => moveIntoContainer(current, id, containerId));
     setDirty(true);
   }, []);
 
-  const previewWidgetId = useRef<string | null>(null);
+  const insertPreview = useCallback((id: string, kind: WidgetKind, containerId: string) => {
+    previewId.current = id;
+    setRootState((current) => {
+      // dragover fires continuously; returning a new tree each time would re-render the page.
+      if (treeHasChild(current, containerId, id)) return current;
 
-  const insertPreviewWidget = useCallback((id: string, kind: WidgetKind, targetAnchor: Anchor) => {
-    previewWidgetId.current = id;
-    setAnchors((current) => {
-      // dragover fires continuously. Returning a new object each time would re-render every widget
-      // on the page dozens of times a second, so nothing is returned unless it actually moved.
-      let changed = false;
-      const next = {} as AnchoredLayout;
-
-      for (const a of ANCHORS) {
-        if (a === targetAnchor) {
-          const existing = current[a] ?? [];
-          if (existing.some((w) => w.id === id)) {
-            next[a] = existing;
-          } else {
-            next[a] = [...existing, makeWidget(kind, { id })];
-            changed = true;
-          }
-        } else {
-          const extracted = extractWidget(current[a] ?? [], id);
-          next[a] = extracted ? extracted.remaining : (current[a] ?? []);
-          if (extracted) changed = true;
-        }
-      }
-
-      return changed ? next : current;
+      const without = removeFromTree(current, id);
+      const next = insertInTree(without, containerId, makeWidget(kind, { id }));
+      return next === without && without === current ? current : next;
     });
   }, []);
 
-  const insertPreviewIntoContainer = useCallback(
-    (id: string, kind: WidgetKind, targetContainerId: string) => {
-      previewWidgetId.current = id;
-      setAnchors((current) => {
-        // Already in the container it is being dragged over: nothing to do, and returning a new
-        // object here would re-render the page on every dragover.
-        if (containsChild(current, targetContainerId, id)) return current;
-
-        let created = makeWidget(kind, { id });
-        const layoutWithout = {} as AnchoredLayout;
-        for (const a of ANCHORS) {
-          const res = extractWidget(current[a] ?? [], id);
-          if (res) {
-            created = res.widget;
-            layoutWithout[a] = res.remaining;
-          } else {
-            layoutWithout[a] = current[a] ?? [];
-          }
-        }
-
-        let inserted = false;
-        const next = {} as AnchoredLayout;
-        for (const a of ANCHORS) {
-          const res = insertIntoContainer(layoutWithout[a] ?? [], targetContainerId, created);
-          next[a] = res.widgets;
-          if (res.inserted) inserted = true;
-        }
-
-        return inserted ? next : current;
-      });
-    },
-    [],
-  );
-
   const finalizePreview = useCallback(() => {
-    previewWidgetId.current = null;
+    previewId.current = null;
     setDirty(true);
     setDragging(null);
   }, []);
 
   const cancelPreview = useCallback(() => {
-    const id = previewWidgetId.current;
-    previewWidgetId.current = null;
-    if (id) {
-      setAnchors((current) => {
-        let changed = false;
-        const next = {} as AnchoredLayout;
-        for (const a of ANCHORS) {
-          const extracted = extractWidget(current[a] ?? [], id);
-          if (extracted) {
-            next[a] = extracted.remaining;
-            changed = true;
-          } else {
-            next[a] = current[a] ?? [];
-          }
-        }
-        return changed ? next : current;
-      });
-    }
+    const id = previewId.current;
+    previewId.current = null;
+    if (id) setRootState((current) => removeFromTree(current, id));
     setDragging(null);
   }, []);
 
@@ -300,37 +178,25 @@ export function PageLayoutProvider({ children }: { children: ReactNode }) {
     setDirty(true);
   }, []);
 
-  /**
-   * Back to the page the app ships.
-   *
-   * Everything at once, deliberately: a reset that left the header arranged and cleared only the
-   * body would be a stranger thing to explain than one that starts over. Marked dirty so the empty
-   * document is written, which is what makes it stick — a layout that is merely forgotten locally
-   * comes back on the next load.
-   */
   const reset = useCallback(() => {
-    setAnchors(defaultAnchors());
-    setBoards(emptyBoards());
+    setRootState(defaultRoot());
     setPageState(readPage(undefined));
     setDirty(true);
   }, []);
 
-  // Memoised for the same reason: a fresh object here re-renders every consumer on every render of
-  // this provider, whatever actually changed.
+  const announceDrag = useCallback((drag: WidgetDrag | null) => setDragging(drag), []);
+
   const layout = useMemo(
     () => ({
-      anchors,
-      setAnchor,
-      boards,
-      setBoard,
+      root,
+      setRoot,
+      replaceWidget,
+      moveWidgetToContainer,
       page,
       setPage,
-      moveWidget,
-      moveWidgetToContainer,
       dragging,
       announceDrag,
-      insertPreviewWidget,
-      insertPreviewIntoContainer,
+      insertPreview,
       cancelPreview,
       finalizePreview,
       reset,
@@ -338,18 +204,15 @@ export function PageLayoutProvider({ children }: { children: ReactNode }) {
       setEditing,
     }),
     [
-      anchors,
-      setAnchor,
-      boards,
-      setBoard,
+      root,
+      setRoot,
+      replaceWidget,
+      moveWidgetToContainer,
       page,
       setPage,
-      moveWidget,
-      moveWidgetToContainer,
       dragging,
       announceDrag,
-      insertPreviewWidget,
-      insertPreviewIntoContainer,
+      insertPreview,
       cancelPreview,
       finalizePreview,
       reset,
@@ -367,6 +230,4 @@ export function PageLayoutProvider({ children }: { children: ReactNode }) {
 }
 
 export const usePageLayout = (): PageLayoutValue => useContext(PageLayoutContext);
-
-/** Subscribes to the save indicator alone, so reading it does not tie a component to the layout. */
 export const useSaveStatus = (): SaveStatusValue => useContext(SaveStatusContext);

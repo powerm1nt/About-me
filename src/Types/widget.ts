@@ -4,6 +4,7 @@ import type { HeaderLink, PostSummary } from "./content";
 
 export type WidgetKind =
   | "container"
+  | "content"
   | "title"
   | "account"
   | "brand"

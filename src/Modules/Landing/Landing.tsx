@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import PostComposer from "../../Common/Components/PostComposer/PostComposer";
 import Skeleton from "../../Common/Components/Skeleton/Skeleton";
 import SmartImage from "../../Common/Components/SmartImage/SmartImage";
@@ -8,7 +9,6 @@ import { assetUrl } from "../../Services/config";
 import type { PostSummary } from "../../Types";
 
 export interface LandingProps {
-  isJapanese: boolean;
   tab: "home" | "explore" | "about";
 }
 
@@ -64,7 +64,9 @@ function timeAgo(iso: string, japanese: boolean): string {
  * to see what is actually being posted rather than what an algorithm chose. "about" explains the
  * site to someone who has just arrived.
  */
-export default function Landing({ isJapanese, tab }: LandingProps) {
+export default function Landing({ tab }: LandingProps) {
+  const { i18n } = useTranslation();
+  const isJapanese = i18n.language === "ja";
   const text = isJapanese ? TEXT.ja : TEXT.en;
 
   // Tagged with the tab it was loaded for, so switching tabs resets the feed by derivation rather

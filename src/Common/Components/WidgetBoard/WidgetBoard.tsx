@@ -116,7 +116,7 @@ export default function WidgetBoard({
     dragging: draggingGlobal,
     finalizePreview,
     moveWidgetToContainer,
-    insertPreviewIntoContainer,
+    insertPreview,
   } = usePageLayout();
   const activeDraggingId =
     dragging ??
@@ -483,7 +483,7 @@ export default function WidgetBoard({
           e.dataTransfer.dropEffect = draggingGlobal.kind ? "copy" : "move";
 
           if (containerId && draggingGlobal.kind && draggingGlobal.id) {
-            insertPreviewIntoContainer(draggingGlobal.id, draggingGlobal.kind, containerId);
+            insertPreview(draggingGlobal.id, draggingGlobal.kind, containerId);
           } else if (activeDraggingId !== null && free) {
             const item = widgets.find((w) => w.id === activeDraggingId);
             if (item) placeOver(item, e);
@@ -646,7 +646,7 @@ export default function WidgetBoard({
                 } else if (containerId && draggingGlobal.kind && draggingGlobal.id) {
                   e.preventDefault();
                   e.stopPropagation();
-                  insertPreviewIntoContainer(draggingGlobal.id, draggingGlobal.kind, containerId);
+                  insertPreview(draggingGlobal.id, draggingGlobal.kind, containerId);
                 }
               }}
               onDrop={(e) => {
