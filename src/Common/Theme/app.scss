@@ -162,13 +162,20 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   height: 3.4rem;
   display: block;
   overflow: hidden;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
   outline: 1px solid transparent;
   outline-offset: 3px;
   transition: opacity 0.15s ease-in-out, outline-color 0.15s ease-in-out;
 }
 .metro-avatar-tile:hover { opacity: 0.85; outline-color: rgba(255,255,255,0.5); }
 .metro-avatar-tile:focus-visible { opacity: 0.85; outline: 2px dotted var(--color-text); outline-offset: 3px; }
-.pivot-item {
+/* The "+" and the field it becomes are pivot items too, so the typography lives on the wrapper as
+   well: both are replaced elements that do not inherit font by default, and both say `font: inherit`
+   rather than restating a clamp that would then have to be kept in sync with this one. */
+.pivot-item, .pivot-add {
   flex: 0 0 auto;
   white-space: nowrap;
   text-decoration: none;
@@ -182,11 +189,73 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 }
 .pivot-item:hover { color: var(--color-text-secondary); text-decoration: none; }
 .pivot-item.is-active { color: #ffffff; }
-.pivot-item:last-child { padding-right: 12vw; }
+/* Trailing room so the last big label can be scrolled clear of the edge. */
+.metro-pivot > :last-child { padding-right: 12vw; }
 @media screen and (max-width: 768px) {
   .metro-header-row { width: 95%; }
-  .metro-avatar-tile { display: none; }
+  /* The whole item, not just the tile inside it: an empty wrapper left in the strip would still be
+     its last child, and would take the trailing scroll room meant for the last label. */
+  .header-item[data-kind="avatar"] { display: none; }
 }
+
+/* ── Header items as widgets ───────────────────────────────────────────
+   Every entry in the strip — the app's own navigation, the person's links, and the account tile —
+   is one arrangeable item. They are deliberately transparent widgets: no panel, no label bar, no
+   background of their own, because chrome heavy enough to see would stop the strip looking like the
+   strip while it is being arranged. What edit mode adds is a dashed outline on hover and one hide
+   toggle, and nothing at all when not arranging. */
+.header-item { flex: 0 0 auto; position: relative; display: inline-flex; align-items: baseline; }
+/* The tile is a square block; baseline-aligning it against 3.6rem labels would hang it far too low. */
+.header-item[data-kind="avatar"] { align-self: center; padding-right: 0; }
+/* Pinned right only while it still ends the strip. Dragged into the middle it just sits inline,
+   which is the point of it being an item rather than fixed chrome. */
+.header-item[data-kind="avatar"][data-tail] { margin-left: auto; }
+
+/* The same dance the board does, at the same amplitude. The strip is part of the board being
+   arranged, so it has to say so the same way. */
+.metro-pivot.is-arranging .header-item {
+  cursor: grab;
+  outline: 1px dashed transparent;
+  outline-offset: 8px;
+  transition: outline-color 0.15s ease-in-out, opacity 0.15s ease-in-out;
+  animation: widget-dance-a 0.34s ease-in-out infinite;
+}
+.metro-pivot.is-arranging .header-item:nth-child(even) {
+  animation-name: widget-dance-b;
+  animation-duration: 0.3s;
+}
+.metro-pivot.is-arranging .header-item:hover { outline-color: var(--color-accent-strong); }
+.metro-pivot.is-arranging .header-item.is-dragging { opacity: 0.35; cursor: grabbing; animation: none; }
+.metro-pivot.is-arranging .header-item.is-over { outline-color: #ffffff; outline-style: solid; }
+/* Hidden items stay visible while arranging, dimmed, so hiding something is undoable in place. */
+.metro-pivot.is-arranging .header-item.is-hidden { opacity: 0.3; }
+
+/* The iPhone's corner badge, on an item whose "corner" is the top of a 3.6rem word. Always visible
+   rather than revealed on hover: on a touch screen there is no hover to reveal it with, and while
+   the strip is dancing it is already obvious that these are controls. */
+.header-item-toggle {
+  position: absolute;
+  top: 0.2em;
+  right: -0.7em;
+  z-index: 2;
+  width: 1.5em;
+  height: 1.5em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--color-accent);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: 0.8rem;
+  font-weight: 400;
+  line-height: 1;
+  text-shadow: none;
+  cursor: pointer;
+  transition: background 0.15s ease-in-out, color 0.15s ease-in-out;
+}
+.header-item-toggle:hover { background: var(--color-accent); color: #ffffff; }
 
 /* ── AppModal — confirm-before-leaving dialog for external links ───────── */
 @keyframes app-modal-fade-in { from { opacity: 0; } to { opacity: 1; } }
@@ -587,7 +656,28 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 /* The "home" action is a link styled as a button, so it needs the button's own box back. */
 .signin-panel a.editor-btn { display: inline-flex; align-items: center; text-decoration: none; color: var(--color-text); }
 
-/* Metro Dropdown Menu */
+/* Metro Dropdown Menu.
+   Portalled to <body> by <Anchored> and positioned in viewport coordinates, so it inherits nothing
+   from the app shell and must state its own type. It sets no `position` here for the same reason the
+   action popover does not: the inline `position: fixed` is what keeps it out of the clipping
+   scroller the account tile now lives in. */
+.metro-dropdown-menu {
+  z-index: 1200;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  border: 2px solid var(--color-accent);
+  box-shadow: 0 8px 32px var(--color-surface-veil);
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-weight: 300;
+  color: var(--color-text);
+  text-shadow: none;
+  text-transform: none;
+}
+.metro-dropdown-identity { padding: 16px 20px; border-bottom: 1px solid var(--color-accent-soft); }
+.metro-dropdown-name { font-weight: 600; color: var(--color-text); font-size: 1.2em; margin-bottom: 4px; }
+.metro-dropdown-email { color: var(--color-text-secondary); font-size: 0.9em; overflow-wrap: anywhere; }
+
 .metro-dropdown-item {
   display: block;
   padding: 12px 20px;
@@ -711,20 +801,81 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 .widget { min-width: 0; }
 .widget-content { min-width: 0; }
 
+/* ── The edit-mode dance ────────────────────────────────────────────────
+   The rocking every icon does on an iPhone home screen once you hold one down. It is not decoration:
+   it is the only thing that says the whole board is live and every piece of it can be picked up, and
+   it says so without a banner or a mode indicator anywhere on screen.
+
+   Two keyframes and two durations, alternating, so the board does not rock in lockstep like a single
+   rigid sheet. The amplitude is under half a degree — enough to read as movement at a glance, small
+   enough that text stays legible while you aim at it.
+
+   The transform lands on the widget itself, which also carries `backdrop-filter`. That is safe: an
+   element's own transform makes it a backdrop root for its *descendants*, and everything inside a
+   widget already has `backdrop-filter: none`. What must never happen is a transform on an ancestor
+   like .file-content, which is what once silently killed the blur across the whole page. */
+@keyframes widget-dance-a {
+  0%, 100% { transform: rotate(-0.45deg) translate(-0.5px, 0.4px); }
+  50%      { transform: rotate(0.45deg) translate(0.5px, -0.4px); }
+}
+@keyframes widget-dance-b {
+  0%, 100% { transform: rotate(0.4deg) translate(0.5px, -0.4px); }
+  50%      { transform: rotate(-0.4deg) translate(-0.5px, 0.4px); }
+}
+
 /* Only in edit mode does a widget look like an object you can pick up. */
 .widget-board.is-editing .widget {
   border: 1px dashed rgba(255,255,255,0.25);
   padding: 0.6em;
   cursor: grab;
-  transition: border-color 0.15s, opacity 0.15s, transform 0.15s;
+  transition: border-color 0.15s, opacity 0.15s;
+  animation: widget-dance-a 0.34s ease-in-out infinite;
+}
+.widget-board.is-editing .widget:nth-child(even) {
+  animation-name: widget-dance-b;
+  animation-duration: 0.3s;
 }
 .widget-board.is-editing .widget:hover { border-color: var(--color-accent); }
-.widget-board.is-editing .widget.is-dragging { opacity: 0.45; cursor: grabbing; }
+/* The one in your hand holds still — it is following the pointer, not sitting on the board. */
+.widget-board.is-editing .widget.is-dragging { opacity: 0.45; cursor: grabbing; animation: none; }
 /* The drop target, so it is obvious where a dragged widget will land. */
-.widget-board.is-editing .widget.is-over { border-color: var(--color-accent-strong); border-style: solid; transform: scale(0.99); }
+.widget-board.is-editing .widget.is-over { border-color: var(--color-accent-strong); border-style: solid; }
 .widget-board.is-editing .widget.is-hidden { opacity: 0.5; }
 
+/* The corner badge, where an iPhone puts it: over the widget's own edge rather than in a toolbar,
+   because it acts on that one widget and belongs to it. */
+.widget-board.is-editing .widget { position: relative; }
+.widget-remove-badge {
+  position: absolute;
+  top: -0.7em;
+  right: -0.7em;
+  z-index: 2;
+  width: 1.6em;
+  height: 1.6em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-accent);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+  /* Counter-rotates against the dance so the glyph stays a target you can actually hit. */
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.widget-remove-badge:hover { background: var(--color-accent); color: #ffffff; }
+
+@media (prefers-reduced-motion: reduce) {
+  .widget-board.is-editing .widget,
+  .widget-board.is-editing .widget:nth-child(even),
+  .metro-pivot.is-arranging .header-item,
+  .metro-pivot.is-arranging .header-item:nth-child(even) { animation: none; }
+}
+
 .widget-chrome { display: flex; align-items: center; justify-content: space-between; gap: 0.6em; margin-bottom: 0.6em; flex-wrap: wrap; }
+/* The badge straddles the top-right corner, so the controls have to start clear of where it lands. */
+.widget-board.is-editing .widget-chrome { padding-right: 1.1em; }
 .widget-label { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted); }
 .widget-label em { font-style: normal; color: var(--color-text-faint); }
 .widget-controls { display: flex; align-items: center; gap: 0.25em; }
@@ -796,12 +947,13 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   padding: 0;
 }
 
-/* The + that adds a header entry, and what it becomes when clicked. */
-.pivot-add { position: relative; display: inline-flex; align-items: baseline; }
+/* The + that adds a header entry, and what it becomes when clicked. It is the same size and face as
+   the items beside it — it is one of them, in the moment before it has a name. */
+.pivot-add { display: inline-flex; align-items: baseline; }
 .pivot-item-add {
-  background: none; border: none; cursor: pointer; font-family: inherit;
-  font-size: 1.3rem; line-height: 1; color: var(--color-text-muted);
-  padding: 0 0.4em; transition: color 0.15s;
+  background: none; border: none; cursor: pointer;
+  font: inherit; color: var(--color-text-muted);
+  padding: 0; transition: color 0.15s;
 }
 .pivot-item-add:hover { color: #ffffff; }
 
@@ -820,23 +972,27 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 }
 .pivot-name-input::placeholder { color: transparent; }
 
-/* Anchored under the item being named rather than centred on the screen: it is about that item. */
+/* Anchored under the item being named rather than centred on the screen: it is about that item.
+   Positioned by <Anchored>, which portals it out of the pivot strip and sets `position: fixed`
+   inline — so this rule must not set `position`, or it would win over the inline value's own
+   property and pull the panel back into a scroller that clips it. */
 .pivot-action-popover {
-  position: absolute;
-  top: calc(100% + 0.6em);
-  left: 0;
-  z-index: 200;
+  z-index: 1200;
   min-width: 280px;
-  display: flex;
-  flex-direction: column;
-  gap: 0.6em;
   padding: 0.9em 1em;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: 1rem;
+  font-weight: 300;
+  color: var(--color-text);
+  text-shadow: none;
+  text-transform: none;
   background: var(--color-surface-veil);
   backdrop-filter: blur(16px) saturate(130%);
   -webkit-backdrop-filter: blur(16px) saturate(130%);
   border: 1px solid var(--color-accent);
   text-align: left;
 }
+.pivot-action-popover > [role="dialog"] { display: flex; flex-direction: column; gap: 0.6em; }
 .pivot-action-title { margin: 0; font-size: 0.85rem; color: var(--color-text-secondary); font-weight: 300; }
 .pivot-action-kind { display: flex; align-items: center; gap: 0.5em; font-size: 0.9rem; color: var(--color-text); }
 .pivot-action-url { width: 100%; }

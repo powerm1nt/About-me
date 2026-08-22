@@ -75,6 +75,24 @@ export default function WidgetBoard({
               setOver(null);
             }}
           >
+            {/* The corner badge an iPhone puts on a jiggling icon: it acts on this one widget, so it
+                sits on the widget rather than in a toolbar. */}
+            {editing && (
+              <button
+                type="button"
+                className="widget-remove-badge"
+                aria-label={widget.hidden ? text.show : text.hide}
+                title={widget.hidden ? text.show : text.hide}
+                onClick={() =>
+                  update(widgets.map((w) => (w.id === widget.id ? { ...w, hidden: !w.hidden } : w)))
+                }
+              >
+                {/* An X takes it off the board; a hidden widget offers the way back instead, since an
+                    X on something already gone says nothing about what clicking does. */}
+                {widget.hidden ? "↺" : "✕"}
+              </button>
+            )}
+
             {editing && (
               <div className="widget-chrome">
                 <span className="widget-label">
@@ -93,16 +111,6 @@ export default function WidgetBoard({
                     }
                   >
                     ⤢ {widget.size}
-                  </button>
-                  <button
-                    type="button"
-                    className="widget-btn"
-                    title={widget.hidden ? text.show : text.hide}
-                    onClick={() =>
-                      update(widgets.map((w) => (w.id === widget.id ? { ...w, hidden: !w.hidden } : w)))
-                    }
-                  >
-                    {widget.hidden ? "◻" : "◼"}
                   </button>
                   {/* Only a widget that can be added back may be removed; the rest hide instead, so
                       a board cannot end up missing its timeline with no way to restore it. */}

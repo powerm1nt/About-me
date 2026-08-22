@@ -1,6 +1,7 @@
 import { apiUrl } from "./config";
 import { readErrorMessage } from "./api";
 import type { HeaderLink } from "./types";
+import type { HeaderItemState } from "./headerLayout";
 
 const send = (init: RequestInit = {}): RequestInit => ({ credentials: "include", ...init });
 
@@ -59,6 +60,12 @@ export interface Widget {
  */
 export interface ProfileLayout {
   widgets?: Widget[];
+  /**
+   * The header strip's arrangement — ids and hidden flags, in order. Kept alongside the board
+   * because it is the same act of arranging, and because the header's items are derived from the
+   * profile anyway. See Services/headerLayout.
+   */
+  header?: HeaderItemState[];
   /** Bumped when the shape changes, so an older document can be recognised rather than misread. */
   version?: number;
 }
