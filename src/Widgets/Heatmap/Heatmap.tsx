@@ -10,7 +10,7 @@ export default function Heatmap() {
 
   return (
     <ActivityHeatmap
-      dates={scope.timeline.map((post) => post.createdAt)}
+      dates={scope.activityDates ?? scope.timeline.map((post) => post.createdAt)}
       isJapanese={i18n.language === "ja"}
     />
   );

@@ -20,6 +20,15 @@ export interface WidgetProps {
   widget: Widget;
   /** True while the page is being arranged, which is when a widget may offer its own editing. */
   editing: boolean;
+  /**
+   * True in a gallery tile.
+   *
+   * The tile shows the real widget, so most kinds need nothing here. It matters for the few whose
+   * honest rendering is wrong in a shelf: one that would be empty until it is configured shows
+   * sample content instead, and one that would start a player, a socket or an audio context shows a
+   * still frame rather than doing it once per tile.
+   */
+  preview?: boolean;
   /** Replaces this widget in the document — how a widget edits its own settings. */
   onChange: (next: Widget) => void;
   /**

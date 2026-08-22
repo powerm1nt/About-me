@@ -11,6 +11,12 @@ export interface ProfileScope {
   /** Everything except the bio. */
   timeline: PostSummary[];
   handle: string;
+  /**
+   * What the activity grid should plot, when that is not simply when each post was written. The
+   * gallery uses it to give a preview a year with a shape to it, rather than the three marks a
+   * handful of sample posts would leave.
+   */
+  activityDates?: string[];
 }
 
 const ProfileScopeContext = createContext<ProfileScope | null>(null);

@@ -26,7 +26,11 @@
   },
   "gallery": {
     "title": "Widgets Gallery",
-    "add": "Add to page"
+    "add": "Add to page",
+    "sample": {
+      "link": "Notes",
+      "track": "Field recording"
+    }
   },
   "anchors": {
     "top": "Top",
