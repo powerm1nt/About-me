@@ -759,7 +759,6 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   min-width: 0;
   background: transparent;
   backdrop-filter: none;
-  -webkit-backdrop-filter: none;
   padding: 0;
 }
 
@@ -961,7 +960,6 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 .widget-card-preview .profile-bio {
   background: transparent;
   backdrop-filter: none;
-  -webkit-backdrop-filter: none;
   padding: 0;
 }
 /* Fades the cut-off edge into the tile rather than slicing a line through whatever is there, and
@@ -1011,7 +1009,6 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 .about-page {
   background: var(--color-surface-veil);
   backdrop-filter: blur(16px) saturate(130%);
-  -webkit-backdrop-filter: blur(16px) saturate(130%);
   padding: clamp(0.9em, 2vw, 1.3em);
 }
 
@@ -1020,12 +1017,15 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
    stored value is needed for the common case. */
 .widget {
   background: rgba(16, 12, 48, var(--widget-veil-alpha, 0.55));
-  /* The whole value comes from the board, including the word "none" when the blur is off. It cannot
-     be a rule here that sets `none`: the minifier reads that as the property's initial value and
-     drops it, which leaves the -webkit- spelling alone and an override that fails in every browser
-     supporting the standard property. */
+  /* The whole value comes from the board, including the word "none" when the blur is off — see
+     backdropFilter() in Services/widgetStyle for why zero has to remove the property rather than set
+     it to blur(0px).
+
+     No -webkit- twin here, or anywhere else in this file. The build adds the prefix itself, and a
+     hand-written prefixed line *after* the standard one makes it drop the standard one instead —
+     which had quietly left every frosted surface in the app webkit-only, so the blur was missing in
+     Firefox entirely. */
   backdrop-filter: var(--widget-backdrop, blur(16px) saturate(130%));
-  -webkit-backdrop-filter: var(--widget-backdrop, blur(16px) saturate(130%));
   padding: clamp(0.9em, 2vw, 1.3em);
 }
 
@@ -1060,7 +1060,6 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 .widget .profile-bio, .widget .feed-post, .widget .composer {
   background: transparent;
   backdrop-filter: none;
-  -webkit-backdrop-filter: none;
   padding: 0;
 }
 
@@ -1071,7 +1070,6 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 .metro-dropdown-menu {
   background: var(--color-surface) !important;
   backdrop-filter: none;
-  -webkit-backdrop-filter: none;
 }
 
 /* Reported inline rather than through the page's error state, which would replace the whole profile
