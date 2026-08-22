@@ -23,14 +23,38 @@ export default function AnchorRegion({ anchor, className, rail }: AnchorRegionPr
   // the board it came from.
   const isTarget = Boolean(dragging && (dragging.kind || dragging.anchor !== anchor));
 
-  // A disabled anchor is not a place widgets can be. An empty one shows only while arranging, so
-  // the rails are somewhere to drop onto rather than four empty strips on a finished page.
-  if (!enabled) return null;
+  // Hidden on a finished page, but never while arranging: the gear is the only way back on, so
+  // removing it with the rest would make disabling an anchor a one-way door.
+  if (!enabled && !editing) return null;
   if (widgets.length === 0 && !editing) return null;
 
   // Painted only when there is something to paint behind.
   const background = widgets.length > 0 ? (board.background ?? "none") : "none";
   const intensity = board.intensity ?? 0.55;
+
+  if (!enabled) {
+    return (
+      <div className="anchor-region is-disabled" data-anchor={anchor}>
+        <button
+          type="button"
+          ref={gear}
+          className="anchor-settings"
+          aria-label={`${t("board.settings")} · ${t(`anchors.${anchor}`)}`}
+          aria-expanded={settingsOpen}
+          onClick={() => setSettingsOpen(!settingsOpen)}
+        >
+          ⚙
+        </button>
+        <p className="anchor-disabled-label">
+          {t("anchors." + anchor)} · {t("boardInspector.disabled")}
+        </p>
+
+        {settingsOpen && (
+          <BoardInspector anchor={anchor} trigger={gear} onClose={() => setSettingsOpen(false)} />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div

@@ -1631,3 +1631,22 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 /* A row lays its children out side by side; the placeholder is the only one and should fill it. */
 .widget-board[data-flow="row"] .empty-board,
 .widget-board[data-flow="wrap"] .empty-board { flex: 1 1 auto; padding: 0.8em; }
+
+
+/* A disabled anchor while arranging: just enough to find its settings again. */
+.anchor-region.is-disabled {
+  display: flex;
+  align-items: center;
+  min-height: 2.2em;
+  padding: 0.2em 2.6em 0.2em 0.4em;
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  opacity: 0.6;
+}
+.anchor-region.is-disabled:hover { opacity: 1; }
+.anchor-disabled-label {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}

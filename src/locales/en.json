@@ -251,7 +251,8 @@
       "solid": "Solid"
     },
     "intensity": "Intensity",
-    "colour": "Colour"
+    "colour": "Colour",
+    "disabled": "off"
   },
   "title": {
     "untitled": "Link",

@@ -251,7 +251,8 @@
       "solid": "単色"
     },
     "intensity": "強さ",
-    "colour": "色"
+    "colour": "色",
+    "disabled": "無効"
   },
   "title": {
     "untitled": "リンク",
