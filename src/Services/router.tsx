@@ -118,6 +118,19 @@ export interface PhotosRoute {
   photoId: string | null;
 }
 
+/** Someone's profile, reached by subdomain or by /users/{handle}. */
+export interface ProfileRoute {
+  kind: "profile";
+  handle: string;
+  japanese: boolean;
+}
+
+/** The visual layout editor for one's own profile. */
+export interface CustomizeRoute {
+  kind: "customize";
+  japanese: boolean;
+}
+
 /** Sign in or create an account. */
 export interface SignInRoute {
   kind: "signin";
@@ -126,8 +139,8 @@ export interface SignInRoute {
 
 export interface LandingRoute {
   kind: "landing";
-  /** home = the feed, explore = outside it, about = what Hisuiki is. */
-  tab: "home" | "explore" | "about";
+  /** home = the ranked feed, explore = the same posts with ranking off. */
+  tab: "home" | "explore";
   japanese: boolean;
 }
 
@@ -136,10 +149,20 @@ export interface SettingsRoute {
   japanese: boolean;
 }
 
-export type Route = PageRoute | PhotosRoute | SignInRoute | LandingRoute | SettingsRoute;
+export type Route =
+  | PageRoute
+  | PhotosRoute
+  | SignInRoute
+  | LandingRoute
+  | SettingsRoute
+  | ProfileRoute
+  | CustomizeRoute;
 
 /** Ids are minted by the API as 12 hex characters; anything else is not a photo. */
 /** Posts and media are addressed by UUID: a slug names a post only within one author's profile. */
+/** Handles are lowercase, as validated on the server. */
+const HANDLE = /^[a-z0-9-]{3,30}$/;
+
 const POST_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
@@ -166,9 +189,9 @@ export function resolveRoute(pathname: string): Route | null {
   
 
   if (path.length === 0) {
-    if (getSiteHandle()) {
-      return { kind: "page", slug: "README", isHome: true, japanese, isPostsIndex: false };
-    }
+    // On a profile subdomain the root is that person's profile; on the apex it is the feed.
+    const siteHandle = getSiteHandle();
+    if (siteHandle) return { kind: "profile", handle: siteHandle, japanese };
     return { kind: "landing", tab: "home", japanese };
   }
 
@@ -184,12 +207,22 @@ export function resolveRoute(pathname: string): Route | null {
     }
   }
 
-  if (path.length === 1 && (path[0] === "explore" || path[0] === "about")) {
-    return { kind: "landing", tab: path[0], japanese };
+  if (path.length === 1 && path[0] === "explore") {
+    return { kind: "landing", tab: "explore", japanese };
   }
 
   if (path[0] === "signin" && path.length === 1) {
     return { kind: "signin", japanese };
+  }
+
+  if (path[0] === "customize" && path.length === 1) {
+    return { kind: "customize", japanese };
+  }
+
+  // A profile subdomain serves the profile at its root; /users/{handle} is the same page addressed
+  // from the apex, which is what makes profiles linkable before DNS for a handle exists.
+  if (path[0] === "users" && path.length === 2 && HANDLE.test(path[1]!)) {
+    return { kind: "profile", handle: path[1]!, japanese };
   }
 
   if (path[0] === "settings" && path.length === 1) {

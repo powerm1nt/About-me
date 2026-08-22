@@ -42,7 +42,6 @@ export default function Header({ isJapanese }: HeaderProps) {
   // "photos" is still matched: it remains a route alias, so a shared link keeps highlighting Media.
   const isMediaActive = /^\/(media|photos)/.test(activePath.toLowerCase());
   const isExploreActive = activePath.toLowerCase().startsWith("/explore");
-  const isSettingsActive = activePath.toLowerCase().startsWith("/settings");
 
   const homeHref = isJapanese ? "/ja" : "/";
   const mediaHref = isJapanese ? "/media/ja" : "/media";
@@ -71,25 +70,6 @@ export default function Header({ isJapanese }: HeaderProps) {
             {isJapanese ? "メディア" : "Media"}
           </Link>
 
-          {auth.isSignedIn && (
-            <>
-              <a 
-                href={myHandle ? (import.meta.env.DEV ? `/users/${myHandle}` : `https://${myHandle}.hisuiki.com`) : "#"}
-                className="pivot-item"
-                onClick={(e) => {
-                  if (!myHandle) { e.preventDefault(); alert(isJapanese ? "プロフィールを設定してください" : "Please set a handle in Settings first."); }
-                }}
-              >
-                {isJapanese ? "プロフィール" : "Profile"}
-              </a>
-              <Link
-                href="/settings"
-                className={`pivot-item ${isSettingsActive ? "is-active" : ""}`.trim()}
-              >
-                {isJapanese ? "設定" : "Settings"}
-              </Link>
-            </>
-          )}
 
         </nav>
 
@@ -148,6 +128,14 @@ export default function Header({ isJapanese }: HeaderProps) {
                   >
                     {isJapanese ? "プロフィール" : "Profile"}
                   </a>
+
+                  <Link
+                    href="/customize"
+                    className="metro-dropdown-item"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    {isJapanese ? "カスタマイズ" : "Customize"}
+                  </Link>
 
                   <Link 
                     href="/settings" 

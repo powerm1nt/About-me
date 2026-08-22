@@ -5,7 +5,6 @@ import SmartImage from "../../Common/Components/SmartImage/SmartImage";
 import InfoBubble from "../../Common/Components/InfoBubble/InfoBubble";
 import { fetchFeed } from "../../Services/api";
 import { assetUrl } from "../../Services/config";
-import { Link } from "../../Services/router";
 import type { PostSummary } from "../../Services/types";
 
 export interface LandingProps {
@@ -15,9 +14,7 @@ export interface LandingProps {
 
 const TEXT = {
   en: {
-    home: "Home",
-    explore: "Explore",
-    about: "About",
+    forYou: "For You",
     empty: "Nothing here yet.",
     exploreLead: "Everything being posted, newest first — no ranking, no algorithm.",
     error: "Could not load posts: ",
@@ -29,9 +26,7 @@ const TEXT = {
     signedOutHint: "Sign in to post, comment, and make the place yours.",
   },
   ja: {
-    home: "ホーム",
-    explore: "みつける",
-    about: "Hisuikiとは",
+    forYou: "おすすめ",
     empty: "まだ何もありません。",
     exploreLead: "投稿されたすべて。新しい順、並べ替えなし。",
     error: "投稿を読み込めませんでした: ",
@@ -114,91 +109,67 @@ export default function Landing({ isJapanese, tab }: LandingProps) {
 
   return (
     <div className="file-content landing" data-phase="ready">
-      <nav className="landing-tabs" aria-label={text.home}>
-        <Link href={isJapanese ? "/ja" : "/"} className={`landing-tab ${tab === "home" ? "is-active" : ""}`.trim()}>
-          {text.home}
-        </Link>
-        <Link href={isJapanese ? "/explore/ja" : "/explore"} className={`landing-tab ${tab === "explore" ? "is-active" : ""}`.trim()}>
-          {text.explore}
-        </Link>
-        <Link href={isJapanese ? "/about/ja" : "/about"} className={`landing-tab ${tab === "about" ? "is-active" : ""}`.trim()}>
-          {text.about}
-        </Link>
-      </nav>
-
-      {tab === "about" ? (
-        <section className="landing-about">
-          <h1>{text.aboutTitle}</h1>
-          <p className="landing-lead">{text.aboutLead}</p>
-          <p>{text.aboutProfile}</p>
-          <p>{text.aboutOwnership}</p>
-        </section>
+      {/* Explore is the same feed with ranking off, reached from the header rather than a tab bar
+          here — one surface, two orderings, no second list of the same posts. */}
+      {tab === "home" ? (
+        <PostComposer isJapanese={isJapanese} onPosted={onPosted} />
       ) : (
-        <>
-          {tab === "home" ? (
-            <PostComposer isJapanese={isJapanese} onPosted={onPosted} />
-          ) : (
-            <p className="landing-lead">{text.exploreLead}</p>
-          )}
+        <p className="landing-lead">{text.exploreLead}</p>
+      )}
 
-          {error !== null ? (
-            <InfoBubble title={`${text.error}${error}`} className="md-component-danger" />
-          ) : loading ? (
-            <div className="feed" aria-hidden="true">
-              {[0, 1, 2].map((i) => (
-                <article className="feed-post" key={i}>
-                  <Skeleton className="skeleton-meta" width="140px" />
-                  <Skeleton className="skeleton-line" width="95%" />
-                  <Skeleton className="skeleton-line" width="70%" />
-                </article>
-              ))}
-            </div>
-          ) : (posts ?? []).length === 0 ? (
-            <p className="loading-text">{text.empty}</p>
-          ) : (
-            <div className="feed">
-              {(posts ?? []).map((post) => {
-                const handle = post.author.profile?.handle;
-                return (
-                  <article className="feed-post" key={post.id} data-post={post.id}>
-                    <header className="feed-post-head">
-                      {post.author.image && (
-                        <img className="feed-avatar" src={post.author.image} alt="" width={40} height={40} />
-                      )}
-                      <span className="feed-author">{post.author.name || handle || "Someone"}</span>
-                      {handle && <span className="feed-handle">@{handle}</span>}
-                      <span className="feed-time">{timeAgo(post.createdAt, isJapanese)}</span>
-                    </header>
+      {error !== null ? (
+        <InfoBubble title={`${text.error}${error}`} className="md-component-danger" />
+      ) : loading ? (
+        <div className="feed" aria-hidden="true">
+          {[0, 1, 2].map((i) => (
+            <article className="feed-post" key={i}>
+              <Skeleton className="skeleton-meta" width="140px" />
+              <Skeleton className="skeleton-line" width="95%" />
+              <Skeleton className="skeleton-line" width="70%" />
+            </article>
+          ))}
+        </div>
+      ) : (posts ?? []).length === 0 ? (
+        <p className="loading-text">{text.empty}</p>
+      ) : (
+        <div className="feed">
+          {(posts ?? []).map((post) => {
+            const handle = post.author.profile?.handle;
+            return (
+              <article className="feed-post" key={post.id} data-post={post.id}>
+                <header className="feed-post-head">
+                  {post.author.image && (
+                    <img className="feed-avatar" src={post.author.image} alt="" width={40} height={40} />
+                  )}
+                  <span className="feed-author">{post.author.name || handle || "Someone"}</span>
+                  {handle && <span className="feed-handle">@{handle}</span>}
+                  <span className="feed-time">{timeAgo(post.createdAt, isJapanese)}</span>
+                </header>
 
-                    {post.title && <h3 className="feed-title">{post.title}</h3>}
+                {post.title && <h3 className="feed-title">{post.title}</h3>}
 
-                    {/* The first image only: a card is a preview, and the post's page has the rest. */}
-                    {post.media[0] && (
-                      <SmartImage
-                        src={assetUrl(post.media[0].thumbPath ?? post.media[0].path)}
-                        alt={post.media[0].alt}
-                        block
-                      />
-                    )}
+                {/* The first image only: a card is a preview, and the post's page has the rest. */}
+                {post.media[0] && (
+                  <SmartImage
+                    src={assetUrl(post.media[0].thumbPath ?? post.media[0].path)}
+                    alt={post.media[0].alt}
+                    block
+                  />
+                )}
 
-                    {/* Server-sanitised: renderUserContent strips anything outside its allow-list
-                        and scopes the post's own stylesheet to this data-post container. */}
-                    <div
-                      className="feed-body"
-                      dangerouslySetInnerHTML={{ __html: post.renderedHtml ?? "" }}
-                    />
+                {/* Server-sanitised: renderUserContent strips anything outside its allow-list and
+                    scopes the post's own stylesheet to this data-post container. */}
+                <div className="feed-body" dangerouslySetInnerHTML={{ __html: post.renderedHtml ?? "" }} />
 
-                    <footer className="feed-post-foot">
-                      <span>♥ {post._count.likes}</span>
-                      <span>💬 {post._count.comments}</span>
-                      <span>↻ {post._count.reposts}</span>
-                    </footer>
-                  </article>
-                );
-              })}
-            </div>
-          )}
-        </>
+                <footer className="feed-post-foot">
+                  <span>♥ {post._count.likes}</span>
+                  <span>💬 {post._count.comments}</span>
+                  <span>↻ {post._count.reposts}</span>
+                </footer>
+              </article>
+            );
+          })}
+        </div>
       )}
     </div>
   );

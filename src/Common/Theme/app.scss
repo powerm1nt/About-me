@@ -648,3 +648,103 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 .feed-body > :first-child { margin-top: 0; }
 .feed-body > :last-child { margin-bottom: 0; }
 .feed-post-foot { display: flex; gap: 1.6em; margin-top: 0.8em; font-size: 0.85rem; color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
+
+/* ── Profile ─────────────────────────────────────────────────────────── */
+.profile-head { margin-bottom: 1.6em; }
+.profile-identity { display: flex; align-items: flex-start; gap: 1.2em; margin-bottom: 1em; }
+.profile-avatar-fallback {
+  width: 96px; height: 96px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--color-accent-soft); border: 1px solid var(--color-accent);
+  font-size: 2.4rem; font-weight: 300; color: var(--color-text);
+}
+.profile-names { min-width: 0; }
+.profile-name { margin: 0; font-size: 1.7rem; letter-spacing: 0; font-weight: 600; }
+.profile-handle { margin: 0.1em 0 0; color: var(--color-text-muted); font-size: 0.95rem; }
+.profile-headline { margin: 0.5em 0 0; color: var(--color-text-secondary); font-weight: 300; }
+.profile-facts { display: flex; flex-wrap: wrap; gap: 0.5em 1.8em; margin: 0 0 0.8em; }
+.profile-fact { display: flex; align-items: baseline; gap: 0.5em; }
+.profile-fact dt { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-faint); }
+.profile-fact dd { margin: 0; font-size: 0.9rem; color: var(--color-text-secondary); }
+.profile-links { display: flex; flex-wrap: wrap; gap: 0.8em 1.4em; list-style: none; margin: 0; padding: 0; }
+.profile-links a { color: var(--color-accent-strong); font-size: 0.9rem; }
+.profile-bio { margin: 0 0 1.8em; padding: 1.2em 0; border-top: 1px solid rgba(255,255,255,0.1); border-bottom: 1px solid rgba(255,255,255,0.1); color: var(--color-text-secondary); font-weight: 300; line-height: 1.65; }
+.profile-bio > :first-child { margin-top: 0; }
+.profile-bio > :last-child { margin-bottom: 0; }
+.profile-tabs { display: flex; gap: 0.4em; border-bottom: 1px solid rgba(255,255,255,0.12); margin-bottom: 1.2em; }
+.profile-tabs .landing-tab { background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; font-family: inherit; }
+.profile-avatar-skeleton { width: 96px; height: 96px; border-radius: 50%; margin-bottom: 1em; }
+
+/* Activity heatmap — a year of posts, GitHub's arrangement. */
+.heatmap { margin: 0 0 1.8em; }
+/* Scrolls on its own rather than widening the page: 53 columns does not fit a phone. */
+.heatmap-grid { display: flex; gap: 3px; overflow-x: auto; padding-bottom: 0.4em; }
+.heatmap-week { display: flex; flex-direction: column; gap: 3px; }
+.heatmap-day { width: 11px; height: 11px; border-radius: 2px; background: rgba(255,255,255,0.06); }
+/* Levels are relative to the profile's own busiest day, so a quiet account still reads as active. */
+.heatmap-day[data-level="1"] { background: var(--color-accent-muted); }
+.heatmap-day[data-level="2"] { background: var(--color-accent); }
+.heatmap-day[data-level="3"] { background: var(--color-accent-strong); }
+.heatmap-day[data-level="4"] { background: var(--color-text); }
+.heatmap-caption { margin: 0.5em 0 0; font-size: 0.8rem; color: var(--color-text-muted); }
+
+/* ── Widgets — the board a profile is arranged on ────────────────────── */
+/* Four columns, so small/medium/large map to 1/2/4. Narrow screens collapse to one column and every
+   size becomes full width, which is why the model stores spans rather than coordinates. */
+.widget-board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.2em; align-items: start; }
+@media screen and (max-width: 900px) {
+  .widget-board { grid-template-columns: repeat(2, 1fr); }
+  .widget { grid-column: span 2 !important; }
+}
+@media screen and (max-width: 600px) {
+  .widget-board { grid-template-columns: 1fr; }
+  .widget { grid-column: span 1 !important; }
+}
+
+.widget { min-width: 0; }
+.widget-content { min-width: 0; }
+
+/* Only in edit mode does a widget look like an object you can pick up. */
+.widget-board.is-editing .widget {
+  border: 1px dashed rgba(255,255,255,0.25);
+  padding: 0.6em;
+  cursor: grab;
+  transition: border-color 0.15s, opacity 0.15s, transform 0.15s;
+}
+.widget-board.is-editing .widget:hover { border-color: var(--color-accent); }
+.widget-board.is-editing .widget.is-dragging { opacity: 0.45; cursor: grabbing; }
+/* The drop target, so it is obvious where a dragged widget will land. */
+.widget-board.is-editing .widget.is-over { border-color: var(--color-accent-strong); border-style: solid; transform: scale(0.99); }
+.widget-board.is-editing .widget.is-hidden { opacity: 0.5; }
+
+.widget-chrome { display: flex; align-items: center; justify-content: space-between; gap: 0.6em; margin-bottom: 0.6em; flex-wrap: wrap; }
+.widget-label { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted); }
+.widget-label em { font-style: normal; color: var(--color-text-faint); }
+.widget-controls { display: flex; align-items: center; gap: 0.25em; }
+.widget-btn {
+  background: transparent; border: 1px solid var(--color-text-faint); border-radius: 0;
+  color: var(--color-text-secondary); font-family: inherit; font-size: 0.72rem;
+  padding: 0.2em 0.5em; cursor: pointer; transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.widget-btn:hover { background: var(--color-accent-soft); border-color: var(--color-accent); color: #ffffff; }
+.widget-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.widget-btn-remove:hover { border-color: var(--color-danger); color: var(--color-danger); }
+.widget-grip { color: var(--color-text-faint); cursor: grab; padding-left: 0.2em; }
+.widget-text-fields { display: flex; flex-direction: column; gap: 0.5em; }
+.widget-heading { margin: 0 0 0.4em; font-size: 1.1rem; }
+
+/* The editing bar sits over the real page rather than replacing it with a separate screen. */
+.widget-toolbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 1em; flex-wrap: wrap;
+  padding: 0.8em 1em; margin-bottom: 1.2em;
+  background: var(--color-accent-soft); border: 1px solid var(--color-accent);
+  position: sticky; top: 0; z-index: 5;
+}
+.widget-toolbar-hint { font-size: 0.85rem; color: var(--color-text-secondary); }
+.widget-toolbar-actions { display: flex; gap: 0.5em; flex-wrap: wrap; }
+
+/* Footer — what Hisuiki is, moved here from a tab. */
+.footer-about { flex: 1 1 320px; min-width: 0; max-width: 46ch; }
+.footer-about-lead { margin: 0 0 0.5em; font-size: 0.88rem; color: var(--color-text-secondary); font-weight: 300; }
+.footer-about-detail { margin: 0; font-size: 0.8rem; color: var(--color-text-muted); font-weight: 300; line-height: 1.55; }
+.footer-about code { font-size: 0.9em; }

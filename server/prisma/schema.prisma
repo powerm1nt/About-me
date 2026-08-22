@@ -121,6 +121,20 @@ model Profile {
   /// it is a short ordered list that is always read and written whole.
   headerLinks Json @default("[]")
 
+  /// Links shown on the profile itself, same shape as headerLinks and kept separate because the two
+  /// serve different purposes: navigation versus "here is where else I am".
+  profileLinks Json @default("[]")
+
+  /// Shown publicly, so it is a field the person opts into rather than their account address.
+  publicEmail String?
+  location    String?
+  pronouns    String?
+
+  /// The visual layout editor's output: which blocks appear on the profile, in what order, and how
+  /// each is configured. JSON because it is a document read and written whole, and because its
+  /// shape is owned by the editor rather than by queries — nothing filters on it.
+  layout Json @default("{}")
+
   /// The "{name}'s profile" entry in the header. Users can remove it, hence the flag.
   showProfileLink Boolean @default(true)
 

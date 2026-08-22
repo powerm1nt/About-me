@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import type { ProfilePageSummary } from "../../Services/types";
 import InfoBubble from "../../Common/Components/InfoBubble/InfoBubble";
 import Skeleton from "../../Common/Components/Skeleton/Skeleton";
 import { useAuth } from "../../Services/auth";
@@ -26,7 +25,6 @@ export default function Settings({ isJapanese }: SettingsProps) {
   const [wallpaperPath, setWallpaperPath] = useState("");
   const [showProfileLink, setShowProfileLink] = useState(true);
   const [headerLinks, setHeaderLinks] = useState("");
-  const [pages, setPages] = useState<ProfilePageSummary[]>([]);
 
   useEffect(() => {
     if (!auth.initializing && !auth.isSignedIn) {
@@ -50,11 +48,6 @@ export default function Settings({ isJapanese }: SettingsProps) {
             setShowProfileLink(data.showProfileLink !== false);
             setHeaderLinks(data.headerLinks ? JSON.stringify(data.headerLinks, null, 2) : "[]");
 
-            const pagesRes = await fetch(apiUrl("/api/profile/me/pages"), { credentials: "include" });
-            if (pagesRes.ok) {
-              const pagesData = await pagesRes.json();
-              setPages(pagesData.pages || []);
-            }
 
             setLoading(false);
           }
@@ -98,11 +91,6 @@ export default function Settings({ isJapanese }: SettingsProps) {
             setShowProfileLink(data.showProfileLink !== false);
             setHeaderLinks(data.headerLinks ? JSON.stringify(data.headerLinks, null, 2) : "[]");
 
-            const pagesRes = await fetch(apiUrl("/api/profile/me/pages"), { credentials: "include" });
-            if (pagesRes.ok) {
-              const pagesData = await pagesRes.json();
-              setPages(pagesData.pages || []);
-            }
 
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
@@ -217,16 +205,6 @@ export default function Settings({ isJapanese }: SettingsProps) {
         
           
           <hr style={{ margin: "2rem 0", borderColor: "var(--color-surface-veil)" }} />
-          <h2>{isJapanese ? "ページ" : "Pages"}</h2>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            {pages.length === 0 && <span style={{ color: "var(--color-text-muted)" }}>{isJapanese ? "ページがありません" : "No pages yet."}</span>}
-            {pages.map(p => (
-              <div key={p.id} style={{ padding: "0.5rem 1rem", border: "1px solid var(--color-surface-veil)", borderRadius: "4px", display: "flex", justifyContent: "space-between" }}>
-                <span><strong>{p.title || p.slug}</strong> <span style={{color: "var(--color-text-muted)", fontSize: "0.9em"}}>(/{p.slug})</span></span>
-              </div>
-            ))}
-          </div>
-<hr style={{ margin: "2rem 0", borderColor: "var(--color-surface-veil)" }} />
           <h2 style={{ color: "var(--color-danger)" }}>{isJapanese ? "詳細設定" : "Advanced"}</h2>
           <div style={{ padding: "1rem", border: "1px solid var(--color-danger)", borderRadius: "8px", background: "var(--color-danger-bg)", marginTop: "1rem" }}>
             <p style={{ marginTop: 0 }}>{isJapanese ? "アカウントを削除すると、すべての投稿と設定が完全に消去されます。元に戻すことはできません。" : "Deleting your account will permanently remove all your posts and settings. This cannot be undone."}</p>

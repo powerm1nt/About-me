@@ -25,7 +25,42 @@ export interface ProfileData {
   avatarPath: string | null;
   accentColor: string | null;
   headerLinks: HeaderLink[];
+  /** Shown on the profile itself, separate from the header's navigation links. */
+  profileLinks: HeaderLink[];
+  publicEmail: string | null;
+  location: string | null;
+  pronouns: string | null;
   showProfileLink: boolean;
+  /** The visual editor's serialised arrangement; empty until the profile has been customised. */
+  layout: ProfileLayout;
+  /** Present on a public lookup, which joins the account for its display name and avatar. */
+  user?: { id: string; name: string; image: string | null };
+}
+
+/** Every part of a profile is a widget: what it shows, how wide it is, and whether it is shown. */
+export type WidgetKind = "identity" | "links" | "bio" | "heatmap" | "timeline" | "text";
+
+/** Widths, in the phone-home-screen sense rather than pixels. */
+export type WidgetSize = "small" | "medium" | "large";
+
+export interface Widget {
+  id: string;
+  kind: WidgetKind;
+  size: WidgetSize;
+  /** Kept on the board but not shown, so hiding something is not the same as deleting it. */
+  hidden?: boolean;
+  /** Per-kind settings — the heading and text of a text widget, for instance. */
+  props?: Record<string, string | number | boolean>;
+}
+
+/**
+ * The serialised board. Order plus size is the whole arrangement: there are no coordinates, so the
+ * same document reflows onto a phone instead of preserving a desktop composition nothing can show.
+ */
+export interface ProfileLayout {
+  widgets?: Widget[];
+  /** Bumped when the shape changes, so an older document can be recognised rather than misread. */
+  version?: number;
 }
 
 export async function fetchMyProfile(): Promise<ProfileData> {

@@ -49,7 +49,10 @@ profileRouter.put("/me", async (req, res) => {
     return res.status(429).json({ error: "Profile update limit reached. Try again later." });
   }
 
-  const { handle, headline, bio, headerLinks, showProfileLink, accentColor, customCss, wallpaperPath } = req.body;
+  const {
+    handle, headline, bio, headerLinks, showProfileLink, accentColor, customCss, wallpaperPath,
+    profileLinks, publicEmail, location, pronouns, layout,
+  } = req.body;
 
   // Refuse a stylesheet that cannot be made safe, rather than storing something whose scoped form is
   // empty and leaving the author wondering why nothing applied.
@@ -92,6 +95,11 @@ profileRouter.put("/me", async (req, res) => {
       accentColor,
       customCss,
       wallpaperPath,
+      profileLinks,
+      publicEmail,
+      location,
+      pronouns,
+      layout,
     },
     create: {
       userId: viewer.id,
@@ -103,6 +111,11 @@ profileRouter.put("/me", async (req, res) => {
       accentColor,
       customCss,
       wallpaperPath,
+      profileLinks,
+      publicEmail,
+      location,
+      pronouns,
+      layout,
     },
   });
 

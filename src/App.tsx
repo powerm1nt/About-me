@@ -1,10 +1,11 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import AppModal from "./Common/Components/AppModal/AppModal";
 import Wallpaper from "./Common/Components/Wallpaper/Wallpaper";
-import { FileViewer, Footer, Header, Landing, Photos, Settings, SignIn } from "./Modules";
-import { AuthProvider } from "./Services/auth";
+import { FileViewer, Footer, Header, Profile, Landing, Photos, Settings, SignIn } from "./Modules";
+import { AuthProvider, useAuth } from "./Services/auth";
 import { ExternalLinkProvider } from "./Services/externalLink";
 import { RouterProvider, resolveRoute, useRouter } from "./Services/router";
+import { fetchMyProfile } from "./Services/profile";
 import { injectAssetCssVariables } from "./Services/wallpaper";
 import { apiUrl } from "./Services/config";
 import { getSiteHandle } from "./Services/router";
@@ -18,12 +19,57 @@ function pageTitle(pathname: string): string {
   }
   if (route.kind === "signin") return "Sign in — Hisuiki";
   if (route.kind === "settings") return "Settings — Hisuiki";
+  if (route.kind === "customize") return "Customize — Hisuiki";
+  if (route.kind === "profile") return `@${route.handle} — Hisuiki`;
   if (route.isPostsIndex) return "Posts — Hisuiki";
-  if ((!route.isHome && route.slug !== "posts-index")) {
-    const slug = route.slug;
-    return `${slug} — Hisuiki`;
-  }
+  if (!route.isHome) return `${route.slug} — Hisuiki`;
   return "Hisuiki";
+}
+
+/**
+ * The signed-in person's own profile, opened for arranging. It resolves the handle from the session
+ * rather than the URL, so /customize needs no handle in it and cannot be pointed at someone else.
+ */
+function CustomizeOwnProfile({ isJapanese }: { isJapanese: boolean }) {
+  const auth = useAuth();
+  const [handle, setHandle] = useState<string | null>(null);
+  const [missing, setMissing] = useState(false);
+
+  useEffect(() => {
+    if (!auth.isSignedIn) return;
+
+    let active = true;
+    fetchMyProfile()
+      .then((profile) => {
+        if (!active) return;
+        if (profile.handle) setHandle(profile.handle);
+        else setMissing(true);
+      })
+      .catch(() => {
+        if (active) setMissing(true);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [auth.isSignedIn]);
+
+  if (!auth.isSignedIn) {
+    return <p className="loading-text">{isJapanese ? "サインインしてください。" : "Sign in to customize your profile."}</p>;
+  }
+
+  // Without a handle there is no profile to arrange yet, and settings is where one is chosen.
+  if (missing) {
+    return (
+      <p className="loading-text">
+        {isJapanese ? "先に設定でハンドルを決めてください。" : "Choose a handle in Settings first."}
+      </p>
+    );
+  }
+
+  if (!handle) return <p className="loading-text">…</p>;
+
+  return <Profile handle={handle} isJapanese={isJapanese} editing />;
 }
 
 function NotFound() {
@@ -67,6 +113,24 @@ function Shell() {
         </main>
       ) : route.kind === "photos" ? (
         <Photos photoId={route.photoId} isJapanese={route.japanese} />
+      ) : route.kind === "profile" ? (
+        <main className="main-content">
+          <div className="main-content-container">
+            <div className="file-content" data-phase="ready" key={route.handle}>
+              <Profile handle={route.handle} isJapanese={route.japanese} />
+            </div>
+          </div>
+        </main>
+      ) : route.kind === "customize" ? (
+        // Customizing is the profile in edit mode, not a separate screen — the thing being arranged
+        // is the page itself.
+        <main className="main-content">
+          <div className="main-content-container">
+            <div className="file-content" data-phase="ready">
+              <CustomizeOwnProfile isJapanese={route.japanese} />
+            </div>
+          </div>
+        </main>
       ) : route.kind === "settings" ? (
         <main className="main-content">
           <div className="main-content-container">

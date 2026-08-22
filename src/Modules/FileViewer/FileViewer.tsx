@@ -108,22 +108,7 @@ export default function FileViewer({ slug, isHome, isJapanese = false }: FileVie
       <div className="main-content-container">
         <div className="file-content" data-phase={phase} key={`${slug}:${phase}`}>
           {error !== null ? (
-            (error.includes("404") && isHome) ? (
-              <div className="profile-feed-fallback">
-                 <h2>{isJapanese ? "プロフィール" : "Profile"}</h2>
-                 <p style={{marginBottom: "2rem"}}>{isJapanese ? "このユーザーはまだREADMEを作成していません。" : "This user hasn't created a profile README yet."}</p>
-                 <button className="editor-btn editor-btn-primary" onClick={() => window.location.href = "/"}>
-                   {isJapanese ? "フィードに戻る" : "Go to For You feed"}
-                 </button>
-                 {auth.isSignedIn && (
-                   <button className="editor-btn" style={{ marginLeft: "1rem" }} onClick={() => showPane("edit")}>
-                     {isJapanese ? "READMEを作成する" : "Create README"}
-                   </button>
-                 )}
-              </div>
-            ) : (
-              <InfoBubble title={`Error: ${error}`} className="md-component-danger" />
-            )
+            <InfoBubble title={`Error: ${error}`} className="md-component-danger" />
           ) : page === null ? (
             <>
               <div className="article-header-meta" aria-hidden="true">
