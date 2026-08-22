@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import AnchorRegion from "./Common/Components/AnchorRegion/AnchorRegion";
 import AppModal from "./Common/Components/AppModal/AppModal";
+import SaveIndicator from "./Common/Components/SaveIndicator/SaveIndicator";
 import Wallpaper from "./Common/Components/Wallpaper/Wallpaper";
 import WidgetGallery from "./Common/Components/WidgetGallery/WidgetGallery";
 import { About, FileViewer, Profile, Landing, Photos, Settings, SignIn } from "./Modules";
@@ -8,7 +9,6 @@ import { AuthProvider, useAuth } from "./Services/auth";
 import { PageLayoutProvider, usePageLayout } from "./Services/pageLayout";
 import { addWidget } from "./Services/layout";
 import { setLanguage } from "./Services/i18n";
-import { useTranslation } from "react-i18next";
 import { ExternalLinkProvider } from "./Services/externalLink";
 import { RouterProvider, resolveRoute, useRouter } from "./Services/router";
 import { fetchMyProfile } from "./Services/profile";
@@ -103,8 +103,7 @@ function NotFound() {
 function Shell() {
   const { pathname } = useRouter();
   const route = resolveRoute(pathname);
-  const { editing, anchors, setAnchor, saveState, saveError } = usePageLayout();
-  const { t } = useTranslation();
+  const { editing, anchors, setAnchor } = usePageLayout();
 
   useEffect(() => {
     document.title = pageTitle(pathname);
@@ -137,12 +136,7 @@ function Shell() {
       {editing && (
         <div className="page-rail">
           <WidgetGallery onAdd={(kind) => setAnchor("center", addWidget(anchors.center, kind))} />
-          {saveError !== null && <p className="editor-status is-error">{saveError}</p>}
-          {saveState !== "idle" && (
-            <p className="editor-status" role="status">
-              {saveState === "saving" ? t("save.saving") : t("save.saved")}
-            </p>
-          )}
+          <SaveIndicator />
         </div>
       )}
 

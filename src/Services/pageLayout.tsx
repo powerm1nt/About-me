@@ -1,4 +1,12 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { defaultAnchors, readLayout, writeLayout } from "./layout";
 import { fetchMyProfile, updateMyProfile } from "./profile";
 import type { Anchor, AnchoredLayout, Widget } from "./profile";
@@ -6,23 +14,40 @@ import { useAuth } from "./auth";
 
 interface PageLayoutValue {
   anchors: AnchoredLayout;
-  /** Replaces one anchor's widgets, arming the autosave. */
-  setAnchor: (anchor: Anchor, widgets: Widget[]) => void;
+  /**
+   * Replaces one anchor's widgets, arming the autosave.
+   *
+   * Takes an updater as well as a list, the way setState does. That is what lets the boards hand out
+   * change handlers with a stable identity: a handler that closes over the current list has to be
+   * rebuilt whenever the list changes, and rebuilding it on every render defeats memoising the
+   * widgets underneath it.
+   */
+  setAnchor: (anchor: Anchor, widgets: Widget[] | ((prev: Widget[]) => Widget[])) => void;
   /** True while the owner is arranging the page. */
   editing: boolean;
   setEditing: (editing: boolean) => void;
+}
+
+interface SaveStatusValue {
   saveState: "idle" | "saving" | "saved";
   saveError: string | null;
 }
 
+/**
+ * Two contexts, not one.
+ *
+ * Save status changes twice per save — to "saving" and back — and the boards do not care about it.
+ * While they shared a context, every autosave re-rendered every widget on the page, twice, a second
+ * after each edit. What a component subscribes to should be what it actually reads.
+ */
 const PageLayoutContext = createContext<PageLayoutValue>({
   anchors: defaultAnchors(),
   setAnchor: () => {},
   editing: false,
   setEditing: () => {},
-  saveState: "idle",
-  saveError: null,
 });
+
+const SaveStatusContext = createContext<SaveStatusValue>({ saveState: "idle", saveError: null });
 
 /**
  * The one layout document, for every anchor on the page.
@@ -90,18 +115,35 @@ export function PageLayoutProvider({ children }: { children: ReactNode }) {
     return () => window.clearTimeout(timer);
   }, [dirty, anchors, auth.isSignedIn]);
 
-  const setAnchor = (anchor: Anchor, widgets: Widget[]) => {
-    setAnchors((current) => ({ ...current, [anchor]: widgets }));
-    setDirty(true);
-  };
+  // Stable across renders, so a board holding onto it is not re-rendered by its identity changing.
+  const setAnchor = useCallback(
+    (anchor: Anchor, widgets: Widget[] | ((prev: Widget[]) => Widget[])) => {
+      setAnchors((current) => ({
+        ...current,
+        [anchor]: typeof widgets === "function" ? widgets(current[anchor]) : widgets,
+      }));
+      setDirty(true);
+    },
+    [],
+  );
+
+  // Memoised for the same reason: a fresh object here re-renders every consumer on every render of
+  // this provider, whatever actually changed.
+  const layout = useMemo(
+    () => ({ anchors, setAnchor, editing, setEditing }),
+    [anchors, setAnchor, editing],
+  );
+
+  const status = useMemo(() => ({ saveState, saveError }), [saveState, saveError]);
 
   return (
-    <PageLayoutContext.Provider
-      value={{ anchors, setAnchor, editing, setEditing, saveState, saveError }}
-    >
-      {children}
+    <PageLayoutContext.Provider value={layout}>
+      <SaveStatusContext.Provider value={status}>{children}</SaveStatusContext.Provider>
     </PageLayoutContext.Provider>
   );
 }
 
 export const usePageLayout = (): PageLayoutValue => useContext(PageLayoutContext);
+
+/** Subscribes to the save indicator alone, so reading it does not tie a component to the layout. */
+export const useSaveStatus = (): SaveStatusValue => useContext(SaveStatusContext);

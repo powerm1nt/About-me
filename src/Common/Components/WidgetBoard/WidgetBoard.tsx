@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { memo, useCallback, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
   FREE_ROW_HEIGHT,
@@ -30,6 +30,39 @@ import ConfirmDialog from "../ConfirmDialog/ConfirmDialog";
 import ContextMenu, { type MenuItem } from "../ContextMenu/ContextMenu";
 import Inspector from "../Inspector/Inspector";
 
+/**
+ * One widget's view, memoised.
+ *
+ * A board re-renders whenever anything about it changes — a selection, a drag, a corner being
+ * pulled — and without this every widget under it re-rendered too, which for a timeline or a
+ * heatmap is a real amount of work for a change that did not touch them. Reordering keeps each
+ * widget's object identity, so a drag now moves elements without redrawing any of them.
+ *
+ * A container's children arrive as a freshly built element each render, so containers do re-render;
+ * their own children are memoised in turn, which is where the cost actually is.
+ */
+const WidgetSlot = memo(function WidgetSlot({
+  widget,
+  editing,
+  replace,
+  children,
+}: {
+  widget: Widget;
+  editing: boolean;
+  /** Board-level and stable; the per-widget handler is built from it here. */
+  replace: (id: string, next: Widget) => void;
+  children?: ReactNode;
+}) {
+  const View = WIDGET_REGISTRY[widget.kind];
+  const onChange = useCallback((next: Widget) => replace(widget.id, next), [replace, widget.id]);
+
+  return (
+    <View widget={widget} editing={editing} onChange={onChange}>
+      {children}
+    </View>
+  );
+});
+
 export interface WidgetBoardProps {
   widgets: Widget[];
   /** How this level lays its widgets out. A container passes its own flow to its children. */
@@ -38,7 +71,8 @@ export interface WidgetBoardProps {
   scroll?: Scroll;
   /** Editing turns the board into its own editor: the real page, with handles on it. */
   editing?: boolean;
-  onChange?: (widgets: Widget[]) => void;
+  /** Takes an updater as well as a list, so change handlers can be stable. */
+  onChange?: (widgets: Widget[] | ((prev: Widget[]) => Widget[])) => void;
 }
 
 /**
@@ -72,6 +106,12 @@ export default function WidgetBoard({
   // two widgets would leave no way to tell which one you were changing.
   const [inspecting, setInspecting] = useState<string | null>(null);
   const inspectorAnchor = useRef<HTMLElement | null>(null);
+
+  /** Opening the Inspector also fixes what it hangs from, which is a thing to do from an event. */
+  const inspect = (id: string | null) => {
+    inspectorAnchor.current = id ? flipRef.element(id) : null;
+    setInspecting(id);
+  };
   // The widget whose corner is being pulled. While this is set the board shows its grid, so there is
   // something to aim at rather than a size that changes for no visible reason.
   const [resizing, setResizing] = useState<string | null>(null);
@@ -88,8 +128,35 @@ export default function WidgetBoard({
    * take them out of.
    */
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
-  const [lasso, setLasso] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
   const [menu, setMenu] = useState<{ x: number; y: number; id: string } | null>(null);
+
+  /**
+   * The band's corners, in a ref rather than in state.
+   *
+   * A pointermove fires dozens of times a second, and putting the rectangle in state meant a render
+   * of the whole board — every timeline, every heatmap, the player — for each one. The band is drawn
+   * by writing to its own element's style directly, so dragging it costs one DOM write per move and
+   * no React work at all. The selection it produces is state, once, on release.
+   */
+  const lasso = useRef<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
+  const band = useRef<HTMLDivElement | null>(null);
+
+  const drawBand = () => {
+    const box = lasso.current;
+    const node = band.current;
+    if (!node) return;
+
+    if (!box) {
+      node.style.display = "none";
+      return;
+    }
+
+    node.style.display = "block";
+    node.style.left = `${Math.min(box.x1, box.x2)}px`;
+    node.style.top = `${Math.min(box.y1, box.y2)}px`;
+    node.style.width = `${Math.abs(box.x2 - box.x1)}px`;
+    node.style.height = `${Math.abs(box.y2 - box.y1)}px`;
+  };
   // A row neither wraps nor clips, so one with more in it than the page is wide has to give way
   // somewhere. Scrolling is a setting and wrapping is a different flow; left alone, it shrinks.
   const fit = useFitRow(flow === "row" && scroll === "none");
@@ -97,6 +164,50 @@ export default function WidgetBoard({
   const update = (next: Widget[]) => onChange?.(next);
   const replace = (id: string, next: Widget) =>
     update(widgets.map((item) => (item.id === id ? next : item)));
+
+  /**
+   * A change handler per widget, created once and kept.
+   *
+   * The obvious `onChange={(next) => replace(widget.id, next)}` is a new function on every render,
+   * which defeats memoising the widget entirely — the prop differs each time even when nothing
+   * else does. These close over a ref instead, so their identity is stable while what they act on
+   * stays current.
+   */
+  /**
+   * The stable version of "replace this widget".
+   *
+   * Written as an updater so it closes over nothing that changes — which is the whole point. The
+   * obvious `onChange={(next) => replace(widget.id, next)}` is a new function on every render, and a
+   * prop that differs every time defeats memoising the widget entirely.
+   */
+  const replaceById = useCallback(
+    (id: string, next: Widget) =>
+      onChange?.((prev) => prev.map((item) => (item.id === id ? next : item))),
+    [onChange],
+  );
+
+  /**
+   * The same, for a container's contents.
+   *
+   * A nested board hands up either a list or an updater, and the updater has to be applied against
+   * that container's children as they are at the moment of the write rather than as they were when
+   * this closure was made — which is the point of threading updaters all the way down.
+   */
+  const replaceChildren = useCallback(
+    (id: string, children: Widget[] | ((prev: Widget[]) => Widget[])) =>
+      onChange?.((prev) =>
+        prev.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                children:
+                  typeof children === "function" ? children(item.children ?? []) : children,
+              }
+            : item,
+        ),
+      ),
+    [onChange],
+  );
 
   /**
    * Reorders as the pointer passes over a widget, rather than waiting for the drop.
@@ -202,25 +313,28 @@ export default function WidgetBoard({
     if (event.target !== event.currentTarget) return;
 
     event.currentTarget.setPointerCapture(event.pointerId);
-    setLasso({ x1: event.clientX, y1: event.clientY, x2: event.clientX, y2: event.clientY });
-    setSelected(new Set());
+    lasso.current = { x1: event.clientX, y1: event.clientY, x2: event.clientX, y2: event.clientY };
+    drawBand();
+    // Only if something was selected: an unconditional set would re-render the board on every click
+    // on the background.
+    setSelected((current) => (current.size === 0 ? current : new Set()));
   };
 
   const endLasso = () => {
-    if (!lasso) return;
+    const drawn = lasso.current;
+    lasso.current = null;
+    drawBand();
+    if (!drawn) return;
 
     const box = {
-      left: Math.min(lasso.x1, lasso.x2),
-      right: Math.max(lasso.x1, lasso.x2),
-      top: Math.min(lasso.y1, lasso.y2),
-      bottom: Math.max(lasso.y1, lasso.y2),
+      left: Math.min(drawn.x1, drawn.x2),
+      right: Math.max(drawn.x1, drawn.x2),
+      top: Math.min(drawn.y1, drawn.y2),
+      bottom: Math.max(drawn.y1, drawn.y2),
     };
 
     // A click rather than a drag: nothing was being selected, so this only clears.
-    if (box.right - box.left < 4 && box.bottom - box.top < 4) {
-      setLasso(null);
-      return;
-    }
+    if (box.right - box.left < 4 && box.bottom - box.top < 4) return;
 
     const caught = new Set<string>();
     for (const item of widgets) {
@@ -234,7 +348,6 @@ export default function WidgetBoard({
     }
 
     setSelected(caught);
-    setLasso(null);
   };
 
   /** What the right-click menu offers for a widget, and for a selection it happens to be part of. */
@@ -245,7 +358,7 @@ export default function WidgetBoard({
     return [
       {
         label: t("menu.inspect"),
-        onSelect: () => setInspecting(item.id),
+        onSelect: () => inspect(item.id),
       },
       {
         label: t("menu.duplicate"),
@@ -304,42 +417,39 @@ export default function WidgetBoard({
         style={free ? ({ "--free-row": `${FREE_ROW_HEIGHT}px` } as React.CSSProperties) : undefined}
         onPointerDown={startLasso}
         onPointerMove={(e) => {
-          if (lasso) setLasso({ ...lasso, x2: e.clientX, y2: e.clientY });
+          if (!lasso.current) return;
+          lasso.current = { ...lasso.current, x2: e.clientX, y2: e.clientY };
+          drawBand();
         }}
         onPointerUp={endLasso}
-        onPointerCancel={() => setLasso(null)}
+        onPointerCancel={() => {
+          lasso.current = null;
+          drawBand();
+        }}
       >
         {widgets.map((widget) => {
           const spec = WIDGETS[widget.kind];
-          const View = WIDGET_REGISTRY[widget.kind];
           const container = isContainer(widget);
           const style = styleOf(widget);
 
           const content = (
-            <View
-              widget={widget}
-              editing={editing}
-              onChange={(next) => replace(widget.id, next)}
-            >
+            <WidgetSlot widget={widget} editing={editing} replace={replaceById}>
               {container && (
                 <WidgetBoard
                   widgets={widget.children ?? []}
                   flow={flowOf(widget)}
                   scroll={scrollOf(widget)}
                   editing={editing}
-                  onChange={(children) => replace(widget.id, { ...widget, children })}
+                  onChange={(children) => replaceChildren(widget.id, children)}
                 />
               )}
-            </View>
+            </WidgetSlot>
           );
 
           return (
             <section
               key={widget.id}
-              ref={(node) => {
-                flipRef.node(widget.id)(node);
-                if (inspecting === widget.id) inspectorAnchor.current = node;
-              }}
+              ref={flipRef.node(widget.id)}
               className={[
                 "widget",
                 dragging === widget.id ? "is-dragging" : "",
@@ -470,7 +580,7 @@ export default function WidgetBoard({
                       className="widget-btn"
                       title={t("inspector.open")}
                       aria-expanded={inspecting === widget.id}
-                      onClick={() => setInspecting(inspecting === widget.id ? null : widget.id)}
+                      onClick={() => inspect(inspecting === widget.id ? null : widget.id)}
                     >
                       ⚙
                     </button>
@@ -534,18 +644,10 @@ export default function WidgetBoard({
         })}
       </div>
 
-      {lasso && (
-        <div
-          className="widget-lasso"
-          aria-hidden="true"
-          style={{
-            position: "fixed",
-            left: Math.min(lasso.x1, lasso.x2),
-            top: Math.min(lasso.y1, lasso.y2),
-            width: Math.abs(lasso.x2 - lasso.x1),
-            height: Math.abs(lasso.y2 - lasso.y1),
-          }}
-        />
+      {/* Always in the document while arranging, hidden until drawn. Mounting it on pointerdown
+          would put a render between the press and the first sight of it. */}
+      {editing && (
+        <div className="widget-lasso" aria-hidden="true" ref={band} style={{ display: "none" }} />
       )}
 
       {menu !== null && (() => {
@@ -571,7 +673,7 @@ export default function WidgetBoard({
             widget={target}
             anchor={inspectorAnchor}
             onChange={(next) => replace(target.id, next)}
-            onClose={() => setInspecting(null)}
+            onClose={() => inspect(null)}
           />
         );
       })()}

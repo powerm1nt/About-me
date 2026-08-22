@@ -61,5 +61,7 @@ export function useFlip() {
     },
     /** Measured now rather than read from the last pass: a drag moves things between renders. */
     rect: (id: string): DOMRect | null => nodes.current.get(id)?.getBoundingClientRect() ?? null,
+    /** The element itself, for a panel that needs something to hang from. */
+    element: (id: string): HTMLElement | null => nodes.current.get(id) ?? null,
   };
 }

@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import type { Flow } from "../../../Services/layout";
 import { usePageLayout } from "../../../Services/pageLayout";
 import type { Anchor } from "../../../Services/profile";
@@ -26,6 +27,12 @@ export default function AnchorRegion({ anchor, flow = "column", className }: Anc
   const { anchors, setAnchor, editing } = usePageLayout();
   const widgets = anchors[anchor] ?? [];
 
+  // Stable, so the board below is not handed a new function on every render of this one.
+  const onChange = useCallback(
+    (next: Parameters<typeof setAnchor>[1]) => setAnchor(anchor, next),
+    [anchor, setAnchor],
+  );
+
   if (widgets.length === 0 && !editing) return null;
 
   return (
@@ -34,7 +41,7 @@ export default function AnchorRegion({ anchor, flow = "column", className }: Anc
         widgets={widgets}
         flow={flow}
         editing={editing}
-        onChange={(next) => setAnchor(anchor, next)}
+        onChange={onChange}
       />
     </div>
   );
