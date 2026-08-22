@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import ExternalLink from "../../Common/Components/ExternalLink/ExternalLink";
 import HeadlineLogo from "../../Common/Components/HeadlineLogo/HeadlineLogo";
 import SmartImage from "../../Common/Components/SmartImage/SmartImage";
-import { Link, apexHref, useRouter } from "../../Services/router";
+import { Link, apexHref, profileHref, useRouter } from "../../Services/router";
 import { fetchMyProfile, updateMyProfile } from "../../Services/profile";
 import type { HeaderLink } from "../../Services/types";
 import { useAuth, signInHref } from "../../Services/auth";
@@ -301,7 +301,7 @@ export default function Header({ isJapanese }: HeaderProps) {
                   </div>
                   
                   <a 
-                    href={myHandle ? (import.meta.env.DEV ? `/users/${myHandle}` : `https://${myHandle}.hisuiki.com`) : "#"}
+                    href={myHandle ? profileHref(myHandle) : "#"}
                     className="metro-dropdown-item"
                     onClick={(e) => {
                       if (!myHandle) { e.preventDefault(); alert(isJapanese ? "プロフィールを設定してください" : "Please set a handle in Settings first."); }

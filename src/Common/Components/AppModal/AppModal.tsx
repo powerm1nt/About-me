@@ -87,7 +87,9 @@ export default function AppModal() {
         ref={modalRef}
         onClick={(e) => e.stopPropagation()}
       >
-        <p className="app-modal-kicker">leaving hisuiki.com</p>
+        {/* The host the app is actually served from, not a constant: the point of the line is
+            "you are leaving *this* site", whichever site that is. */}
+        <p className="app-modal-kicker">leaving {window.location.hostname}</p>
         <h2 className="app-modal-title" id="app-modal-title">
           {shown.label}
         </h2>

@@ -23,6 +23,27 @@ const RouterContext = createContext<RouterValue>({
 
 /** Returns the handle of the current profile, parsed from subdomain or /users/:handle */
 /**
+ * The apex of the current host, or null when there is no subdomain to strip.
+ *
+ * Splitting on dots and dropping the first label is only meaningful for a real domain name. An IPv4
+ * address has four dot-separated parts and none of them is a subdomain, so the same rule turns
+ * 10.100.50.7 into 100.50.7 — a different machine entirely. Ports, localhost and bare hosts have the
+ * same problem in milder forms, so every one of them is excluded here rather than at each call site.
+ */
+function apexOf(hostname: string): string | null {
+  // An IPv4 literal. IPv6 arrives bracketed and contains colons, so it never reaches the split below.
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(hostname)) return null;
+  if (hostname === "localhost" || hostname.endsWith(".localhost")) return null;
+  if (hostname.includes(":")) return null;
+
+  const parts = hostname.split(".");
+  // Two labels is the apex itself (hisuiki.com); three or more has something in front of it.
+  if (parts.length < 3) return null;
+
+  return parts.slice(1).join(".");
+}
+
+/**
  * The apex site, where the feed lives.
  *
  * A profile subdomain serves that person's profile at its root, so "Home" cannot simply be "/" —
@@ -33,14 +54,35 @@ export function apexHref(path = "/"): string {
   if (typeof window === "undefined") return path;
 
   const { hostname, protocol, port } = window.location;
-  const parts = hostname.split(".");
+  const apex = apexOf(hostname);
 
-  // Not on a profile subdomain: an ordinary in-app path is already correct.
-  if (parts.length < 3) return path;
+  // No subdomain to leave — an ordinary in-app path is already correct.
+  if (!apex) return path;
 
-  const apex = parts.slice(1).join(".");
   return `${protocol}//${apex}${port ? `:${port}` : ""}${path}`;
 }
+
+/**
+ * Where one person's profile lives, derived from the current host rather than a constant.
+ *
+ * On a host with a subdomain this is {handle}.{apex}; anywhere else — localhost, a preview deploy,
+ * an IP — it is /users/{handle} on the current origin, because there is no subdomain to use. A
+ * hardcoded domain here would send someone from staging to production.
+ */
+export function profileHref(handle: string): string {
+  if (typeof window === "undefined") return `/users/${handle}`;
+
+  const { hostname, protocol, port } = window.location;
+  const apex = apexOf(hostname);
+
+  // Nowhere to put a subdomain — an IP, localhost, or an apex with none.
+  if (!apex) return `/users/${handle}`;
+
+  return `${protocol}//${handle}.${apex}${port ? `:${port}` : ""}/`;
+}
+
+/** Subdomains the site itself uses, which can never be someone's handle. */
+const RESERVED_SUBDOMAINS = new Set(["www", "api", "cdn", "admin", "static"]);
 
 export function getSiteHandle(): string | undefined {
   if (typeof window === "undefined") return undefined;
@@ -49,13 +91,12 @@ export function getSiteHandle(): string | undefined {
   const match = window.location.pathname.match(/^\/users\/([^/]+)/);
   if (match) return match[1];
 
-  const parts = host.split(".");
-  if (parts.length >= 3) {
-    const subdomain = parts[0];
-    if (subdomain && !["www", "api", "cdn", "admin", "static", "localhost", "127"].includes(subdomain)) {
-      return subdomain;
-    }
-  }
+  // apexOf rejects IP literals and localhost, so an address like 10.100.50.7 cannot be read as the
+  // handle "10" — which is what a bare label count did.
+  if (!apexOf(host)) return undefined;
+
+  const subdomain = host.split(".")[0];
+  if (subdomain && !RESERVED_SUBDOMAINS.has(subdomain)) return subdomain;
 
   return undefined;
 }
