@@ -1,78 +1,113 @@
-import { useEffect, useLayoutEffect, useState, type ReactNode, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import type { AnchoredProps } from "../../../Types";
 
-export interface AnchoredProps {
-  /** The element this floats beneath. Nothing renders until it exists. */
-  anchor: RefObject<HTMLElement | null>;
-  /** Which edge of the anchor the panel lines up with. */
-  align?: "left" | "right";
-  className?: string;
-  /** Distance below the anchor, in pixels. */
-  gap?: number;
-  children?: ReactNode;
+/** Clearance from the viewport edges. */
+const MARGIN = 8;
+
+/** Half the arrow's width, so it can be kept off the panel's own corners. */
+const ARROW = 9;
+
+interface Placement {
+  top: number;
+  left: number;
+  /** Which side of the anchor the panel ended up on. */
+  side: "above" | "below";
+  /** Where the arrow sits along the panel's width, in pixels from its left edge. */
+  arrow: number;
+  maxHeight: number;
 }
 
 /**
- * A panel positioned under an element but rendered outside it.
+ * A panel pointing at an element, portalled out of it.
  *
- * An absolutely-positioned panel is at the mercy of its ancestors. The pivot strip used to be a
- * horizontal scroller, and `overflow-x` makes `overflow-y` compute to `auto` as well, so it clipped
- * anything hanging below it and grew a scrollbar trying to contain it — which no z-index can fix,
- * because clipping happens whatever the stacking order. The strip wraps now instead, but the header
- * still sets its own `z-index`, which would cap anything nested inside it. Going to the end of
- * <body> through a portal and positioning in viewport coordinates settles both at once.
- *
- * Because the position is measured rather than inherited, it has to be re-measured whenever anything
- * could have moved the anchor: scrolling, and resizing.
+ * Positioned in viewport coordinates so no clipping or stacking context between the anchor and the
+ * page can swallow it. It measures itself, flips above the anchor when there is not room below, and
+ * shifts sideways to stay on screen — the arrow tracks the anchor rather than the panel, so it keeps
+ * pointing at what the panel is about even once the panel has been nudged.
  */
 export default function Anchored({ anchor, align = "left", className, gap = 10, children }: AnchoredProps) {
-  const [rect, setRect] = useState<DOMRect | null>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  const [place, setPlace] = useState<Placement | null>(null);
 
-  // Layout effect, not effect: measuring after paint would show the panel at the top-left corner for
-  // one frame before it jumped into place.
   useLayoutEffect(() => {
     const measure = () => {
-      const element = anchor.current;
-      setRect(element ? element.getBoundingClientRect() : null);
+      const target = anchor.current;
+      const box = panel.current;
+      if (!target || !box) return;
+
+      const rect = target.getBoundingClientRect();
+      const width = box.offsetWidth;
+      const height = box.offsetHeight;
+      const view = { w: window.innerWidth, h: window.innerHeight };
+
+      const below = view.h - rect.bottom - gap - MARGIN;
+      const above = rect.top - gap - MARGIN;
+      // Prefer below, flip when it does not fit and there is genuinely more room the other way.
+      const side: Placement["side"] = height <= below || below >= above ? "below" : "above";
+      const maxHeight = Math.max(120, side === "below" ? below : above);
+
+      const wanted = align === "right" ? rect.right - width : rect.left;
+      const left = Math.min(Math.max(MARGIN, wanted), Math.max(MARGIN, view.w - width - MARGIN));
+
+      const top =
+        side === "below" ? rect.bottom + gap : Math.max(MARGIN, rect.top - gap - Math.min(height, maxHeight));
+
+      // Clamped so the arrow never hangs off the panel's own corner.
+      const centre = rect.left + rect.width / 2;
+      const arrow = Math.min(Math.max(ARROW + 2, centre - left), Math.max(ARROW + 2, width - ARROW - 2));
+
+      setPlace((current) =>
+        current &&
+        current.top === top &&
+        current.left === left &&
+        current.side === side &&
+        current.arrow === arrow &&
+        current.maxHeight === maxHeight
+          ? current
+          : { top, left, side, arrow, maxHeight },
+      );
     };
 
     measure();
 
-    // Capture phase so the pivot strip's own scrolling is heard, not just the document's.
+    // Capture, so scrolling inside any container the anchor sits in is heard too.
     window.addEventListener("scroll", measure, true);
     window.addEventListener("resize", measure);
     return () => {
       window.removeEventListener("scroll", measure, true);
       window.removeEventListener("resize", measure);
     };
-  }, [anchor]);
+  }, [anchor, align, gap, children]);
 
+  // The panel changes height as tabs are switched, which changes whether it still fits.
   useEffect(() => {
-    if (typeof ResizeObserver === "undefined") return;
+    const box = panel.current;
+    if (!box || typeof ResizeObserver === "undefined") return;
 
-    const element = anchor.current;
-    if (!element) return;
-
-    // The anchor grows as a name is typed into it, and the panel should follow rather than stay
-    // where the first keystroke left it.
-    const observer = new ResizeObserver(() => setRect(element.getBoundingClientRect()));
-    observer.observe(element);
+    const observer = new ResizeObserver(() => window.dispatchEvent(new Event("resize")));
+    observer.observe(box);
     return () => observer.disconnect();
-  }, [anchor]);
+  }, []);
 
-  if (typeof document === "undefined" || rect === null) return null;
+  if (typeof document === "undefined") return null;
 
   return createPortal(
     <div
-      className={className}
+      ref={panel}
+      className={`anchored ${className ?? ""}`.trim()}
+      data-side={place?.side ?? "below"}
       style={{
         position: "fixed",
-        top: `${rect.bottom + gap}px`,
-        ...(align === "right"
-          ? { right: `${Math.max(8, window.innerWidth - rect.right)}px` }
-          : { left: `${Math.max(8, rect.left)}px` }),
+        top: place ? `${place.top}px` : "-9999px",
+        left: place ? `${place.left}px` : "-9999px",
+        maxHeight: place ? `${place.maxHeight}px` : undefined,
+        // Hidden for the frame before it has been measured, rather than shown in the wrong place.
+        visibility: place ? "visible" : "hidden",
+        ["--arrow-x" as string]: `${place?.arrow ?? 0}px`,
       }}
     >
+      <span className="anchored-arrow" aria-hidden="true" />
       {children}
     </div>,
     document.body,

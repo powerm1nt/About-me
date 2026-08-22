@@ -1143,8 +1143,6 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 .inspector {
   z-index: 1300;
   width: min(320px, calc(100vw - 2em));
-  max-height: min(70vh, 560px);
-  overflow-y: auto;
   background: var(--color-surface);
   border: 2px solid var(--color-accent);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
@@ -1155,7 +1153,13 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   text-shadow: none;
   text-transform: none;
 }
-.inspector-body { display: flex; flex-direction: column; }
+.inspector-body {
+  display: flex;
+  flex-direction: column;
+  /* Inherits the pixel max-height Anchored set on the panel, so the arrow outside stays visible. */
+  max-height: inherit;
+  overflow-y: auto;
+}
 .inspector-head {
   display: flex; align-items: center; justify-content: space-between; gap: 0.6em;
   padding: 0.7em 0.9em; border-bottom: 1px solid var(--color-accent-soft);
@@ -1412,3 +1416,36 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   color: var(--color-text-muted);
 }
 .spacer-mark { width: 3.5em; height: 3.5em; }
+
+
+/* ── Anchored panels ───────────────────────────────────────────────────
+   The arrow tracks the anchor, not the panel, so it keeps pointing at the right thing after the
+   panel has been shifted to stay on screen. */
+.anchored { overflow: visible; }
+.anchored-arrow {
+  position: absolute;
+  left: var(--arrow-x, 16px);
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  background: var(--color-surface);
+  border: 2px solid var(--color-accent);
+  transform: rotate(45deg);
+}
+.anchored[data-side="below"] .anchored-arrow {
+  top: -7px;
+  border-right: none;
+  border-bottom: none;
+}
+.anchored[data-side="above"] .anchored-arrow {
+  bottom: -7px;
+  border-left: none;
+  border-top: none;
+}
+
+/* ── No sideways scrolling, ever ───────────────────────────────────────
+   A widget can be sized and placed by its owner, so something will eventually be wider than the page
+   holds. Clipping is the guarantee; `clip` rather than `hidden` because hidden would make this a
+   scroll container and take the vertical scrolling with it, while clip leaves the other axis alone.
+   Anything that genuinely needs to scroll sideways says so on its own container. */
+#app { overflow-x: clip; }
