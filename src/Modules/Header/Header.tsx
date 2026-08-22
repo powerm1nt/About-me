@@ -25,10 +25,23 @@ export default function Header({ isJapanese }: HeaderProps) {
   const [fetchedLinks, setFetchedLinks] = useState<HeaderLink[]>([]);
   // Someone signed out has no header entries of their own, whatever was last fetched.
   const links = auth.isSignedIn ? fetchedLinks : [];
-  const [adding, setAdding] = useState(false);
+  /**
+   * Adding a header entry happens in the strip itself, in two steps: the "+" becomes an invisible
+   * field sized to what is typed, and Enter on a name opens a small popover for what it should do.
+   * Naming a thing and deciding its behaviour are separate questions, and asking both at once — as
+   * a form with two boxes did — makes the first feel like paperwork.
+   */
+  const [stage, setStage] = useState<"idle" | "naming" | "action">("idle");
   const [draft, setDraft] = useState({ label: "", href: "" });
   const [savingLink, setSavingLink] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
+  const nameField = useRef<HTMLInputElement>(null);
+
+  const cancelAdding = () => {
+    setStage("idle");
+    setDraft({ label: "", href: "" });
+    setLinkError(null);
+  };
 
   useEffect(() => {
     // Signing out clears the fetched links by derivation below rather than by setting state here,
@@ -78,8 +91,7 @@ export default function Header({ isJapanese }: HeaderProps) {
     try {
       await updateMyProfile({ headerLinks: next });
       setFetchedLinks(next);
-      setDraft({ label: "", href: "" });
-      setAdding(false);
+      cancelAdding();
     } catch (err: unknown) {
       setLinkError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -149,53 +161,97 @@ export default function Header({ isJapanese }: HeaderProps) {
           ))}
 
           {isCustomizing && (
-            <button
-              type="button"
-              className="pivot-item pivot-item-add"
-              title={isJapanese ? "ヘッダーに追加" : "Add to your header"}
-              aria-expanded={adding}
-              onClick={() => {
-                setAdding(!adding);
-                setLinkError(null);
-              }}
-            >
-              +
-            </button>
+            <span className="pivot-add">
+              {stage === "idle" ? (
+                <button
+                  type="button"
+                  className="pivot-item pivot-item-add"
+                  title={isJapanese ? "ヘッダーに追加" : "Add to your header"}
+                  onClick={() => {
+                    setStage("naming");
+                    // The field replaces the "+" in place, so focus has to follow it there.
+                    queueMicrotask(() => nameField.current?.focus());
+                  }}
+                >
+                  +
+                </button>
+              ) : (
+                <input
+                  ref={nameField}
+                  className="pivot-item pivot-name-input"
+                  value={draft.label}
+                  // Sized to its content so the strip does not lurch open on the first keystroke;
+                  // it grows as the name does, like the item it is about to become.
+                  size={Math.max(1, draft.label.length)}
+                  maxLength={40}
+                  aria-label={isJapanese ? "項目の名前" : "Name of the item"}
+                  onChange={(e) => setDraft({ ...draft, label: e.target.value })}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (draft.label.trim()) setStage("action");
+                    }
+                    if (e.key === "Escape") cancelAdding();
+                  }}
+                  // Leaving without a name is a cancelled thought, not a half-made item. With a name
+                  // typed the popover is open, so blur is just a click into it.
+                  onBlur={() => {
+                    if (stage === "naming" && !draft.label.trim()) cancelAdding();
+                  }}
+                />
+              )}
+
+              {stage === "action" && (
+                <div className="pivot-action-popover" role="dialog">
+                  <p className="pivot-action-title">
+                    {isJapanese ? `「${draft.label}」を押したとき` : `When “${draft.label}” is clicked`}
+                  </p>
+
+                  {/* One kind for now. It is a list rather than a fixed label because pages are the
+                      next kind, and the stored shape already allows for them. */}
+                  <label className="pivot-action-kind">
+                    <input type="radio" name="pivot-action" defaultChecked readOnly />
+                    <span>{isJapanese ? "リンクを開く" : "Open a link"}</span>
+                  </label>
+
+                  <input
+                    className="editor-commit-input pivot-action-url"
+                    placeholder="https://"
+                    autoFocus
+                    value={draft.href}
+                    onChange={(e) => setDraft({ ...draft, href: e.target.value })}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        void addLink();
+                      }
+                      if (e.key === "Escape") cancelAdding();
+                    }}
+                  />
+
+                  {linkError !== null && <p className="pivot-action-error">{linkError}</p>}
+
+                  <div className="pivot-action-buttons">
+                    <button type="button" className="editor-btn editor-btn-cancel" onClick={cancelAdding}>
+                      {isJapanese ? "キャンセル" : "Cancel"}
+                    </button>
+                    <button
+                      type="button"
+                      className="editor-btn editor-btn-primary"
+                      onClick={() => void addLink()}
+                      disabled={savingLink || !draft.href.trim()}
+                    >
+                      {savingLink ? "…" : "OK"}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </span>
           )}
         </nav>
 
         {/* The form drops below the strip rather than opening a dialog: it is two fields, and a
             modal for two fields is heavier than the thing it is asking for. */}
-        {isCustomizing && adding && (
-          <form
-            className="header-add-link"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void addLink();
-            }}
-          >
-            <input
-              className="editor-commit-input"
-              placeholder={isJapanese ? "名前" : "Label"}
-              value={draft.label}
-              maxLength={40}
-              onChange={(e) => setDraft({ ...draft, label: e.target.value })}
-            />
-            <input
-              className="editor-commit-input"
-              placeholder="https://"
-              value={draft.href}
-              onChange={(e) => setDraft({ ...draft, href: e.target.value })}
-            />
-            <button type="submit" className="editor-btn editor-btn-primary" disabled={savingLink}>
-              {savingLink ? (isJapanese ? "追加中…" : "Adding…") : (isJapanese ? "追加" : "Add")}
-            </button>
-            <button type="button" className="editor-btn editor-btn-cancel" onClick={() => setAdding(false)}>
-              {isJapanese ? "キャンセル" : "Cancel"}
-            </button>
-            {linkError !== null && <p className="header-add-error">{linkError}</p>}
-          </form>
-        )}
 
         <div className="metro-avatar-container" style={{ position: "relative" }} ref={menuRef}>
           <button 

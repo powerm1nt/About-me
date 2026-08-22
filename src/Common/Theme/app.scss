@@ -116,12 +116,10 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 /* ── AppHeader — Metro pivot strip ──────────────────────────────────── */
 .metro-header {
   /* Fixed rather than wallpaper-driven: the header sits directly on the photo with no
-     panel, so its thin labels need a guaranteed dark base. The blur is what makes them
-     readable over a busy photograph — a gradient alone still competes with whatever detail
-     is behind it. */
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.15) 100%);
-  backdrop-filter: blur(18px) saturate(140%);
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
+     panel, so its thin labels need a guaranteed dark base. A gradient rather than a blur —
+     the header spans the top of the wallpaper, and blurring a band that wide reads as a
+     bar bolted over the photo rather than chrome sitting on it. */
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0) 100%);
   width: 100%;
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
   /* Opts out of the inherited text-shadow: at this size the blur reads as a smudge. */
@@ -763,61 +761,82 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 
 /* ── Readability over the wallpaper ──────────────────────────────────── */
 /* The wallpaper is an arbitrary photograph, so anything carrying text needs a surface of its own.
-   These are blurred rather than merely tinted: a flat veil dark enough to beat a bright photo also
-   dulls the photo everywhere, whereas a blur keeps the colour and destroys only the detail that
-   competes with the text. */
-.file-content,
-.main-content-container > .landing,
-.widget-board.is-editing .widget,
-.composer,
+   Blurred rather than merely tinted: a veil dark enough to beat a bright photo also dulls the photo
+   everywhere, whereas a blur keeps its colour and destroys only the detail competing with the text.
+
+   Applied per widget, not to the page. One blur over the whole reading column would flatten the
+   wallpaper into a single grey field — the photo is meant to show between the widgets, which is the
+   entire reason it is there. */
+.widget,
 .feed-post,
+.composer,
 .profile-bio,
 .about-page,
 .metro-dropdown-menu,
 .header-add-link {
+  background: var(--color-surface-veil);
   backdrop-filter: blur(16px) saturate(130%);
   -webkit-backdrop-filter: blur(16px) saturate(130%);
+  padding: clamp(0.9em, 2vw, 1.3em);
 }
 
-/* The reading column: a panel rather than text floating on a photo. */
-.file-content {
-  background: var(--color-surface-veil);
-  padding: 1.6em clamp(1em, 3vw, 2.4em) 3em;
-}
-@media screen and (max-width: 600px) {
-  .file-content { padding: 1.2em 1em 2em; }
-}
+/* The reading column stays transparent: it positions content, it does not paint it. */
+.file-content { background: transparent; }
 
-/* Cards inside that column get their own faint lift, so they read as objects on it. */
-.feed-post, .composer, .profile-bio, .widget-board.is-editing .widget {
-  background: rgba(0, 0, 0, 0.22);
-  padding-left: clamp(0.8em, 2vw, 1.2em);
-  padding-right: clamp(0.8em, 2vw, 1.2em);
-}
-.feed-post { border-bottom: 1px solid rgba(255,255,255,0.12); }
-
+.feed-post { border-bottom: none; margin-bottom: 0.8em; }
+.feed { gap: 0.8em; }
 .metro-dropdown-menu { background: var(--color-surface-veil) !important; }
+/* Already inside a blurred widget on a profile, so a second pass would only darken it further. */
+.widget .profile-bio, .widget .feed-post, .widget .composer {
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  padding: 0;
+}
 
-/* The + that adds a header entry — the same flat pivot item as its neighbours, not a button-looking
-   control pasted into a row of text links. */
+/* The + that adds a header entry, and what it becomes when clicked. */
+.pivot-add { position: relative; display: inline-flex; align-items: baseline; }
 .pivot-item-add {
+  background: none; border: none; cursor: pointer; font-family: inherit;
+  font-size: 1.3rem; line-height: 1; color: var(--color-text-muted);
+  padding: 0 0.4em; transition: color 0.15s;
+}
+.pivot-item-add:hover { color: #ffffff; }
+
+/* Invisible on purpose: the field is the item being named, not a box you fill in. It inherits the
+   pivot item's own type so what is typed already looks like what it will become, and the caret is
+   the only thing announcing it is editable. */
+.pivot-name-input {
   background: none;
   border: none;
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 1.3rem;
-  line-height: 1;
-  color: var(--color-text-muted);
-  padding: 0 0.4em;
-  transition: color 0.15s;
+  outline: none;
+  color: #ffffff;
+  font: inherit;
+  padding: 0;
+  min-width: 1ch;
+  caret-color: var(--color-accent-strong);
 }
-.pivot-item-add:hover { color: #ffffff; background: none; }
+.pivot-name-input::placeholder { color: transparent; }
 
-.header-add-link {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 0.5em;
-  width: clamp(280px, 85%, 1200px); margin: 0 auto 0.8em;
-  padding: 0.8em 1em; background: var(--color-surface-veil);
+/* Anchored under the item being named rather than centred on the screen: it is about that item. */
+.pivot-action-popover {
+  position: absolute;
+  top: calc(100% + 0.6em);
+  left: 0;
+  z-index: 200;
+  min-width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6em;
+  padding: 0.9em 1em;
+  background: var(--color-surface-veil);
+  backdrop-filter: blur(16px) saturate(130%);
+  -webkit-backdrop-filter: blur(16px) saturate(130%);
   border: 1px solid var(--color-accent);
+  text-align: left;
 }
-.header-add-link .editor-commit-input { flex: 1 1 180px; }
-.header-add-error { flex-basis: 100%; margin: 0; font-size: 0.8rem; color: var(--color-danger); }
+.pivot-action-title { margin: 0; font-size: 0.85rem; color: var(--color-text-secondary); font-weight: 300; }
+.pivot-action-kind { display: flex; align-items: center; gap: 0.5em; font-size: 0.9rem; color: var(--color-text); }
+.pivot-action-url { width: 100%; }
+.pivot-action-error { margin: 0; font-size: 0.8rem; color: var(--color-danger); }
+.pivot-action-buttons { display: flex; justify-content: flex-end; gap: 0.5em; }
