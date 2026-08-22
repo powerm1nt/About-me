@@ -116,8 +116,12 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 /* ── AppHeader — Metro pivot strip ──────────────────────────────────── */
 .metro-header {
   /* Fixed rather than wallpaper-driven: the header sits directly on the photo with no
-     panel, so its thin labels need a guaranteed dark base. */
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.42), rgba(0, 0, 0, 0) 100%);
+     panel, so its thin labels need a guaranteed dark base. The blur is what makes them
+     readable over a busy photograph — a gradient alone still competes with whatever detail
+     is behind it. */
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.15) 100%);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
   width: 100%;
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
   /* Opts out of the inherited text-shadow: at this size the blur reads as a smudge. */
@@ -756,3 +760,64 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 /* Footer link to it, rather than the text itself: it is read once, not on every page. */
 .footer-about-link { display: block; font-size: 0.85rem; color: var(--color-text-muted); text-decoration: none; margin-bottom: 0.3em; }
 .footer-about-link:hover { color: #ffffff; text-decoration: underline; }
+
+/* ── Readability over the wallpaper ──────────────────────────────────── */
+/* The wallpaper is an arbitrary photograph, so anything carrying text needs a surface of its own.
+   These are blurred rather than merely tinted: a flat veil dark enough to beat a bright photo also
+   dulls the photo everywhere, whereas a blur keeps the colour and destroys only the detail that
+   competes with the text. */
+.file-content,
+.main-content-container > .landing,
+.widget-board.is-editing .widget,
+.composer,
+.feed-post,
+.profile-bio,
+.about-page,
+.metro-dropdown-menu,
+.header-add-link {
+  backdrop-filter: blur(16px) saturate(130%);
+  -webkit-backdrop-filter: blur(16px) saturate(130%);
+}
+
+/* The reading column: a panel rather than text floating on a photo. */
+.file-content {
+  background: var(--color-surface-veil);
+  padding: 1.6em clamp(1em, 3vw, 2.4em) 3em;
+}
+@media screen and (max-width: 600px) {
+  .file-content { padding: 1.2em 1em 2em; }
+}
+
+/* Cards inside that column get their own faint lift, so they read as objects on it. */
+.feed-post, .composer, .profile-bio, .widget-board.is-editing .widget {
+  background: rgba(0, 0, 0, 0.22);
+  padding-left: clamp(0.8em, 2vw, 1.2em);
+  padding-right: clamp(0.8em, 2vw, 1.2em);
+}
+.feed-post { border-bottom: 1px solid rgba(255,255,255,0.12); }
+
+.metro-dropdown-menu { background: var(--color-surface-veil) !important; }
+
+/* The + that adds a header entry — the same flat pivot item as its neighbours, not a button-looking
+   control pasted into a row of text links. */
+.pivot-item-add {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 1.3rem;
+  line-height: 1;
+  color: var(--color-text-muted);
+  padding: 0 0.4em;
+  transition: color 0.15s;
+}
+.pivot-item-add:hover { color: #ffffff; background: none; }
+
+.header-add-link {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.5em;
+  width: clamp(280px, 85%, 1200px); margin: 0 auto 0.8em;
+  padding: 0.8em 1em; background: var(--color-surface-veil);
+  border: 1px solid var(--color-accent);
+}
+.header-add-link .editor-commit-input { flex: 1 1 180px; }
+.header-add-error { flex-basis: 100%; margin: 0; font-size: 0.8rem; color: var(--color-danger); }
