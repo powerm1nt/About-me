@@ -957,13 +957,26 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 .widget-gallery { margin-bottom: 2em; }
 /* Collapsible: the shelf is useful while you are adding something and in the way the rest of the
    time, and the page underneath it is the thing being arranged. */
+.widget-gallery-bar {
+  display: flex; align-items: center; gap: 1em;
+  border-bottom: 1px solid var(--color-accent-soft);
+  margin-bottom: 0.8em;
+}
+.widget-gallery-search {
+  flex: 0 1 220px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--color-text-faint);
+  color: var(--color-text);
+  font: inherit; font-size: 0.8rem;
+  padding: 0.3em 0.5em;
+}
 .widget-gallery-toggle {
   display: flex; align-items: center; gap: 0.5em;
-  width: 100%;
-  background: none; border: none; border-bottom: 1px solid var(--color-accent-soft);
+  flex: 1 1 auto;
+  background: none; border: none;
   color: var(--color-text-secondary);
   font: inherit; font-size: 0.8rem; letter-spacing: 0.06em; text-transform: uppercase;
-  padding: 0.5em 0.2em; margin-bottom: 0.8em; cursor: pointer;
+  padding: 0.5em 0.2em; cursor: pointer;
   transition: color 0.15s ease-in-out;
 }
 .widget-gallery-toggle:hover { color: #ffffff; }
@@ -981,6 +994,7 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
    button inside a button is unparseable. */
 .widget-card {
   position: relative;
+  cursor: grab;
   min-width: 0;
   height: 190px;
   overflow: hidden;
@@ -1021,7 +1035,7 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 }
 /* Fades the cut-off edge into the tile rather than slicing a line through whatever is there, and
    carries the label that says what clicking does. */
-.widget-card-veil {
+.widget-card-name {
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -1030,12 +1044,11 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   min-height: 4.5em;
   font-size: 0.8rem;
   letter-spacing: 0.04em;
-  text-transform: lowercase;
-  color: var(--color-text-secondary);
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0), var(--color-surface) 75%);
+  color: var(--color-text);
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0), var(--color-surface) 70%);
   transition: color 0.15s ease-in-out;
 }
-.widget-card-button:hover .widget-card-veil { color: #ffffff; }
+.widget-card-button:hover .widget-card-name { color: #ffffff; }
 .widget-card-button:focus-visible { outline: 2px dotted var(--color-text); outline-offset: -4px; }
 
 /* ── About ───────────────────────────────────────────────────────────── */

@@ -1,22 +1,21 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { WIDGETS, galleryKinds, newId } from "../../../Services/layout";
-import type { Widget, WidgetGalleryProps, WidgetKind } from "../../../Types";
+import { fetchFeed } from "../../../Services/api";
+import { fetchProfile, fetchMyProfile } from "../../../Services/profile";
+import { DRAG_TYPE } from "../../../Services/widgetDrag";
+import type { ProfileScope, Widget, WidgetGalleryProps, WidgetKind } from "../../../Types";
 import { ProfileScopeProvider, WIDGET_REGISTRY } from "../../../Widgets";
-import { DEMO_SCOPE } from "../../../Widgets/demo";
+import { galleryScope } from "../../../Widgets/demo";
 
 const STORAGE_KEY = "hisuiki.gallery.open";
 
 type Props = Record<string, string | number | boolean>;
 
-/**
- * Enough of a widget to render one, with stand-in settings where a widget would otherwise be blank
- * until it is configured. Ids are thrown away; nothing built here reaches the document.
- */
+/** Stand-in settings where a widget would otherwise be blank until configured. */
 function sample(kind: WidgetKind, t: (key: string) => string): Widget {
   const props: Partial<Record<WidgetKind, Props>> = {
-    nav: { target: "home" },
-    link: { label: t("gallery.sample.link"), href: "https://example.com/notes" },
+    title: { action: "route", route: "home" },
     text: { heading: t("text.sampleHeading"), body: t("text.sampleBody") },
     webamp: { title: t("gallery.sample.track") },
   };
@@ -31,31 +30,13 @@ function sample(kind: WidgetKind, t: (key: string) => string): Widget {
 }
 
 /**
- * The shelf of widgets a page can be built from.
- *
- * Every tile is the real widget, rendered through the same registry the page uses, and filled with
- * stand-in content so it demonstrates itself. There is no name over it and no sentence under it: a
- * caption reading "Activity" asks you to imagine a heatmap, and a tile showing a year of marks does
- * not. The content is invented rather than the viewer's own — a preview holding your real posts
- * reads as the page rather than as a sample of one.
- *
- * Two kinds behave differently in a tile, and only because rendering them honestly would be wrong
- * here rather than to save effort: an unconfigured widget shows sample settings, and Winamp shows a
- * still frame instead of starting an audio context in every tile.
- *
- * A grid, not a list. The core widgets are the whole shelf for now, but widgets people write and
- * share belong on the same one, and a shelf shaped like a settings page is the wrong thing to grow
- * into a catalogue.
- *
- * It collapses, and remembers. The shelf is useful when you are adding something and in the way for
- * the rest of the time, and what is being arranged is the page underneath it.
+ * The shelf a page is built from. Each tile is the real widget, filled with this profile's own
+ * content where it has any, and dragged onto whichever anchor it should live at.
  */
 export default function WidgetGallery({ onAdd }: WidgetGalleryProps) {
   const { t } = useTranslation();
+  const [query, setQuery] = useState("");
 
-  // Read once, when the state is first created, rather than in an effect that would render the shelf
-  // open and then immediately closed. The read is guarded because storage throws outright in some
-  // contexts — a private window, a browser set to block site data — rather than returning nothing.
   const [open, setOpen] = useState(() => {
     try {
       return window.localStorage.getItem(STORAGE_KEY) !== "false";
@@ -64,65 +45,120 @@ export default function WidgetGallery({ onAdd }: WidgetGalleryProps) {
     }
   });
 
+  const [real, setReal] = useState<ProfileScope | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    let active = true;
+    void fetchMyProfile()
+      .then(async (mine) => {
+        if (!mine.handle) return null;
+        const [profile, posts] = await Promise.all([
+          fetchProfile(mine.handle),
+          fetchFeed({ author: mine.handle, sort: "recent" }),
+        ]);
+        const readme = posts.find((post) => post.slug === "README" || post.title === "README") ?? null;
+        return {
+          profile,
+          posts,
+          readme,
+          timeline: posts.filter((post) => post.id !== readme?.id),
+          handle: mine.handle,
+        } satisfies ProfileScope;
+      })
+      .then((scope) => {
+        if (active && scope) setReal(scope);
+      })
+      .catch(() => {
+        // Not signed in, or no profile yet. The sample content stands.
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [open]);
+
+  const scope = useMemo(() => galleryScope(real), [real]);
+
   const toggle = () => {
     const next = !open;
     setOpen(next);
     try {
       window.localStorage.setItem(STORAGE_KEY, String(next));
     } catch {
-      // It still collapses for this visit; it just will not be remembered.
+      // Collapses for this visit; just not remembered.
     }
   };
 
+  const needle = query.trim().toLowerCase();
+  const kinds = galleryKinds().filter((kind) => {
+    if (!needle) return true;
+    const label = t(`widgets.${kind}.label`).toLowerCase();
+    const description = t(`widgets.${kind}.description`).toLowerCase();
+    return label.includes(needle) || description.includes(needle) || kind.includes(needle);
+  });
+
   return (
-    <section className="widget-gallery" aria-label={t("gallery.title")} data-open={open ? "" : undefined}>
-      <button
-        type="button"
-        className="widget-gallery-toggle"
-        aria-expanded={open}
-        onClick={toggle}
-      >
-        <span className="widget-gallery-caret" aria-hidden="true">
-          {open ? "▾" : "▸"}
-        </span>
-        {t("gallery.title")}
-      </button>
+    <section className="widget-gallery" aria-label={t("gallery.title")}>
+      <div className="widget-gallery-bar">
+        <button type="button" className="widget-gallery-toggle" aria-expanded={open} onClick={toggle}>
+          <span className="widget-gallery-caret" aria-hidden="true">{open ? "▾" : "▸"}</span>
+          {t("gallery.title")}
+        </button>
+
+        {open && (
+          <input
+            type="search"
+            className="widget-gallery-search"
+            value={query}
+            placeholder={t("gallery.search")}
+            aria-label={t("gallery.search")}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        )}
+      </div>
 
       {open && (
-        // The stand-in profile wraps the whole shelf: the widgets that read a profile take it from
-        // context, so the gallery supplies one rather than each tile inventing its own.
-        <ProfileScopeProvider value={DEMO_SCOPE}>
-          <ul className="widget-gallery-grid">
-            {galleryKinds().map((kind) => {
-              const View = WIDGET_REGISTRY[kind];
-              const label = t(`widgets.${kind}.label`);
+        <ProfileScopeProvider value={scope}>
+          {kinds.length === 0 ? (
+            <p className="inspector-note">{t("gallery.noMatch")}</p>
+          ) : (
+            <ul className="widget-gallery-grid">
+              {kinds.map((kind) => {
+                const View = WIDGET_REGISTRY[kind];
+                const label = t(`widgets.${kind}.label`);
 
-              return (
-                <li className="widget-card" key={kind} data-widget={kind}>
-                  {/* inert rather than pointer-events alone: a preview holds real links and real
-                      buttons, and they should be out of reach of the keyboard too. */}
-                  <div className="widget-card-preview" inert aria-hidden="true">
-                    <View widget={sample(kind, t)} editing={false} preview onChange={() => {}} />
-                  </div>
-
-                  {/* The button covers the tile but is a sibling of the preview, never its parent. A
-                      timeline preview contains the real timeline, tab buttons and all, and a button
-                      inside a button is not something HTML can parse. */}
-                  <button
-                    type="button"
-                    className="widget-card-button"
-                    // The only place the widget's name still appears, for anyone who cannot see the
-                    // tile that would otherwise have said it.
-                    aria-label={`${t("gallery.add")}: ${label}`}
-                    title={label}
-                    onClick={() => onAdd(kind)}
+                return (
+                  <li
+                    className="widget-card"
+                    key={kind}
+                    data-widget={kind}
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData(DRAG_TYPE, JSON.stringify({ kind }));
+                      e.dataTransfer.effectAllowed = "copy";
+                    }}
                   >
-                    <span className="widget-card-veil">{t("gallery.add")}</span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+                    {/* inert: a preview holds real links and real buttons. */}
+                    <div className="widget-card-preview" inert aria-hidden="true">
+                      <View widget={sample(kind, t)} editing={false} preview onChange={() => {}} />
+                    </div>
+
+                    {/* Also a button, so the shelf is not pointer-only. */}
+                    <button
+                      type="button"
+                      className="widget-card-button"
+                      aria-label={`${t("gallery.add")}: ${label}`}
+                      onClick={() => onAdd(kind)}
+                    >
+                      <span className="widget-card-name">{label}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </ProfileScopeProvider>
       )}
     </section>

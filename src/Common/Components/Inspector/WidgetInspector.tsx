@@ -21,6 +21,7 @@ import {
   SHADOWS,
   styleOf,
 } from "../../../Services/widgetStyle";
+import { ROUTE_KEYS, titleAction } from "../../../Services/titleWidget";
 import type { WidgetInspectorProps, WidgetSize } from "../../../Types";
 import Inspector from "./Inspector";
 import { Check, Field, Group, Note, Select, Slider, TextField } from "./fields";
@@ -31,6 +32,7 @@ export default function WidgetInspector({ widget, anchor, onChange, onClose }: W
   const spec = WIDGETS[widget.kind];
   const style = styleOf(widget);
   const container = isContainer(widget);
+  const action = titleAction(widget);
 
   const setProp = (key: string, value: string | number | boolean) =>
     onChange({ ...widget, props: { ...widget.props, [key]: value } });
@@ -69,27 +71,49 @@ export default function WidgetInspector({ widget, anchor, onChange, onClose }: W
         </>
       )}
 
-      {widget.kind === "nav" && (
-        <Select
-          label={t("inspector.target")}
-          value={String(widget.props?.target ?? "home")}
-          options={["home", "explore", "media"].map((target) => ({ value: target, label: t(`nav.${target}`) }))}
-          onChange={(target) => setProp("target", target)}
-        />
-      )}
-
-      {widget.kind === "link" && (
+      {widget.kind === "title" && (
         <>
+          <Select
+            label={t("title.action")}
+            value={action.kind}
+            options={(["route", "path", "external"] as const).map((kind) => ({
+              value: kind,
+              label: t(`title.actions.${kind}`),
+            }))}
+            onChange={(kind) => setProp("action", kind)}
+          />
+
+          {action.kind === "route" && (
+            <Select
+              label={t("title.page")}
+              value={action.route}
+              options={ROUTE_KEYS.map((key) => ({ value: key, label: t(`routes.${key}`) }))}
+              onChange={(route) => setProp("route", route)}
+            />
+          )}
+
+          {action.kind === "path" && (
+            <TextField
+              label={t("title.path")}
+              value={String(widget.props?.path ?? "")}
+              placeholder="/posts/…"
+              onChange={(value) => setProp("path", value)}
+            />
+          )}
+
+          {action.kind === "external" && (
+            <TextField
+              label={t("link.href")}
+              value={String(widget.props?.href ?? "")}
+              placeholder="https://"
+              onChange={(value) => setProp("href", value)}
+            />
+          )}
+
           <TextField
             label={t("link.label")}
             value={String(widget.props?.label ?? "")}
             onChange={(value) => setProp("label", value)}
-          />
-          <TextField
-            label={t("link.href")}
-            value={String(widget.props?.href ?? "")}
-            placeholder="https://"
-            onChange={(value) => setProp("href", value)}
           />
         </>
       )}

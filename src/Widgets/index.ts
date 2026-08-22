@@ -7,10 +7,9 @@ import Colophon from "./Colophon/Colophon";
 import Container from "./Container/Container";
 import Heatmap from "./Heatmap/Heatmap";
 import Identity from "./Identity/Identity";
-import LinkWidget from "./LinkWidget/LinkWidget";
 import Links from "./Links/Links";
-import Nav from "./Nav/Nav";
 import Spacer from "./Spacer/Spacer";
+import Title from "./Title/Title";
 import Text from "./Text/Text";
 import Timeline from "./Timeline/Timeline";
 import Webamp from "./Webamp/Webamp";
@@ -29,8 +28,7 @@ import Webamp from "./Webamp/Webamp";
  */
 export const WIDGET_REGISTRY: WidgetRegistry = {
   container: Container,
-  nav: Nav,
-  link: LinkWidget,
+  title: Title,
   account: Account,
   brand: Brand,
   colophon: Colophon,

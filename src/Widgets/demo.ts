@@ -73,6 +73,35 @@ const DEMO_PROFILE = {
   user: { id: "demo", name: "Ash Mercier", image: null },
 } as unknown as ProfileData;
 
+/**
+ * Real where it is real, invented where it would be empty.
+ *
+ * A tile should show the actual profile and the actual posting history — that is what makes it a
+ * preview of *your* page rather than of a page. The exception is anything the owner has to write
+ * first: an unset links widget, an unwritten bio and an empty timeline preview as blank boxes, which
+ * says nothing about what they are for. Those keep the sample content.
+ */
+export function galleryScope(real: ProfileScope | null): ProfileScope {
+  if (!real) return DEMO_SCOPE;
+
+  return {
+    ...DEMO_SCOPE,
+    // The person, as they actually are.
+    profile: {
+      ...real.profile,
+      // Except the links, which are theirs to add and usually have not been.
+      profileLinks: real.profile.profileLinks.length > 0 ? real.profile.profileLinks : DEMO_PROFILE.profileLinks,
+    },
+    handle: real.handle,
+    // Their real posting history, which is the whole point of the activity widget.
+    activityDates: real.posts.length > 0 ? real.posts.map((post) => post.createdAt) : DEMO_SCOPE.activityDates,
+    // Written content stays sampled: a bio nobody has written is not a preview of anything.
+    readme: real.readme ?? DEMO_SCOPE.readme,
+    timeline: real.timeline.length > 0 ? real.timeline : DEMO_SCOPE.timeline,
+    posts: real.posts.length > 0 ? real.posts : DEMO_SCOPE.posts,
+  };
+}
+
 /** One scope, built once: the heatmap's year of dates is not worth recomputing per tile. */
 export const DEMO_SCOPE: ProfileScope = {
   profile: DEMO_PROFILE,

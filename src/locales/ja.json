@@ -1,9 +1,4 @@
 {
-  "nav": {
-    "home": "ホーム",
-    "explore": "みつける",
-    "media": "メディア"
-  },
   "account": {
     "menu": "ユーザーメニュー",
     "profile": "プロフィール",
@@ -31,7 +26,9 @@
     "sample": {
       "link": "ノート",
       "track": "フィールド録音"
-    }
+    },
+    "search": "ウィジェットを検索",
+    "noMatch": "該当するウィジェットはありません。"
   },
   "anchors": {
     "top": "上",
@@ -51,14 +48,6 @@
     "container": {
       "label": "コンテナ",
       "description": "他のウィジェットを行・列・グリッドで並べます。"
-    },
-    "nav": {
-      "label": "ナビゲーション",
-      "description": "サイト内のページへのリンク。"
-    },
-    "link": {
-      "label": "リンク",
-      "description": "自分で決めるリンク。"
     },
     "account": {
       "label": "アカウント",
@@ -103,6 +92,10 @@
     "spacer": {
       "label": "スペーサー",
       "description": "余白。要素を離したり、間を空けたりします。"
+    },
+    "title": {
+      "label": "タイトル",
+      "description": "どこかへ移動する見出し。アプリ内のページ、パス、または自分のリンク。"
     }
   },
   "text": {
@@ -252,5 +245,24 @@
     },
     "intensity": "強さ",
     "colour": "色"
+  },
+  "title": {
+    "untitled": "リンク",
+    "action": "移動先",
+    "page": "ページ",
+    "path": "アプリ内パス",
+    "actions": {
+      "route": "このサイトのページ",
+      "path": "このサイト内のパス",
+      "external": "外部リンク"
+    }
+  },
+  "routes": {
+    "home": "ホーム",
+    "explore": "みつける",
+    "media": "メディア",
+    "about": "About",
+    "settings": "設定",
+    "customize": "カスタマイズ"
   }
 }

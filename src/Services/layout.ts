@@ -136,16 +136,12 @@ export const WIDGETS: Record<WidgetKind, WidgetSpec> = {
     sizes: ["small", "medium", "large"],
     container: true,
   },
-  nav: {
-    label: { en: "Navigation", ja: "ナビゲーション" },
-    description: { en: "A link to one of the site's own pages.", ja: "サイト内のページへのリンク。" },
-    confirmRemove: true,
-    defaultSize: "small",
-    sizes: ["small"],
-  },
-  link: {
-    label: { en: "Link", ja: "リンク" },
-    description: { en: "A link of your own, anywhere you like.", ja: "自分で決めるリンク。" },
+  title: {
+    label: { en: "Title", ja: "タイトル" },
+    description: {
+      en: "A word that goes somewhere: one of the app's pages, a path, or a link of your own.",
+      ja: "どこかへ移動する見出し。アプリ内のページ、パス、または自分のリンク。",
+    },
     confirmRemove: false,
     defaultSize: "small",
     sizes: ["small"],
@@ -296,9 +292,9 @@ export function defaultAnchors(): AnchoredLayout {
         size: "large",
         props: { flow: "row" },
         children: [
-          make("nav", { props: { target: "home" } }),
-          make("nav", { props: { target: "explore" } }),
-          make("nav", { props: { target: "media" } }),
+          make("title", { props: { action: "route", route: "home" } }),
+          make("title", { props: { action: "route", route: "explore" } }),
+          make("title", { props: { action: "route", route: "media" } }),
           // Pushed to the far end of the bar rather than pinned there: it is an ordinary widget that
           // happens to take up the slack, and dragging it inward makes it sit inline like the rest.
           make("account", { props: { push: true } }),
@@ -344,7 +340,7 @@ const MAX_DEPTH = 4;
 function readWidget(raw: unknown, seen: Set<string>, depth: number): Widget | null {
   if (!raw || typeof raw !== "object") return null;
 
-  const value = raw as Partial<Widget>;
+  const value = migrateKind(raw as Record<string, unknown>);
   if (typeof value.id !== "string" || !isKind(value.kind)) return null;
   if (seen.has(value.id)) return null;
   seen.add(value.id);
@@ -366,6 +362,24 @@ function readWidget(raw: unknown, seen: Set<string>, depth: number): Widget | nu
   }
 
   return result;
+}
+
+/** "nav" and "link" were the same widget under two names; both become a title. */
+function migrateKind(raw: Record<string, unknown>): Partial<Widget> {
+  const value = raw as Partial<Widget> & { kind?: string };
+  if ((value.kind as string) === "nav") {
+    return {
+      ...value,
+      kind: "title",
+      props: { ...value.props, action: "route", route: String(value.props?.target ?? "home") },
+    };
+  }
+
+  if ((value.kind as string) === "link") {
+    return { ...value, kind: "title", props: { ...value.props, action: "external" } };
+  }
+
+  return value as Partial<Widget>;
 }
 
 const readList = (raw: unknown, seen: Set<string>): Widget[] =>
@@ -424,12 +438,16 @@ function migrate(layout: ProfileLayout | null | undefined): AnchoredLayout {
     if (id === "avatar") {
       children.push(make("account", { props: { push: true } }));
     } else if (id.startsWith("nav:")) {
-      children.push(make("nav", { props: { target: id.slice(4) } }));
+      children.push(make("title", { props: { action: "route", route: id.slice(4) } }));
     } else if (id.startsWith("link:")) {
       // The old id joined the href and the label with a space. Matching it against the stored links
       // finds the one it named without having to trust the id's own text.
       const match = links.find((link) => `link:${link.href} ${link.label}` === id);
-      if (match) children.push(make("link", { props: { href: match.href, label: match.label } }));
+      if (match) {
+        children.push(
+          make("title", { props: { action: "external", href: match.href, label: match.label } }),
+        );
+      }
     }
   }
 

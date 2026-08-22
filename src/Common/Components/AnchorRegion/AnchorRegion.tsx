@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { addWidget } from "../../../Services/layout";
 import { usePageLayout } from "../../../Services/pageLayout";
 import { readWidgetDrag } from "../../../Services/widgetDrag";
 import type { AnchorRegionProps, Flow, Scroll } from "../../../Types";
@@ -18,8 +19,9 @@ export default function AnchorRegion({ anchor, className }: AnchorRegionProps) {
   const board = boards[anchor];
   const enabled = board.enabled !== false;
 
-  // Somewhere this widget could go: a drag is in flight and it did not start here.
-  const isTarget = Boolean(dragging && dragging.anchor !== anchor);
+  // Somewhere the dragged thing could go: a new widget can land anywhere, a moved one anywhere but
+  // the board it came from.
+  const isTarget = Boolean(dragging && (dragging.kind || dragging.anchor !== anchor));
 
   // A disabled anchor is not a place widgets can be. An empty one shows only while arranging, so
   // the rails are somewhere to drop onto rather than four empty strips on a finished page.
@@ -50,7 +52,8 @@ export default function AnchorRegion({ anchor, className }: AnchorRegionProps) {
       onDragOver={(e) => {
         if (!editing) return;
         const payload = readWidgetDrag(e.dataTransfer);
-        if (!payload || payload.anchor === anchor) return;
+        // A new widget from the gallery, or one being moved here from somewhere else.
+        if (!payload || (payload.id && payload.anchor === anchor)) return;
         e.preventDefault();
         setOver(true);
       }}
@@ -58,10 +61,19 @@ export default function AnchorRegion({ anchor, className }: AnchorRegionProps) {
       onDrop={(e) => {
         setOver(false);
         if (!editing) return;
+
         const payload = readWidgetDrag(e.dataTransfer);
-        if (!payload?.anchor || payload.anchor === anchor) return;
+        if (!payload) return;
         e.preventDefault();
-        moveWidget(payload.id, payload.anchor, anchor);
+
+        if (payload.kind) {
+          setAnchor(anchor, (prev) => addWidget(prev, payload.kind!));
+          return;
+        }
+
+        if (payload.id && payload.anchor && payload.anchor !== anchor) {
+          moveWidget(payload.id, payload.anchor, anchor);
+        }
       }}
     >
       {editing && (
