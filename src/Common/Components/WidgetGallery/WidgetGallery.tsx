@@ -53,23 +53,26 @@ export default function WidgetGallery({ isJapanese, onAdd, renderPreview }: Widg
 
           return (
             <li className="widget-card" key={kind} data-widget={kind}>
+              {/* inert rather than pointer-events alone: a preview holds real links and real
+                  buttons, and they should be out of reach of the keyboard too. */}
+              <div className="widget-card-preview" inert aria-hidden="true">
+                {preview}
+              </div>
+
+              {/* The button covers the tile but is a sibling of the preview, never its parent. A
+                  timeline preview contains the real timeline, tab buttons and all, and a button
+                  inside a button is not something HTML can parse — the browser closes the outer one
+                  early and the tile comes apart. */}
               <button
                 type="button"
                 className="widget-card-button"
-                // The tile shows the widget; the button has to say what it is for someone who cannot
-                // see it, which is also the only place the widget's name still appears.
+                // The only place the widget's name still appears, for anyone who cannot see the
+                // tile that would otherwise have said it.
                 aria-label={`${text.add}: ${label}`}
                 title={label}
                 onClick={() => onAdd(kind)}
               >
-                {/* inert rather than pointer-events alone: a preview holds real links and real
-                    buttons, and they should be out of reach of the keyboard too. */}
-                <span className="widget-card-preview" inert aria-hidden="true">
-                  {preview}
-                </span>
-                <span className="widget-card-veil" aria-hidden="true">
-                  {text.add}
-                </span>
+                <span className="widget-card-veil">{text.add}</span>
               </button>
             </li>
           );

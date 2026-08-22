@@ -907,29 +907,39 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   padding: 0;
   list-style: none;
 }
-.widget-card { min-width: 0; }
-.widget-card-button {
+/* The tile itself is the frame and does the clipping; the button sits over it as a sibling of the
+   preview. It cannot be the preview's parent — a timeline preview contains real buttons, and a
+   button inside a button is unparseable. */
+.widget-card {
   position: relative;
-  display: block;
-  width: 100%;
+  min-width: 0;
   height: 190px;
   overflow: hidden;
-  padding: 0;
-  text-align: left;
-  cursor: pointer;
   background: var(--color-surface-veil);
   border: 1px solid var(--color-text-faint);
-  font: inherit;
-  color: inherit;
   transition: border-color 0.15s ease-in-out;
 }
-.widget-card-button:hover { border-color: var(--color-accent-strong); }
+.widget-card:hover { border-color: var(--color-accent-strong); }
 .widget-card-preview {
   display: block;
   padding: 0.9em;
   /* The tile is a window onto the widget, so the widget keeps its own size and the window does the
      cutting off. pointer-events belt-and-braces with `inert`, for browsers without it. */
   pointer-events: none;
+}
+.widget-card-button {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  background: none;
+  border: none;
+  font: inherit;
+  color: inherit;
 }
 /* A preview is already inside a tile with its own ground, and a second blur would only muddy it. */
 .widget-card-preview .widget,
@@ -944,11 +954,10 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 /* Fades the cut-off edge into the tile rather than slicing a line through whatever is there, and
    carries the label that says what clicking does. */
 .widget-card-veil {
-  position: absolute;
-  inset: auto 0 0 0;
   display: flex;
   align-items: flex-end;
   justify-content: center;
+  width: 100%;
   padding: 0.7em;
   min-height: 4.5em;
   font-size: 0.8rem;
@@ -959,6 +968,7 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   transition: color 0.15s ease-in-out;
 }
 .widget-card-button:hover .widget-card-veil { color: #ffffff; }
+.widget-card-button:focus-visible { outline: 2px dotted var(--color-text); outline-offset: -4px; }
 
 /* ── About ───────────────────────────────────────────────────────────── */
 .about-page { max-width: 62ch; }
