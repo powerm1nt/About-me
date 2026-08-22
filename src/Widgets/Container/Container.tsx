@@ -1,4 +1,3 @@
-import { useTranslation } from "react-i18next";
 import { flowOf } from "../../Services/layout";
 import type { WidgetProps } from "../../Types";
 
@@ -13,8 +12,7 @@ import type { WidgetProps } from "../../Types";
  * The children arrive already rendered as a board, so dragging, nesting and the gallery stay the
  * board's business rather than being reimplemented here.
  */
-export default function Container({ widget, editing, preview, children }: WidgetProps) {
-  const { t } = useTranslation();
+export default function Container({ widget, preview, children }: WidgetProps) {
 
   // In a gallery tile there is nothing inside to show, and an empty box demonstrates nothing. This
   // stands in for the arrangement a container makes, laid out the way this one would lay it out.
@@ -28,11 +26,5 @@ export default function Container({ widget, editing, preview, children }: Widget
     );
   }
 
-  return (
-    <>
-      {children}
-      {/* An empty container is invisible, which makes one you just added look like it failed. */}
-      {editing && <p className="container-empty-hint">{t("board.empty")}</p>}
-    </>
-  );
+  return <>{children}</>;
 }

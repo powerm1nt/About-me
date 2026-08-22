@@ -81,6 +81,9 @@ export default function Webamp({ widget, editing, preview }: WidgetProps) {
 
         const instance = new WebampPlayer({
           initialTracks: track ? [track] : undefined,
+          // Its own windows sit at this + 1. Left at the default they paint over the widget's
+          // resize corner and remove buttons, which is what made the widget impossible to resize.
+          zIndex: 0,
           windowLayout: {
             main: { position: { top: 0, left: 0 } },
             ...(equalizer ? { equalizer: { position: { top: WINDOW_HEIGHT, left: 0 } } } : {}),

@@ -98,10 +98,6 @@ export default function AnchorRegion({ anchor, className }: AnchorRegionProps) {
         onChange={(next) => setAnchor(anchor, next)}
       />
 
-      {editing && widgets.length === 0 && (
-        <p className="anchor-empty">{t("boardInspector.dropHere")}</p>
-      )}
-
       {/* Named while a drag is in flight, so the rails are findable rather than guessed at. */}
       {isTarget && <span className="anchor-guide">{t(`anchors.${anchor}`)}</span>}
 

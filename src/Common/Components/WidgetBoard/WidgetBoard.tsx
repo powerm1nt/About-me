@@ -24,9 +24,12 @@ import { WIDGET_REGISTRY } from "../../../Widgets";
 import { usePageLayout } from "../../../Services/pageLayout";
 import { DRAG_TYPE } from "../../../Services/widgetDrag";
 import { useFitRow } from "../../Hooks/useFitRow";
+import { useOverflow } from "../../Hooks/useOverflow";
 import { useFlip } from "../../Hooks/useFlip";
 import ConfirmDialog from "../ConfirmDialog/ConfirmDialog";
+import EmptyBoard from "../EmptyBoard/EmptyBoard";
 import ContextMenu from "../ContextMenu/ContextMenu";
+import OverflowWarning from "../OverflowWarning/OverflowWarning";
 import WidgetInspector from "../Inspector/WidgetInspector";
 
 /**
@@ -176,6 +179,8 @@ export default function WidgetBoard({
   // A row neither wraps nor clips, so one with more in it than the page is wide has to give way
   // somewhere. Scrolling is a setting and wrapping is a different flow; left alone, it shrinks.
   const fit = useFitRow(flow === "row" && scroll === "none");
+  // Only worth flagging where nothing can be done about it by scrolling.
+  const overflow = useOverflow(editing && scroll === "none");
 
   const update = (next: Widget[]) => onChange?.(next);
   const replace = (id: string, next: Widget) =>
@@ -427,9 +432,11 @@ export default function WidgetBoard({
         ref={(node) => {
           boardRef.current = node;
           fit.ref(node);
+          overflow.ref(node);
         }}
         data-flow={flow}
         data-scroll={scroll}
+        data-overflow={overflow.overflowing === "none" ? undefined : overflow.overflowing}
         // The cell height a free board snaps to, so the CSS and the arithmetic cannot disagree.
         style={free ? ({ "--free-row": `${FREE_ROW_HEIGHT}px` } as React.CSSProperties) : undefined}
         onPointerDown={startLasso}
@@ -445,6 +452,8 @@ export default function WidgetBoard({
           drawBand();
         }}
       >
+        {editing && widgets.length === 0 && <EmptyBoard />}
+
         {widgets.map((widget) => {
           const spec = WIDGETS[widget.kind];
           const container = isContainer(widget);
@@ -667,6 +676,10 @@ export default function WidgetBoard({
           );
         })}
       </div>
+
+      {overflow.overflowing !== "none" && (
+        <OverflowWarning axis={overflow.overflowing} scrollable={scroll !== "none"} />
+      )}
 
       {/* Always in the document while arranging, hidden until drawn. Mounting it on pointerdown
           would put a render between the press and the first sight of it. */}

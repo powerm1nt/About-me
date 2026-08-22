@@ -716,7 +716,7 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 /* ── Boards and flows ──────────────────────────────────────────────────
    One component lays out the header bar, the footer, a sidebar and a profile body; what differs is
    only the flow it was given. A container passes its own flow down to the board inside it. */
-.widget-board { min-width: 0; }
+.widget-board { position: relative; min-width: 0; }
 .widget-board[data-flow="grid"] { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.2em; align-items: start; }
 /* A single line that neither wraps nor clips. Nothing here may set overflow: a corner badge, a
    dropdown and the edit-mode dance all reach outside their widget's own box, and a scroller would
@@ -1541,3 +1541,99 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 
 /* The band never leaves the board it started on. */
 .widget-lasso { z-index: 1400; }
+
+
+/* ── Overflow warning ──────────────────────────────────────────────────
+   A board holding more than it can show, where scrolling is off and nothing can be reached. The
+   shadow marks the edge it is being cut off at. */
+/* The edge is the indicator and the hover target both: the shadow marks where content is being cut
+   off, and pointing at it brings the explanation back after it has been dismissed. */
+.overflow-edge {
+  position: absolute;
+  z-index: 6;
+  pointer-events: auto;
+  cursor: help;
+}
+.overflow-edge[data-axis="inline"] {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 14px;
+  box-shadow: inset -6px 0 12px -6px var(--color-danger);
+  border-right: 2px solid var(--color-danger);
+}
+.overflow-edge[data-axis="block"] {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 14px;
+  box-shadow: inset 0 -6px 12px -6px var(--color-danger);
+  border-bottom: 2px solid var(--color-danger);
+}
+.overflow-edge[data-axis="both"] {
+  inset: 0;
+  box-shadow: inset -6px 0 12px -6px var(--color-danger), inset 0 -6px 12px -6px var(--color-danger);
+  border-right: 2px solid var(--color-danger);
+  border-bottom: 2px solid var(--color-danger);
+  /* Covering the whole board, it must not swallow clicks meant for the widgets under it. */
+  pointer-events: none;
+}
+.overflow-edge[data-axis="both"]::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 14px;
+  height: 14px;
+  pointer-events: auto;
+}
+
+.overflow-tip-close {
+  float: right;
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0 0 0 0.6em;
+}
+.overflow-tip-close:hover { color: #ffffff; }
+
+.overflow-tip {
+  z-index: 1300;
+  width: min(280px, calc(100vw - 2em));
+  padding: 0.8em 0.9em;
+  background: var(--color-surface);
+  border: 2px solid var(--color-danger);
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: 0.85rem;
+  font-weight: 300;
+  color: var(--color-text);
+  text-shadow: none;
+}
+.overflow-tip .anchored-arrow { border-color: var(--color-danger); }
+.overflow-tip-title { margin: 0 0 0.5em; font-weight: 600; color: var(--color-danger); }
+.overflow-tip-body { margin: 0 0 0.5em; line-height: 1.5; color: var(--color-text-secondary); }
+.overflow-tip-body:last-child { margin-bottom: 0; }
+
+
+/* ── Empty board ───────────────────────────────────────────────────────
+   Shown wherever a board is empty while arranging, so nothing reads as broken or as finished. */
+.empty-board {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35em;
+  padding: 2em 1em;
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+.empty-board-icon { width: 2.6em; height: 2.6em; opacity: 0.7; }
+.empty-board-text { margin: 0; font-size: 0.9rem; color: var(--color-text-secondary); }
+.empty-board-hint { margin: 0; font-size: 0.78rem; }
+/* A row lays its children out side by side; the placeholder is the only one and should fill it. */
+.widget-board[data-flow="row"] .empty-board,
+.widget-board[data-flow="wrap"] .empty-board { flex: 1 1 auto; padding: 0.8em; }

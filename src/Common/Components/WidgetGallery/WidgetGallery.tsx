@@ -3,7 +3,9 @@ import { useTranslation } from "react-i18next";
 import { WIDGETS, galleryKinds, newId } from "../../../Services/layout";
 import { fetchFeed } from "../../../Services/api";
 import { fetchProfile, fetchMyProfile } from "../../../Services/profile";
+import { usePageLayout } from "../../../Services/pageLayout";
 import { DRAG_TYPE } from "../../../Services/widgetDrag";
+import ConfirmDialog from "../ConfirmDialog/ConfirmDialog";
 import type { ProfileScope, Widget, WidgetGalleryProps, WidgetKind } from "../../../Types";
 import { ProfileScopeProvider, WIDGET_REGISTRY } from "../../../Widgets";
 import { galleryScope } from "../../../Widgets/demo";
@@ -36,6 +38,8 @@ function sample(kind: WidgetKind, t: (key: string) => string): Widget {
 export default function WidgetGallery({ onAdd }: WidgetGalleryProps) {
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
+  const [confirming, setConfirming] = useState<WidgetKind | null>(null);
+  const { announceDrag } = usePageLayout();
 
   const [open, setOpen] = useState(() => {
     try {
@@ -130,16 +134,7 @@ export default function WidgetGallery({ onAdd }: WidgetGalleryProps) {
                 const label = t(`widgets.${kind}.label`);
 
                 return (
-                  <li
-                    className="widget-card"
-                    key={kind}
-                    data-widget={kind}
-                    draggable
-                    onDragStart={(e) => {
-                      e.dataTransfer.setData(DRAG_TYPE, JSON.stringify({ kind }));
-                      e.dataTransfer.effectAllowed = "copy";
-                    }}
-                  >
+                  <li className="widget-card" key={kind} data-widget={kind}>
                     {/* inert: a preview holds real links and real buttons. */}
                     <div className="widget-card-preview" inert aria-hidden="true">
                       <View widget={sample(kind, t)} editing={false} preview onChange={() => {}} />
@@ -149,8 +144,17 @@ export default function WidgetGallery({ onAdd }: WidgetGalleryProps) {
                     <button
                       type="button"
                       className="widget-card-button"
-                      aria-label={`${t("gallery.add")}: ${label}`}
-                      onClick={() => onAdd(kind)}
+                      draggable
+                      aria-label={`${t("gallery.drag")}: ${label}`}
+                      title={t("gallery.dragHint")}
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData(DRAG_TYPE, JSON.stringify({ kind }));
+                        e.dataTransfer.effectAllowed = "copy";
+                        announceDrag({ kind });
+                      }}
+                      onDragEnd={() => announceDrag(null)}
+                      // Clicking is the fallback, not the way: it asks first, and says why.
+                      onClick={() => setConfirming(kind)}
                     >
                       <span className="widget-card-name">{label}</span>
                     </button>
@@ -160,6 +164,20 @@ export default function WidgetGallery({ onAdd }: WidgetGalleryProps) {
             </ul>
           )}
         </ProfileScopeProvider>
+      )}
+
+      {confirming !== null && (
+        <ConfirmDialog
+          title={t("gallery.confirmTitle")}
+          message={t("gallery.confirmMessage", { widget: t(`widgets.${confirming}.label`) })}
+          confirmLabel={t("gallery.confirmAdd")}
+          cancelLabel={t("board.cancel")}
+          onCancel={() => setConfirming(null)}
+          onConfirm={() => {
+            onAdd(confirming);
+            setConfirming(null);
+          }}
+        />
       )}
     </section>
   );

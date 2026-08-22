@@ -18,7 +18,9 @@
     "confirmMessage": "It comes off the page straight away. You can add it again from the Widgets Gallery, but anything you typed into it is gone.",
     "confirm": "remove",
     "cancel": "cancel",
-    "settings": "Board settings"
+    "settings": "Board settings",
+    "emptyTitle": "Nothing here yet",
+    "emptyHint": "Drag a widget from the gallery above."
   },
   "gallery": {
     "title": "Widgets Gallery",
@@ -28,7 +30,12 @@
       "track": "Field recording"
     },
     "search": "Search widgets",
-    "noMatch": "No widget matches that."
+    "noMatch": "No widget matches that.",
+    "drag": "Drag onto the page",
+    "dragHint": "Drag this onto the page. Clicking adds it to the end.",
+    "confirmTitle": "Add it to the end?",
+    "confirmMessage": "Widgets are normally dragged to where you want them. Adding {{widget}} this way puts it at the end of the page, and you can drag it from there.",
+    "confirmAdd": "add"
   },
   "anchors": {
     "top": "Top",
@@ -264,5 +271,13 @@
     "about": "About",
     "settings": "Settings",
     "customize": "Customize"
+  },
+  "overflow": {
+    "title": "This board is wider than it can show",
+    "inline": "Some widgets reach past the right edge and are cut off.",
+    "block": "Some widgets reach past the bottom edge and are cut off.",
+    "both": "Some widgets reach past the right and bottom edges and are cut off.",
+    "fix": "Make the widgets smaller, switch the container to Wrap or Column, or turn scrolling on in its settings.",
+    "scrollable": "Scrolling is on, so the rest can be reached — but anything reaching outside a scrolling container is clipped on both axes."
   }
 }
