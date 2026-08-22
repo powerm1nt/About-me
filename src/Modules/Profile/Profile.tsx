@@ -10,9 +10,10 @@ import { assetUrl } from "../../Services/config";
 import type { ProfileData } from "../../Services/profile";
 import type { PostSummary } from "../../Services/types";
 import WidgetBoard from "../../Common/Components/WidgetBoard/WidgetBoard";
-import { readLayout, writeLayout } from "../../Services/layout";
+import WidgetGallery from "../../Common/Components/WidgetGallery/WidgetGallery";
+import { addWidget, readLayout, writeLayout } from "../../Services/layout";
 import { updateMyProfile } from "../../Services/profile";
-import type { Widget } from "../../Services/profile";
+import type { Widget, WidgetKind } from "../../Services/profile";
 import { useAuth } from "../../Services/auth";
 
 export interface ProfileProps {
@@ -43,8 +44,11 @@ export default function Profile({ handle, isJapanese, editing = false }: Profile
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<"posts" | "media">("posts");
   const [widgets, setWidgets] = useState<Widget[] | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  // Nothing is saved until the arrangement has actually been touched, so simply opening Customize
+  // never writes the board back over itself.
+  const [dirty, setDirty] = useState(false);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -64,6 +68,39 @@ export default function Profile({ handle, isJapanese, editing = false }: Profile
       active = false;
     };
   }, [handle]);
+
+  /**
+   * Autosave.
+   *
+   * There is no Save button: the board is the page, and a page you are arranging by dragging things
+   * around it has no natural moment to press one. The write is debounced because a drag now reorders
+   * on every pointer move and a text widget changes on every keystroke — without it, one gesture
+   * would be a burst of requests.
+   *
+   * A failed save is reported on its own rather than through `error`, which would replace the whole
+   * profile with a message and take the unsaved arrangement with it.
+   */
+  useEffect(() => {
+    if (!editing || !dirty || widgets === null) return;
+
+    // "Saving" is announced when the write actually starts, not when the timer is set: setting state
+    // synchronously in an effect body cascades a render, and during a drag that effect re-runs on
+    // every swap.
+    const timer = window.setTimeout(() => {
+      setSaveState("saving");
+      updateMyProfile({ layout: writeLayout(widgets) })
+        .then(() => {
+          setSaveState("saved");
+          setSaveError(null);
+        })
+        .catch((err: unknown) => {
+          setSaveState("idle");
+          setSaveError(err instanceof Error ? err.message : String(err));
+        });
+    }, 700);
+
+    return () => window.clearTimeout(timer);
+  }, [editing, dirty, widgets]);
 
   if (error !== null) {
     return <InfoBubble title={`${text.notFound} ${error}`} className="md-component-danger" />;
@@ -92,24 +129,10 @@ export default function Profile({ handle, isJapanese, editing = false }: Profile
   // Only the owner may rearrange, and only when they asked to: a visitor sees the finished page.
   const canEdit = editing && auth.isSignedIn && auth.user?.id === profile.userId;
 
-  const save = async () => {
-    setSaving(true);
-    try {
-      await updateMyProfile({ layout: writeLayout(board) });
-      setSaved(true);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const addText = () => {
-    setWidgets([
-      ...board,
-      { id: Math.random().toString(36).slice(2, 10), kind: "text", size: "medium", props: {} },
-    ]);
-    setSaved(false);
+  // Every change goes through here, so nothing can alter the board without arming the autosave.
+  const change = (next: Widget[]) => {
+    setWidgets(next);
+    setDirty(true);
   };
 
   const rendered: Record<string, ReactNode> = {
@@ -252,37 +275,49 @@ export default function Profile({ handle, isJapanese, editing = false }: Profile
 
   return (
     <div className="profile">
+      {/* The shelf comes before the profile it builds: you pick a widget, and it lands on the page
+          below where you can see it. */}
       {canEdit && (
-        // A bar over the real page rather than a separate screen: what is being arranged is the
-        // profile itself, so the controls sit on top of it.
-        <div className="widget-toolbar">
-          <span className="widget-toolbar-hint">
-            {isJapanese
-              ? "ウィジェットをドラッグして並べ替え、サイズや表示を変更できます。"
-              : "Drag widgets to rearrange. Resize, hide, or remove them."}
-          </span>
-          <div className="widget-toolbar-actions">
-            <button type="button" className="editor-btn editor-btn-cancel" onClick={addText}>
-              {isJapanese ? "+ テキスト" : "+ Text"}
-            </button>
-            <button type="button" className="editor-btn editor-btn-cancel"
-              onClick={() => { setWidgets(readLayout(null)); setSaved(false); }}>
-              {isJapanese ? "初期状態" : "Reset"}
-            </button>
-            <button type="button" className="editor-btn editor-btn-primary" onClick={() => void save()} disabled={saving}>
-              {saving ? (isJapanese ? "保存中…" : "Saving…") : (isJapanese ? "保存" : "Save")}
-            </button>
-          </div>
-        </div>
+        <WidgetGallery
+          isJapanese={isJapanese}
+          onAdd={(kind: WidgetKind) => change(addWidget(board, kind))}
+          // The real thing, with this profile's own content in it. The text widget is the exception:
+          // on the board it is a pair of empty inputs, which shows nothing about what it becomes, so
+          // the card shows what one looks like once written instead.
+          renderPreview={(kind: WidgetKind) =>
+            kind === "text" ? (
+              <>
+                <h2 className="widget-heading">{isJapanese ? "見出し" : "A heading"}</h2>
+                <p>
+                  {isJapanese
+                    ? "自分で書いた文章をプロフィールに置けます。"
+                    : "Words of your own, anywhere on your profile."}
+                </p>
+              </>
+            ) : (
+              rendered[kind] ?? null
+            )
+          }
+        />
       )}
 
-      {saved && <p className="editor-status">{isJapanese ? "保存しました。" : "Saved."}</p>}
+      {canEdit && saveError !== null && (
+        <InfoBubble title={saveError} className="md-component-danger" />
+      )}
+
+      {canEdit && saveState !== "idle" && (
+        <p className="editor-status" role="status">
+          {saveState === "saving"
+            ? isJapanese ? "保存中…" : "Saving…"
+            : isJapanese ? "保存しました。" : "Saved."}
+        </p>
+      )}
 
       <WidgetBoard
         widgets={board}
         isJapanese={isJapanese}
         editing={canEdit}
-        onChange={(next) => { setWidgets(next); setSaved(false); }}
+        onChange={change}
         render={(widget) => {
           if (widget.kind === "text") {
             const heading = String(widget.props?.heading ?? "");
@@ -297,7 +332,7 @@ export default function Profile({ handle, isJapanese, editing = false }: Profile
                     placeholder={isJapanese ? "見出し" : "Heading"}
                     value={heading}
                     onChange={(e) =>
-                      setWidgets(board.map((w) =>
+                      change(board.map((w) =>
                         w.id === widget.id ? { ...w, props: { ...w.props, heading: e.target.value } } : w))
                     }
                   />
@@ -307,7 +342,7 @@ export default function Profile({ handle, isJapanese, editing = false }: Profile
                     placeholder={isJapanese ? "本文" : "Text"}
                     value={bodyText}
                     onChange={(e) =>
-                      setWidgets(board.map((w) =>
+                      change(board.map((w) =>
                         w.id === widget.id ? { ...w, props: { ...w.props, body: e.target.value } } : w))
                     }
                   />

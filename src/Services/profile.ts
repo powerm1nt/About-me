@@ -48,8 +48,6 @@ export interface Widget {
   id: string;
   kind: WidgetKind;
   size: WidgetSize;
-  /** Kept on the board but not shown, so hiding something is not the same as deleting it. */
-  hidden?: boolean;
   /** Per-kind settings — the heading and text of a text widget, for instance. */
   props?: Record<string, string | number | boolean>;
 }

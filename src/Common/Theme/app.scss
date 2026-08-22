@@ -223,9 +223,8 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 }
 .metro-pivot.is-arranging .header-item:hover { outline-color: var(--color-accent-strong); }
 .metro-pivot.is-arranging .header-item.is-dragging { opacity: 0.35; cursor: grabbing; animation: none; }
-.metro-pivot.is-arranging .header-item.is-over { outline-color: #ffffff; outline-style: solid; }
-/* Hidden items stay visible while arranging, dimmed, so hiding something is undoable in place. */
-.metro-pivot.is-arranging .header-item.is-hidden { opacity: 0.3; }
+/* No drop-target highlight: the strip has already made room where the item will land, which says it
+   better than a border on the thing it is about to displace. */
 
 /* The iPhone's corner badge, on an item whose "corner" is the top of a 3.6rem word. Always visible
    rather than revealed on hover: on a touch screen there is no hover to reveal it with, and while
@@ -288,6 +287,8 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 }
 .app-modal-btn:hover { color: #ffffff; }
 .app-modal-btn-confirm { color: #ffffff; }
+.app-modal-btn-danger { color: var(--color-danger); }
+.app-modal-btn-danger:hover { color: var(--color-danger); text-decoration: underline; }
 /* :focus, not :focus-visible — the dialog autofocuses cancel however it was opened, so
    the ring should always show. */
 .app-modal-btn:focus {
@@ -834,9 +835,8 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 .widget-board.is-editing .widget:hover { border-color: var(--color-accent); }
 /* The one in your hand holds still — it is following the pointer, not sitting on the board. */
 .widget-board.is-editing .widget.is-dragging { opacity: 0.45; cursor: grabbing; animation: none; }
-/* The drop target, so it is obvious where a dragged widget will land. */
-.widget-board.is-editing .widget.is-over { border-color: var(--color-accent-strong); border-style: solid; }
-.widget-board.is-editing .widget.is-hidden { opacity: 0.5; }
+/* No drop-target highlight: the board reorders under the pointer, so the gap already shows where the
+   widget lands. Only the one being carried is marked, and it is marked by being faded out. */
 
 /* The corner badge, where an iPhone puts it: over the widget's own edge rather than in a toolbar,
    because it acts on that one widget and belongs to it. Nothing on the way up may clip, or half of
@@ -863,6 +863,11 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 }
 .widget-remove-badge:hover { background: var(--color-accent); color: #ffffff; }
 
+/* Held still while something is being dragged, so every rect measured during the gesture is the
+   widget's real box rather than its tilted one. */
+.widget-board.is-reordering .widget,
+.metro-pivot.is-reordering .header-item { animation: none; }
+
 @media (prefers-reduced-motion: reduce) {
   .widget-board.is-editing .widget,
   .widget-board.is-editing .widget:nth-child(even),
@@ -888,15 +893,72 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 .widget-text-fields { display: flex; flex-direction: column; gap: 0.5em; }
 .widget-heading { margin: 0 0 0.4em; font-size: 1.1rem; }
 
-/* The editing bar sits over the real page rather than replacing it with a separate screen. */
-.widget-toolbar {
-  display: flex; align-items: center; justify-content: space-between; gap: 1em; flex-wrap: wrap;
-  padding: 0.8em 1em; margin-bottom: 1.2em;
-  background: var(--color-accent-soft); border: 1px solid var(--color-accent);
-  position: sticky; top: 0; z-index: 5;
+/* ── Widgets Gallery ──────────────────────────────────────────────────
+   A grid of live widgets, above the profile they get added to. Each tile is a real widget rendered
+   at real size and then clipped to a fixed stage, rather than scaled: scaling would shrink the type
+   to something you cannot read, and an unreadable preview is no better than the caption it replaced.
+   What you see is the top of the widget, which is the part that identifies it. */
+.widget-gallery { margin-bottom: 2em; }
+.widget-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
+  gap: 1em;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
-.widget-toolbar-hint { font-size: 0.85rem; color: var(--color-text-secondary); }
-.widget-toolbar-actions { display: flex; gap: 0.5em; flex-wrap: wrap; }
+.widget-card { min-width: 0; }
+.widget-card-button {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 190px;
+  overflow: hidden;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  background: var(--color-surface-veil);
+  border: 1px solid var(--color-text-faint);
+  font: inherit;
+  color: inherit;
+  transition: border-color 0.15s ease-in-out;
+}
+.widget-card-button:hover { border-color: var(--color-accent-strong); }
+.widget-card-preview {
+  display: block;
+  padding: 0.9em;
+  /* The tile is a window onto the widget, so the widget keeps its own size and the window does the
+     cutting off. pointer-events belt-and-braces with `inert`, for browsers without it. */
+  pointer-events: none;
+}
+/* A preview is already inside a tile with its own ground, and a second blur would only muddy it. */
+.widget-card-preview .widget,
+.widget-card-preview .feed-post,
+.widget-card-preview .composer,
+.widget-card-preview .profile-bio {
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  padding: 0;
+}
+/* Fades the cut-off edge into the tile rather than slicing a line through whatever is there, and
+   carries the label that says what clicking does. */
+.widget-card-veil {
+  position: absolute;
+  inset: auto 0 0 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0.7em;
+  min-height: 4.5em;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  color: var(--color-text-secondary);
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0), var(--color-surface) 75%);
+  transition: color 0.15s ease-in-out;
+}
+.widget-card-button:hover .widget-card-veil { color: #ffffff; }
 
 /* ── About ───────────────────────────────────────────────────────────── */
 .about-page { max-width: 62ch; }

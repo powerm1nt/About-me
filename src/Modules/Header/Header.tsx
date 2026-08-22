@@ -7,11 +7,15 @@ import { Link, apexHref, profileHref, useRouter } from "../../Services/router";
 import { fetchMyProfile, updateMyProfile, type ProfileLayout } from "../../Services/profile";
 import {
   AVATAR_ID,
+  linkId,
   moveHeaderItem,
   readHeaderLayout,
+  removeHeaderItem,
   writeHeaderLayout,
   type HeaderItem,
 } from "../../Services/headerLayout";
+import { useFlip } from "../../Common/Hooks/useFlip";
+import ConfirmDialog from "../../Common/Components/ConfirmDialog/ConfirmDialog";
 import type { HeaderLink } from "../../Services/types";
 import { useAuth, signInHref } from "../../Services/auth";
 
@@ -43,8 +47,12 @@ export default function Header({ isJapanese }: HeaderProps) {
   const [layout, setLayout] = useState<ProfileLayout>({});
   const items = readHeaderLayout(auth.isSignedIn ? layout.header : null, links);
 
-  const [dragging, setDragging] = useState<number | null>(null);
-  const [over, setOver] = useState<number | null>(null);
+  // The item being carried, by id rather than index: the order changes underneath a drag, so an
+  // index would stop referring to the thing in your hand after the first swap.
+  const [dragging, setDragging] = useState<string | null>(null);
+  const draggedNode = useRef<HTMLElement | null>(null);
+  const [pendingRemoval, setPendingRemoval] = useState<HeaderItem | null>(null);
+  const flipRef = useFlip();
 
   /**
    * Adding a header entry happens in the strip itself, in two steps: the "+" becomes an invisible
@@ -98,6 +106,69 @@ export default function Header({ isJapanese }: HeaderProps) {
     const header = writeHeaderLayout(next);
     setLayout((current) => ({ ...current, header }));
     void updateMyProfile({ layout: { ...layout, header } }).catch(() => {});
+  };
+
+  /**
+   * Takes an item off the header.
+   *
+   * A link is genuinely deleted: it lives on the profile, and there is nowhere else it survives, so
+   * removing it from the strip has to remove it from the list. It goes without asking because the
+   * "+" beside it makes another in two keystrokes.
+   *
+   * A navigation entry asks first. It cannot be added back from the strip at all — the "+" makes
+   * external links, not routes — so losing Home to a stray click would mean editing the stored
+   * layout by hand to get it back.
+   */
+  const removeItem = (item: HeaderItem) => {
+    if (item.kind === "link") {
+      void removeLink(item);
+      return;
+    }
+    setPendingRemoval(item);
+  };
+
+  const removeLink = async (item: HeaderItem) => {
+    const next = links.filter((link) => linkId(link) !== item.id);
+    setFetchedLinks(next);
+    try {
+      await updateMyProfile({ headerLinks: next });
+    } catch {
+      // The strip is already showing it gone; the next load is what corrects a failed write.
+    }
+  };
+
+  /**
+   * Reorders as the pointer passes over an item, rather than waiting for the drop.
+   *
+   * The midpoint rule is what stops that turning into a flicker. Once two items swap, the one in
+   * your hand is sitting where the other was — still under the pointer, so the next dragover would
+   * swap them straight back, and the pair would trade places for as long as you held still.
+   */
+  const reorderOver = (target: HeaderItem, event: { clientX: number; clientY: number }) => {
+    if (dragging === null || dragging === target.id) return;
+
+    const from = items.findIndex((item) => item.id === dragging);
+    const to = items.findIndex((item) => item.id === target.id);
+    if (from === -1 || to === -1 || from === to) return;
+
+    const carried = draggedNode.current?.getBoundingClientRect();
+    const over = flipRef.rect(target.id);
+
+    if (carried && over) {
+      // The strip is a row until it wraps, so this is usually the horizontal case.
+      const horizontal = Math.abs(over.left - carried.left) > Math.abs(over.top - carried.top);
+      const forward = from < to;
+
+      if (horizontal) {
+        const middle = over.left + over.width / 2;
+        if (forward ? event.clientX < middle : event.clientX > middle) return;
+      } else {
+        const middle = over.top + over.height / 2;
+        if (forward ? event.clientY < middle : event.clientY > middle) return;
+      }
+    }
+
+    saveItems(moveHeaderItem(items, from, to));
   };
 
   const addLink = async () => {
@@ -277,44 +348,50 @@ export default function Header({ isJapanese }: HeaderProps) {
   return (
     <header className="metro-header">
       <div className="metro-header-row">
-        <nav className={`metro-pivot ${canArrange ? "is-arranging" : ""}`.trim()} aria-label="Primary">
+        {/* is-reordering suspends the dance for the duration of a drag: it is a transform, and it
+            would otherwise offset every rect this measures to decide where an item goes. */}
+        <nav
+          className={[
+            "metro-pivot",
+            canArrange ? "is-arranging" : "",
+            dragging !== null ? "is-reordering" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          aria-label="Primary"
+        >
           {items.map((item, index) => {
-            if (item.hidden && !canArrange) return null;
-
             const content = renderItem(item);
             if (content === null) return null;
 
             const entry = (
               <span
                 key={item.id}
-                className={[
-                  "header-item",
-                  item.hidden ? "is-hidden" : "",
-                  dragging === index ? "is-dragging" : "",
-                  over === index ? "is-over" : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
+                ref={flipRef.node(item.id)}
+                className={`header-item ${dragging === item.id ? "is-dragging" : ""}`.trim()}
                 data-kind={item.kind}
                 // Pinned right only while it still ends the strip; dragged inward it sits inline.
                 data-tail={index === items.length - 1 ? "" : undefined}
                 draggable={canArrange}
-                onDragStart={() => setDragging(index)}
+                onDragStart={(e) => {
+                  draggedNode.current = e.currentTarget;
+                  setDragging(item.id);
+                }}
                 onDragEnd={() => {
+                  draggedNode.current = null;
                   setDragging(null);
-                  setOver(null);
                 }}
                 onDragOver={(e) => {
                   if (!canArrange) return;
                   e.preventDefault();
-                  setOver(index);
+                  reorderOver(item, e);
                 }}
                 onDrop={(e) => {
                   if (!canArrange) return;
+                  // The strip already shows the new order, so dropping only ends the gesture.
                   e.preventDefault();
-                  if (dragging !== null) saveItems(moveHeaderItem(items, dragging, index));
+                  draggedNode.current = null;
                   setDragging(null);
-                  setOver(null);
                 }}
               >
                 {content}
@@ -326,15 +403,11 @@ export default function Header({ isJapanese }: HeaderProps) {
                   <button
                     type="button"
                     className="header-item-toggle"
-                    aria-label={item.hidden ? (isJapanese ? "表示" : "Show") : isJapanese ? "非表示" : "Hide"}
-                    title={item.hidden ? (isJapanese ? "表示" : "Show") : isJapanese ? "非表示" : "Hide"}
-                    onClick={() =>
-                      saveItems(items.map((i) => (i.id === item.id ? { ...i, hidden: !i.hidden } : i)))
-                    }
+                    aria-label={isJapanese ? "削除" : "Remove"}
+                    title={isJapanese ? "削除" : "Remove"}
+                    onClick={() => removeItem(item)}
                   >
-                    {/* An X takes it off the strip; a hidden item offers the way back instead, since
-                        an X on something already gone says nothing about what clicking does. */}
-                    {item.hidden ? "↺" : "✕"}
+                    ✕
                   </button>
                 )}
               </span>
@@ -403,6 +476,24 @@ export default function Header({ isJapanese }: HeaderProps) {
             </div>
           </div>
         </Anchored>
+      )}
+
+      {pendingRemoval !== null && (
+        <ConfirmDialog
+          title={isJapanese ? "この項目を削除しますか？" : "Remove this from your header?"}
+          message={
+            isJapanese
+              ? "ヘッダーから外れます。戻すにはレイアウトを編集し直す必要があります。"
+              : "It comes off the strip straight away. The + adds external links, not app pages, so putting this one back means editing your stored layout."
+          }
+          confirmLabel={isJapanese ? "削除" : "remove"}
+          cancelLabel={isJapanese ? "キャンセル" : "cancel"}
+          onCancel={() => setPendingRemoval(null)}
+          onConfirm={() => {
+            saveItems(removeHeaderItem(items, pendingRemoval.id));
+            setPendingRemoval(null);
+          }}
+        />
       )}
 
       {menuOpen && (

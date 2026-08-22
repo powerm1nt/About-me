@@ -26,8 +26,15 @@ export const SIZES: WidgetSize[] = ["small", "medium", "large"];
 
 interface WidgetSpec {
   label: { en: string; ja: string };
-  /** Structural widgets exist once; the rest can be added repeatedly. */
-  repeatable: boolean;
+  /** One line for the gallery, shown only when the live preview has nothing to show. */
+  description: { en: string; ja: string };
+  /**
+   * Whether removing one should ask first. Any widget can be added again from the gallery, so this
+   * is not about permanence — it is about how much is thrown away. A text widget holds a few words
+   * you can retype; a timeline or a heatmap is a piece of the page's structure, and losing it to a
+   * misplaced click is the kind of mistake worth one question.
+   */
+  confirmRemove: boolean;
   defaultSize: WidgetSize;
   /** Sizes that make sense — a timeline at one column is unreadable. */
   sizes: WidgetSize[];
@@ -36,38 +43,44 @@ interface WidgetSpec {
 export const WIDGETS: Record<WidgetKind, WidgetSpec> = {
   identity: {
     label: { en: "Name and avatar", ja: "名前とアバター" },
-    repeatable: false,
+    description: { en: "Your avatar, name, handle and headline.", ja: "アバター、名前、ハンドル、見出し。" },
+    confirmRemove: true,
     defaultSize: "large",
     sizes: ["medium", "large"],
   },
   links: {
     label: { en: "Links", ja: "リンク" },
-    repeatable: false,
+    description: { en: "The links you list on your profile.", ja: "プロフィールに並べるリンク。" },
+    confirmRemove: true,
     defaultSize: "medium",
     sizes: ["small", "medium", "large"],
   },
   bio: {
     label: { en: "Bio (README)", ja: "自己紹介 (README)" },
-    repeatable: false,
+    description: { en: "Your README post, shown as the bio.", ja: "READMEの投稿を自己紹介として表示。" },
+    confirmRemove: true,
     defaultSize: "large",
     sizes: ["medium", "large"],
   },
   heatmap: {
     label: { en: "Activity", ja: "アクティビティ" },
-    repeatable: false,
+    description: { en: "A year of your posting activity.", ja: "1年間の投稿アクティビティ。" },
+    confirmRemove: true,
     // The grid is 53 columns wide; anything narrower than full width just scrolls awkwardly.
     defaultSize: "large",
     sizes: ["large"],
   },
   timeline: {
     label: { en: "Posts and media", ja: "投稿とメディア" },
-    repeatable: false,
+    description: { en: "Everything you have posted, in tabs.", ja: "投稿とメディアをタブで表示。" },
+    confirmRemove: true,
     defaultSize: "large",
     sizes: ["large"],
   },
   text: {
     label: { en: "Text", ja: "テキスト" },
-    repeatable: true,
+    description: { en: "A heading and some words of your own.", ja: "自分で書く見出しと本文。" },
+    confirmRemove: false,
     defaultSize: "medium",
     sizes: ["small", "medium", "large"],
   },
@@ -88,36 +101,33 @@ const isKind = (value: unknown): value is WidgetKind =>
  * Reads a stored board into something safe to render.
  *
  * The document is untrusted: it may predate a change to this file, or have been edited by hand.
- * Unknown widget kinds are dropped, sizes are clamped to what the widget supports, duplicates of
- * non-repeatable widgets are collapsed, and anything structural the document omits is appended — so
- * a profile can never lose its own timeline by saving a stale board.
+ * Unknown widget kinds are dropped, sizes are clamped to what the widget supports, and repeated ids
+ * are collapsed, since two widgets sharing an id cannot be told apart by a drag or a delete.
+ *
+ * A stored board is authoritative — whatever it says is the whole page. The default board is used
+ * only when there is no widget list at all, which means a profile nobody has arranged yet. An empty
+ * list is a different thing entirely: it is a board someone has emptied, and refilling it would be
+ * undoing their work rather than helping.
  */
 export function readLayout(layout: ProfileLayout | null | undefined): Widget[] {
-  const stored = Array.isArray(layout?.widgets) ? layout.widgets : [];
+  const stored = layout?.widgets;
+  if (!Array.isArray(stored)) return DEFAULT_WIDGETS.map((widget) => ({ ...widget }));
 
-  const seen = new Set<WidgetKind>();
+  const seen = new Set<string>();
   const widgets: Widget[] = [];
 
   for (const widget of stored) {
     if (!widget || typeof widget.id !== "string" || !isKind(widget.kind)) continue;
+    if (seen.has(widget.id)) continue;
+    seen.add(widget.id);
 
     const spec = WIDGETS[widget.kind];
-    if (!spec.repeatable) {
-      if (seen.has(widget.kind)) continue;
-      seen.add(widget.kind);
-    }
-
     widgets.push({
       id: widget.id,
       kind: widget.kind,
       size: spec.sizes.includes(widget.size) ? widget.size : spec.defaultSize,
-      hidden: widget.hidden === true,
       props: widget.props,
     });
-  }
-
-  for (const fallback of DEFAULT_WIDGETS) {
-    if (!seen.has(fallback.kind)) widgets.push({ ...fallback });
   }
 
   return widgets;
@@ -137,6 +147,43 @@ export function moveWidget(widgets: Widget[], from: number, to: number): Widget[
   const next = [...widgets];
   const [moved] = next.splice(from, 1);
   if (moved) next.splice(to, 0, moved);
+  return next;
+}
+
+/** Takes a widget off the board. It can always be added again from the gallery. */
+export const removeWidget = (widgets: Widget[], id: string): Widget[] =>
+  widgets.filter((widget) => widget.id !== id);
+
+/**
+ * A fresh id.
+ *
+ * Every widget gets one, including the structural kinds: a profile may hold as many timelines or
+ * text panels as its owner wants, so identity cannot come from the kind.
+ */
+const newId = (): string =>
+  `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+
+/** Puts a widget on the board from the gallery, at the end where it can be seen and then moved. */
+export const addWidget = (widgets: Widget[], kind: WidgetKind): Widget[] => [
+  ...widgets,
+  { id: newId(), kind, size: WIDGETS[kind].defaultSize, props: {} },
+];
+
+/** Copies a widget, its size and its contents, and drops the copy in beside the original. */
+export function duplicateWidget(widgets: Widget[], id: string): Widget[] {
+  const index = widgets.findIndex((widget) => widget.id === id);
+  if (index === -1) return widgets;
+
+  const source = widgets[index]!;
+  const copy: Widget = {
+    id: newId(),
+    kind: source.kind,
+    size: source.size,
+    props: source.props ? { ...source.props } : undefined,
+  };
+
+  const next = [...widgets];
+  next.splice(index + 1, 0, copy);
   return next;
 }
 
