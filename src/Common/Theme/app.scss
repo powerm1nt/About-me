@@ -1251,3 +1251,59 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   border: 1px dashed rgba(255, 255, 255, 0.3);
   background: rgba(255, 255, 255, 0.04);
 }
+
+
+/* ── Selection, lasso and context menu ─────────────────────────────────
+   Picking several widgets at once, so they can be acted on together — wrapping them into a container
+   above all, which is the one operation that needs a group rather than a widget. */
+.widget.is-selected { outline: 2px solid var(--color-accent-strong); outline-offset: 3px; }
+
+/* Drawn in viewport coordinates, over everything, because the band is a gesture rather than part of
+   the page: it must not be clipped by whichever container it happens to start in. */
+.widget-lasso {
+  z-index: 1400;
+  pointer-events: none;
+  border: 1px solid var(--color-accent-strong);
+  background: rgba(84, 104, 224, 0.14);
+}
+
+.context-menu {
+  z-index: 1400;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border: 2px solid var(--color-accent);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-weight: 300;
+  font-size: 0.9rem;
+  color: var(--color-text);
+  text-shadow: none;
+  text-transform: none;
+}
+.context-menu-row { position: relative; display: flex; }
+.context-menu-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.6em;
+  width: 100%;
+  padding: 0.5em 0.8em;
+  background: none; border: none;
+  color: inherit; font: inherit; text-align: left;
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+}
+.context-menu-item:hover,
+.context-menu-item:focus-visible { background: var(--color-accent-soft); outline: none; }
+.context-menu-item.is-danger { color: var(--color-danger); }
+.context-menu-caret { color: var(--color-text-muted); }
+/* Opens beside its row rather than below it, so the parent stays readable while choosing. */
+.context-menu-sub {
+  position: absolute;
+  left: 100%;
+  top: 0;
+  min-width: 140px;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border: 2px solid var(--color-accent);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}

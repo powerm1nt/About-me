@@ -16,6 +16,8 @@ import {
   scrollOf,
   sizeForSpan,
   withPlacement,
+  wrapWidgets,
+  FLOWS,
   type Flow,
   type Scroll,
 } from "../../../Services/layout";
@@ -25,6 +27,7 @@ import { WIDGET_REGISTRY } from "../../../Widgets";
 import { useFitRow } from "../../Hooks/useFitRow";
 import { useFlip } from "../../Hooks/useFlip";
 import ConfirmDialog from "../ConfirmDialog/ConfirmDialog";
+import ContextMenu, { type MenuItem } from "../ContextMenu/ContextMenu";
 import Inspector from "../Inspector/Inspector";
 
 export interface WidgetBoardProps {
@@ -76,6 +79,17 @@ export default function WidgetBoard({
   const flipRef = useFlip();
 
   const free = flow === "free";
+
+  /**
+   * The widgets picked out, at this level only.
+   *
+   * Selection does not cross boards: what it is for is acting on a group of siblings at once —
+   * wrapping them into a container above all — and a set spanning two levels has no single list to
+   * take them out of.
+   */
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
+  const [lasso, setLasso] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
+  const [menu, setMenu] = useState<{ x: number; y: number; id: string } | null>(null);
   // A row neither wraps nor clips, so one with more in it than the page is wide has to give way
   // somewhere. Scrolling is a setting and wrapping is a different flow; left alone, it shrinks.
   const fit = useFitRow(flow === "row" && scroll === "none");
@@ -175,6 +189,95 @@ export default function WidgetBoard({
     }
   };
 
+  /**
+   * A rubber band over the board's own background.
+   *
+   * Started only where the press lands on the board itself rather than on a widget, so it cannot
+   * begin under something you meant to drag. What it selects is decided on release, from the rects
+   * as they are then: selecting continuously while the band is drawn would flicker the outlines of
+   * everything the pointer skimmed past.
+   */
+  const startLasso = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!editing || event.button !== 0) return;
+    if (event.target !== event.currentTarget) return;
+
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setLasso({ x1: event.clientX, y1: event.clientY, x2: event.clientX, y2: event.clientY });
+    setSelected(new Set());
+  };
+
+  const endLasso = () => {
+    if (!lasso) return;
+
+    const box = {
+      left: Math.min(lasso.x1, lasso.x2),
+      right: Math.max(lasso.x1, lasso.x2),
+      top: Math.min(lasso.y1, lasso.y2),
+      bottom: Math.max(lasso.y1, lasso.y2),
+    };
+
+    // A click rather than a drag: nothing was being selected, so this only clears.
+    if (box.right - box.left < 4 && box.bottom - box.top < 4) {
+      setLasso(null);
+      return;
+    }
+
+    const caught = new Set<string>();
+    for (const item of widgets) {
+      const rect = flipRef.rect(item.id);
+      if (!rect) continue;
+      // Touched, not enclosed: having to draw a band right around a full-width widget to catch it
+      // would make the gesture useless on the very boards it is most wanted on.
+      const misses =
+        rect.right < box.left || rect.left > box.right || rect.bottom < box.top || rect.top > box.bottom;
+      if (!misses) caught.add(item.id);
+    }
+
+    setSelected(caught);
+    setLasso(null);
+  };
+
+  /** What the right-click menu offers for a widget, and for a selection it happens to be part of. */
+  const menuItems = (item: Widget): MenuItem[] => {
+    const group = selected.has(item.id) && selected.size > 1 ? selected : new Set([item.id]);
+    const spec = WIDGETS[item.kind];
+
+    return [
+      {
+        label: t("menu.inspect"),
+        onSelect: () => setInspecting(item.id),
+      },
+      {
+        label: t("menu.duplicate"),
+        onSelect: () => update(duplicateWidget(widgets, item.id)),
+      },
+      {
+        // The submenu is which kind of container: they differ only by the flow they lay out with,
+        // and choosing it here saves opening the Inspector to change it straight afterwards.
+        label: group.size > 1 ? t("menu.wrapMany", { count: group.size }) : t("menu.wrap"),
+        items: FLOWS.map((into) => ({
+          label: t(`flows.${into}`),
+          onSelect: () => {
+            update(wrapWidgets(widgets, group as Set<string>, into));
+            setSelected(new Set());
+          },
+        })),
+      },
+      {
+        label: t("board.remove"),
+        danger: true,
+        onSelect: () => {
+          if (group.size === 1 && spec.confirmRemove) {
+            setPendingRemoval(item);
+            return;
+          }
+          update(widgets.filter((w) => !group.has(w.id)));
+          setSelected(new Set());
+        },
+      },
+    ];
+  };
+
   return (
     <>
       {/* The dance stops for the duration of a drag. It is a transform, and every measurement made
@@ -199,6 +302,12 @@ export default function WidgetBoard({
         data-scroll={scroll}
         // The cell height a free board snaps to, so the CSS and the arithmetic cannot disagree.
         style={free ? ({ "--free-row": `${FREE_ROW_HEIGHT}px` } as React.CSSProperties) : undefined}
+        onPointerDown={startLasso}
+        onPointerMove={(e) => {
+          if (lasso) setLasso({ ...lasso, x2: e.clientX, y2: e.clientY });
+        }}
+        onPointerUp={endLasso}
+        onPointerCancel={() => setLasso(null)}
       >
         {widgets.map((widget) => {
           const spec = WIDGETS[widget.kind];
@@ -231,7 +340,13 @@ export default function WidgetBoard({
                 flipRef.node(widget.id)(node);
                 if (inspecting === widget.id) inspectorAnchor.current = node;
               }}
-              className={`widget ${dragging === widget.id ? "is-dragging" : ""}`.trim()}
+              className={[
+                "widget",
+                dragging === widget.id ? "is-dragging" : "",
+                selected.has(widget.id) ? "is-selected" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
               style={{
                 // A free board places by cell; an ordinary grid by span. A row or a column is laid
                 // out by what is in it, and a grid-column on a flex item is simply ignored.
@@ -259,6 +374,15 @@ export default function WidgetBoard({
               // without being pinned there.
               data-push={widget.props?.push ? "" : undefined}
               draggable={editing && resizing === null}
+              onContextMenu={(e) => {
+                if (!editing) return;
+                e.preventDefault();
+                e.stopPropagation();
+                // Right-clicking outside the selection acts on what was clicked, not on what
+                // happened to be selected a moment ago.
+                if (!selected.has(widget.id)) setSelected(new Set([widget.id]));
+                setMenu({ x: e.clientX, y: e.clientY, id: widget.id });
+              }}
               onDragStart={(e) => {
                 draggedNode.current = e.currentTarget;
                 setDragging(widget.id);
@@ -409,6 +533,34 @@ export default function WidgetBoard({
           );
         })}
       </div>
+
+      {lasso && (
+        <div
+          className="widget-lasso"
+          aria-hidden="true"
+          style={{
+            position: "fixed",
+            left: Math.min(lasso.x1, lasso.x2),
+            top: Math.min(lasso.y1, lasso.y2),
+            width: Math.abs(lasso.x2 - lasso.x1),
+            height: Math.abs(lasso.y2 - lasso.y1),
+          }}
+        />
+      )}
+
+      {menu !== null && (() => {
+        const target = widgets.find((item) => item.id === menu.id);
+        if (!target) return null;
+
+        return (
+          <ContextMenu
+            x={menu.x}
+            y={menu.y}
+            items={menuItems(target)}
+            onClose={() => setMenu(null)}
+          />
+        );
+      })()}
 
       {editing && inspecting !== null && (() => {
         const target = widgets.find((item) => item.id === inspecting);

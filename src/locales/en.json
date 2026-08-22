@@ -186,5 +186,11 @@
     "artist": "Artist",
     "equalizer": "Show equalizer",
     "playlist": "Show playlist"
+  },
+  "menu": {
+    "inspect": "Inspect",
+    "duplicate": "Duplicate",
+    "wrap": "Wrap into",
+    "wrapMany": "Wrap {{count}} into"
   }
 }

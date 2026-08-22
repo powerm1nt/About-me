@@ -532,6 +532,10 @@ export function cycleSize(item: Widget): WidgetSize {
  * Dragging a corner produces a column count; the model only knows three sizes. Rather than refusing
  * the widths in between, the nearest allowed size wins — so a widget that only comes in full width
  * snaps back to it instead of sticking at whatever the pointer last measured.
+ *
+ * An exact tie goes to the smaller, which is why the comparison is strict. Three columns is equally
+ * far from two and from four, and growing only once the pointer is properly past the midpoint is the
+ * same rule dragging uses to decide when two widgets swap.
  */
 export function sizeForSpan(kind: WidgetKind, span: number): WidgetSize {
   const allowed = WIDGETS[kind].sizes;
