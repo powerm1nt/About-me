@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import AppModal from "./Common/Components/AppModal/AppModal";
 import Wallpaper from "./Common/Components/Wallpaper/Wallpaper";
-import { FileViewer, Footer, Header, Profile, Landing, Photos, Settings, SignIn } from "./Modules";
+import { About, FileViewer, Footer, Header, Profile, Landing, Photos, Settings, SignIn } from "./Modules";
 import { AuthProvider, useAuth } from "./Services/auth";
 import { ExternalLinkProvider } from "./Services/externalLink";
 import { RouterProvider, resolveRoute, useRouter } from "./Services/router";
@@ -20,6 +20,7 @@ function pageTitle(pathname: string): string {
   if (route.kind === "signin") return "Sign in — Hisuiki";
   if (route.kind === "settings") return "Settings — Hisuiki";
   if (route.kind === "customize") return "Customize — Hisuiki";
+  if (route.kind === "about") return "About — Hisuiki";
   if (route.kind === "profile") return `@${route.handle} — Hisuiki`;
   if (route.isPostsIndex) return "Posts — Hisuiki";
   if (!route.isHome) return `${route.slug} — Hisuiki`;
@@ -113,6 +114,14 @@ function Shell() {
         </main>
       ) : route.kind === "photos" ? (
         <Photos photoId={route.photoId} isJapanese={route.japanese} />
+      ) : route.kind === "about" ? (
+        <main className="main-content">
+          <div className="main-content-container">
+            <div className="file-content" data-phase="ready">
+              <About isJapanese={route.japanese} />
+            </div>
+          </div>
+        </main>
       ) : route.kind === "profile" ? (
         <main className="main-content">
           <div className="main-content-container">

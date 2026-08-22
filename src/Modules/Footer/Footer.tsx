@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import ExternalLink from "../../Common/Components/ExternalLink/ExternalLink";
+import { Link } from "../../Services/router";
 import SmartImage from "../../Common/Components/SmartImage/SmartImage";
 import { assetUrl } from "../../Services/config";
 
@@ -51,22 +52,11 @@ export default function Footer() {
             </p>
           </ExternalLink>
 
-          {/* What Hisuiki is, kept here rather than as a tab: it is the sort of thing a visitor
-              reads once, and a tab beside the feed spent prime space on it every visit. */}
-          <div className="footer-about">
-            <p className="footer-about-lead">
-              Hisuiki is a media sharing and blogging platform. Post photos, write articles, and
-              comment on what other people share.
-            </p>
-            <p className="footer-about-detail">
-              Every account gets its own space at <code>{"{handle}"}.hisuiki.com</code>, with its own
-              pages and its own look. Writing is stored as markdown files you can fetch and keep, and
-              every edit is versioned.
-            </p>
-          </div>
-
           <div className="projAbout">
             <p>© {new Date().getUTCFullYear()} NukaWorks Solutions - All rights reserved.</p>
+            <Link href="/about" className="footer-about-link">
+              About Hisuiki
+            </Link>
             <ExternalLink
               href="https://github.com/powerm1nt/Hisuiki"
               label="Hisuiki on GitHub"

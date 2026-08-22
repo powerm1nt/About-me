@@ -125,6 +125,12 @@ export interface ProfileRoute {
   japanese: boolean;
 }
 
+/** What Hisuiki is — a page of its own, linked from the footer. */
+export interface AboutRoute {
+  kind: "about";
+  japanese: boolean;
+}
+
 /** The visual layout editor for one's own profile. */
 export interface CustomizeRoute {
   kind: "customize";
@@ -156,7 +162,8 @@ export type Route =
   | LandingRoute
   | SettingsRoute
   | ProfileRoute
-  | CustomizeRoute;
+  | CustomizeRoute
+  | AboutRoute;
 
 /** Ids are minted by the API as 12 hex characters; anything else is not a photo. */
 /** Posts and media are addressed by UUID: a slug names a post only within one author's profile. */
@@ -209,6 +216,10 @@ export function resolveRoute(pathname: string): Route | null {
 
   if (path.length === 1 && path[0] === "explore") {
     return { kind: "landing", tab: "explore", japanese };
+  }
+
+  if (path.length === 1 && path[0] === "about") {
+    return { kind: "about", japanese };
   }
 
   if (path[0] === "signin" && path.length === 1) {
