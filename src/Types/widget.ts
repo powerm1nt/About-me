@@ -23,7 +23,10 @@ export type WidgetSize = "small" | "medium" | "large";
 export type Anchor = "top" | "left" | "center" | "right" | "bottom";
 
 /** How a board arranges what is in it. */
-export type Flow = "row" | "wrap" | "column" | "grid" | "free";
+export type Flow = "row" | "wrap" | "column" | "grid" | "free" | "anchors";
+
+/** A slot in an "anchors" layout. Stored on a child as props.anchor. */
+export type AnchorSlot = Anchor;
 
 /** Whether a board scrolls, and along which axis. */
 export type Scroll = "none" | "inline" | "block" | "both";
@@ -51,6 +54,8 @@ export interface Widget {
   size: WidgetSize;
   props?: Record<string, string | number | boolean>;
   style?: WidgetStyle;
+  /** Per-slot styling, for a container laying its children out in anchor slots. */
+  slots?: Partial<Record<Anchor, WidgetStyle>>;
   children?: Widget[];
 }
 
@@ -89,6 +94,9 @@ export interface PageSettings {
 }
 
 export interface ProfileLayout {
+  /** The whole page: one container holding everything, with a layout of its own. */
+  root?: Widget;
+  /** Written before the page became one container. Read once, then migrated. */
   anchors?: Partial<AnchoredLayout>;
   boards?: Record<string, BoardSettings>;
   page?: PageSettings;

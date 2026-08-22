@@ -144,7 +144,8 @@
     "tabs": {
       "general": "General",
       "customize": "Customize",
-      "advanced": "Advanced"
+      "advanced": "Advanced",
+      "layout": "Layout"
     },
     "size": "Size",
     "sizes": {
@@ -280,5 +281,21 @@
     "both": "Some widgets reach past the right and bottom edges and are cut off.",
     "fix": "Make the widgets smaller, switch the container to Wrap or Column, or turn scrolling on in its settings.",
     "scrollable": "Scrolling is on, so the rest can be reached — but anything reaching outside a scrolling container is clipped on both axes."
+  },
+  "layout": {
+    "slot": "Slot",
+    "slots": "Slot styling",
+    "columns": "Columns",
+    "snap": "Snap height",
+    "snapNote": "Widgets align to cells this tall. Columns come from the board's width.",
+    "clearSlot": "Clear this slot's styling",
+    "about": {
+      "row": "One line, no wrapping. Contents shrink rather than run off the page.",
+      "wrap": "One line that folds onto the next when it runs out of room.",
+      "column": "Stacked, one above the next.",
+      "grid": "Even columns. Each widget spans a whole number of them.",
+      "free": "Widgets are placed on a snapping grid, each keeping its own cell and span.",
+      "anchors": "Five slots — top, left, centre, right and bottom. Each widget picks one."
+    }
   }
 }

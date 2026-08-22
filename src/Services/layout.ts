@@ -1,5 +1,8 @@
 import type {
   Anchor,
+  Flow,
+  Placement,
+  Scroll,
   AnchoredLayout,
   AnchorBackground,
   BoardSettings,
@@ -8,6 +11,7 @@ import type {
   Widget,
   WidgetKind,
   WidgetSize,
+  WidgetStyle,
 } from "../Types";
 import { readStyle } from "./widgetStyle";
 
@@ -59,12 +63,6 @@ export const FREE_ROW_HEIGHT = 72;
  * reflows its columns like any other, so a layout composed on a desktop narrows rather than
  * scrambling or scaling down illegibly.
  */
-export interface Placement {
-  col: number;
-  row: number;
-  w: number;
-  h: number;
-}
 
 const int = (value: unknown, min: number, max: number, fallback: number): number => {
   const number = typeof value === "number" ? Math.round(value) : Number.NaN;
@@ -95,16 +93,7 @@ export const SIZE_SPAN: Record<WidgetSize, number> = {
 
 export const SIZES: WidgetSize[] = ["small", "medium", "large"];
 
-/**
- * How a container arranges what is inside it.
- *
- * "row" is a single line that neither wraps nor clips — the header bar, where the items are meant to
- * sit beside each other. "wrap" is the same line allowed to fold onto a second when it runs out of
- * room. "column" stacks. "grid" is the four-column board a profile's body uses.
- */
-export type Flow = "row" | "wrap" | "column" | "grid" | "free";
-
-export const FLOWS: Flow[] = ["row", "wrap", "column", "grid", "free"];
+export const FLOWS: Flow[] = ["row", "wrap", "column", "grid", "free", "anchors"];
 
 interface WidgetSpec {
   label: { en: string; ja: string };
@@ -245,7 +234,6 @@ export const WIDGETS: Record<WidgetKind, WidgetSpec> = {
  * visible, so "inline" also clips vertically and "block" also clips horizontally. Only "none" leaves
  * a container's overflow alone.
  */
-export type Scroll = "none" | "inline" | "block" | "both";
 
 export const SCROLLS: Scroll[] = ["none", "inline", "block", "both"];
 
@@ -255,6 +243,25 @@ export const scrollOf = (item: Widget): Scroll => {
   return typeof stored === "string" && (SCROLLS as string[]).includes(stored)
     ? (stored as Scroll)
     : "none";
+};
+
+/** Columns a grid container uses, and the cell height a free one snaps to. */
+export const columnsOf = (item: Widget): number => {
+  const stored = item.props?.columns;
+  const n = typeof stored === "number" ? Math.round(stored) : GRID_COLUMNS;
+  return Number.isFinite(n) ? Math.min(12, Math.max(1, n)) : GRID_COLUMNS;
+};
+
+export const rowHeightOf = (item: Widget): number => {
+  const stored = item.props?.rowHeight;
+  const n = typeof stored === "number" ? Math.round(stored) : FREE_ROW_HEIGHT;
+  return Number.isFinite(n) ? Math.min(240, Math.max(24, n)) : FREE_ROW_HEIGHT;
+};
+
+/** Which slot a child sits in, for a container laying out in anchors. */
+export const slotOf = (item: Widget): Anchor => {
+  const stored = item.props?.anchor;
+  return isAnchor(stored) ? stored : "center";
 };
 
 /** The flow a container lays its children out with, defaulting to a row. */
@@ -359,6 +366,11 @@ function readWidget(raw: unknown, seen: Set<string>, depth: number): Widget | nu
     style: readStyle(value.style),
   };
 
+  // Anything not read back here is dropped on the next load, so per-slot styling has to be picked
+  // up explicitly — and through the same clamp as any other stored style.
+  const slots = readSlots(value.slots);
+  if (slots) result.slots = slots;
+
   if (spec.container) {
     const children = Array.isArray(value.children) && depth < MAX_DEPTH ? value.children : [];
     result.children = children
@@ -385,6 +397,25 @@ function migrateKind(raw: Record<string, unknown>): Partial<Widget> {
   }
 
   return value as Partial<Widget>;
+}
+
+/** Per-slot styling, keyed by anchor and clamped like any other style. */
+function readSlots(raw: unknown): Partial<Record<Anchor, WidgetStyle>> | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+
+  const source = raw as Record<string, unknown>;
+  const slots: Partial<Record<Anchor, WidgetStyle>> = {};
+  let any = false;
+
+  for (const anchor of ANCHORS) {
+    const style = readStyle(source[anchor]);
+    if (style) {
+      slots[anchor] = style;
+      any = true;
+    }
+  }
+
+  return any ? slots : undefined;
 }
 
 const readList = (raw: unknown, seen: Set<string>): Widget[] =>
@@ -724,6 +755,7 @@ function copyWidget(source: Widget): Widget {
     size: source.size,
     props: source.props ? { ...source.props } : undefined,
     style: source.style ? { ...source.style } : undefined,
+    slots: source.slots ? { ...source.slots } : undefined,
     children: source.children?.map(copyWidget),
   };
 }

@@ -1,5 +1,5 @@
 import type { ReactNode, RefObject } from "react";
-import type { Anchor, Flow, Scroll, Widget, WidgetKind } from "./widget";
+import type { Anchor, Flow, Scroll, Widget, WidgetKind, WidgetStyle } from "./widget";
 
 export interface WidgetBoardProps {
   widgets: Widget[];
@@ -10,6 +10,11 @@ export interface WidgetBoardProps {
   anchor?: Anchor;
   /** Set if this board is nested inside a container widget. */
   containerId?: string;
+  /** Per-slot styling, when the flow is "anchors". */
+  slots?: Partial<Record<Anchor, WidgetStyle>>;
+  /** Columns for a grid flow, cell height for a free one. */
+  columns?: number;
+  rowHeight?: number;
   /** Takes an updater as well as a list, so change handlers can be stable. */
   onChange?: (widgets: Widget[] | ((prev: Widget[]) => Widget[])) => void;
 }

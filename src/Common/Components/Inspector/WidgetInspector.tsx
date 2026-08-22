@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  ANCHORS,
   FLOWS,
   GRID_COLUMNS,
   SCROLLS,
@@ -8,7 +10,10 @@ import {
   flowOf,
   isContainer,
   placementOf,
+  columnsOf,
+  rowHeightOf,
   scrollOf,
+  slotOf,
   withPlacement,
 } from "../../../Services/layout";
 import {
@@ -22,8 +27,9 @@ import {
   styleOf,
 } from "../../../Services/widgetStyle";
 import { ROUTE_KEYS, titleAction } from "../../../Services/titleWidget";
-import type { WidgetInspectorProps, WidgetSize } from "../../../Types";
+import type { Anchor, WidgetInspectorProps, WidgetSize, WidgetStyle } from "../../../Types";
 import Inspector from "./Inspector";
+import SlotPicker from "./SlotPicker";
 import { Check, Field, Group, Note, Select, Slider, TextField } from "./fields";
 
 export default function WidgetInspector({ widget, anchor, onChange, onClose }: WidgetInspectorProps) {
@@ -33,6 +39,7 @@ export default function WidgetInspector({ widget, anchor, onChange, onClose }: W
   const style = styleOf(widget);
   const container = isContainer(widget);
   const action = titleAction(widget);
+  const [slot, setSlot] = useState<Anchor>("top");
 
   const setProp = (key: string, value: string | number | boolean) =>
     onChange({ ...widget, props: { ...widget.props, [key]: value } });
@@ -52,24 +59,6 @@ export default function WidgetInspector({ widget, anchor, onChange, onClose }: W
         }))}
         onChange={(size) => onChange({ ...widget, size })}
       />
-
-      {container && (
-        <>
-          <Select
-            label={t("board.layout")}
-            value={flowOf(widget)}
-            options={FLOWS.map((flow) => ({ value: flow, label: t(`flows.${flow}`) }))}
-            onChange={(flow) => setProp("flow", flow)}
-          />
-          <Select
-            label={t("inspector.scroll")}
-            value={scrollOf(widget)}
-            options={SCROLLS.map((scroll) => ({ value: scroll, label: t(`inspector.scrolls.${scroll}`) }))}
-            onChange={(scroll) => setProp("scroll", scroll)}
-          />
-          {scrollOf(widget) !== "none" && <Note>{t("inspector.scrollNote")}</Note>}
-        </>
-      )}
 
       {widget.kind === "title" && (
         <>
@@ -149,6 +138,14 @@ export default function WidgetInspector({ widget, anchor, onChange, onClose }: W
         </>
       )}
 
+      {/* Which slot this widget sits in, when its parent lays out in anchors. */}
+      <Select
+        label={t("layout.slot")}
+        value={slotOf(widget)}
+        options={ANCHORS.map((value) => ({ value, label: t(`anchors.${value}`) }))}
+        onChange={(value) => setProp("anchor", value)}
+      />
+
       <Check
         label={t("inspector.push")}
         checked={widget.props?.push === true}
@@ -174,6 +171,110 @@ export default function WidgetInspector({ widget, anchor, onChange, onClose }: W
         display={String(placementOf(widget).h)}
         onChange={(h) => onChange(withPlacement(widget, { ...placementOf(widget), h }))}
       />
+    </>
+  );
+
+  const flow = flowOf(widget);
+  const slotStyle = widget.slots?.[slot] ?? {};
+
+  const setSlotStyle = (patch: Partial<WidgetStyle>) =>
+    onChange({ ...widget, slots: { ...widget.slots, [slot]: { ...slotStyle, ...patch } } });
+
+  const layout = () => (
+    <>
+      <Select
+        label={t("board.layout")}
+        value={flow}
+        options={FLOWS.map((value) => ({ value, label: t(`flows.${value}`) }))}
+        onChange={(value) => setProp("flow", value)}
+      />
+      <Note>{t(`layout.about.${flow}`)}</Note>
+
+      <Select
+        label={t("inspector.scroll")}
+        value={scrollOf(widget)}
+        options={SCROLLS.map((value) => ({ value, label: t(`inspector.scrolls.${value}`) }))}
+        onChange={(value) => setProp("scroll", value)}
+      />
+      {scrollOf(widget) !== "none" && <Note>{t("inspector.scrollNote")}</Note>}
+
+      {(flow === "grid" || flow === "free") && (
+        <Slider
+          label={t("layout.columns")}
+          value={columnsOf(widget)}
+          min={1}
+          max={12}
+          step={1}
+          display={String(columnsOf(widget))}
+          onChange={(columns) => setProp("columns", columns)}
+        />
+      )}
+
+      {flow === "free" && (
+        <>
+          <Slider
+            label={t("layout.snap")}
+            value={rowHeightOf(widget)}
+            min={24}
+            max={240}
+            step={4}
+            display={`${rowHeightOf(widget)}px`}
+            onChange={(rowHeight) => setProp("rowHeight", rowHeight)}
+          />
+          <Note>{t("layout.snapNote")}</Note>
+        </>
+      )}
+
+      {/* One panel for all five slots: pick the slot, then style that one. */}
+      {flow === "anchors" && (
+        <>
+          <Group label={t("layout.slots")}>
+            <SlotPicker
+              value={slot}
+              filled={new Set((widget.children ?? []).map(slotOf))}
+              onChange={setSlot}
+            />
+          </Group>
+
+          <Slider
+            label={t("inspector.blur")}
+            value={slotStyle.blur ?? 0}
+            min={0}
+            max={MAX_BLUR}
+            step={1}
+            display={`${slotStyle.blur ?? 0}px`}
+            onChange={(blur) => setSlotStyle({ blur })}
+          />
+          <Slider
+            label={t("inspector.opacity")}
+            value={slotStyle.opacity ?? 0}
+            min={0}
+            max={1}
+            step={0.05}
+            display={`${Math.round((slotStyle.opacity ?? 0) * 100)}%`}
+            onChange={(opacity) => setSlotStyle({ opacity })}
+          />
+          <Select
+            label={t("inspector.border")}
+            value={slotStyle.border ?? "none"}
+            options={BORDERS.map((value) => ({ value, label: t(`inspector.borders.${value}`) }))}
+            onChange={(border) => setSlotStyle({ border })}
+          />
+          <Select
+            label={t("inspector.shadow")}
+            value={slotStyle.shadow ?? "none"}
+            options={SHADOWS.map((value) => ({ value, label: t(`inspector.shadows.${value}`) }))}
+            onChange={(shadow) => setSlotStyle({ shadow })}
+          />
+          <button
+            type="button"
+            className="widget-btn inspector-reset"
+            onClick={() => onChange({ ...widget, slots: { ...widget.slots, [slot]: undefined } })}
+          >
+            {t("layout.clearSlot")}
+          </button>
+        </>
+      )}
     </>
   );
 
@@ -291,6 +392,7 @@ export default function WidgetInspector({ widget, anchor, onChange, onClose }: W
       onClose={onClose}
       tabs={[
         { id: "general", label: t("inspector.tabs.general"), render: general },
+        ...(container ? [{ id: "layout", label: t("inspector.tabs.layout"), render: layout }] : []),
         { id: "customize", label: t("inspector.tabs.customize"), render: customize },
         { id: "advanced", label: t("inspector.tabs.advanced"), render: advanced },
       ]}

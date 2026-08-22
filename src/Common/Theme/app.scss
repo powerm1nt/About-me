@@ -715,7 +715,7 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
    One component lays out the header bar, the footer, a sidebar and a profile body; what differs is
    only the flow it was given. A container passes its own flow down to the board inside it. */
 .widget-board { position: relative; min-width: 0; }
-.widget-board[data-flow="grid"] { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.2em; align-items: start; }
+.widget-board[data-flow="grid"] { display: grid; grid-template-columns: repeat(var(--grid-columns, 4), 1fr); gap: 1.2em; align-items: start; }
 /* A single line that neither wraps nor clips. Nothing here may set overflow: a corner badge, a
    dropdown and the edit-mode dance all reach outside their widget's own box, and a scroller would
    cut every one of them off — setting overflow-x alone computes overflow-y to auto as well. */
@@ -743,7 +743,7 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 .widget-board[data-flow="free"] {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(var(--grid-columns, 4), 1fr);
   grid-auto-rows: var(--free-row, 72px);
   gap: 0;
   align-items: stretch;
@@ -841,7 +841,7 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 .link-widget-edit { display: inline-flex; align-items: baseline; gap: 0.5em; }
 .link-widget-href { font-size: 0.85rem; max-width: 18ch; }
 @media screen and (max-width: 900px) {
-  .widget-board[data-flow="grid"] { grid-template-columns: repeat(2, 1fr); }
+  .widget-board[data-flow="grid"] { grid-template-columns: repeat(min(2, var(--grid-columns, 4)), 1fr); }
   .widget { grid-column: span 2 !important; }
 }
 @media screen and (max-width: 600px) {
@@ -1654,4 +1654,83 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--color-text-muted);
+}
+
+
+/* ── Anchors layout ────────────────────────────────────────────────────
+   Five named slots on one board, replacing the five separate regions. A widget picks its slot; the
+   slot itself can be styled without being a component of its own. */
+.widget-board[data-flow="anchors"] {
+  display: grid;
+  grid-template-areas:
+    "top top top"
+    "left center right"
+    "bottom bottom bottom";
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 0;
+  min-height: 100vh;
+  align-items: start;
+}
+.widget-board[data-flow="anchors"] > .widget { min-width: 0; }
+
+/* Painted behind a slot rather than by it: the slot is a position, not a widget. */
+.board-slot {
+  z-index: 0;
+  pointer-events: none;
+  background: rgba(16, 12, 48, var(--widget-veil-alpha, 0));
+  backdrop-filter: var(--widget-backdrop, none);
+}
+.board-slot[data-border="hairline"] { border: 1px solid rgba(255, 255, 255, 0.18); }
+.board-slot[data-border="solid"] { border: 2px solid rgba(255, 255, 255, 0.35); }
+.board-slot[data-border="accent"] { border: 2px solid var(--color-accent); }
+.board-slot[data-shadow="soft"] { box-shadow: 0 8px 28px rgba(0, 0, 0, 0.38); }
+.board-slot[data-shadow="hard"] { box-shadow: 0 4px 0 rgba(0, 0, 0, 0.55); }
+.widget-board[data-flow="anchors"] > .widget { position: relative; z-index: 1; }
+
+@media screen and (max-width: 900px) {
+  /* The rails stack rather than squeezing the middle to nothing. */
+  .widget-board[data-flow="anchors"] {
+    grid-template-areas: "top" "left" "center" "right" "bottom";
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto;
+  }
+}
+
+
+/* ── Slot picker ───────────────────────────────────────────────────────
+   The five slots drawn where they sit, so choosing one is pointing at it. */
+.slot-picker {
+  display: grid;
+  grid-template-areas:
+    "top top top"
+    "left center right"
+    "bottom bottom bottom";
+  grid-template-columns: 1fr 1.4fr 1fr;
+  gap: 3px;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+}
+.slot-picker-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.2em;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--color-text-faint);
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.slot-picker-cell:hover { border-color: var(--color-accent-strong); color: var(--color-text); }
+/* A slot holding something reads differently from an empty one. */
+.slot-picker-cell[data-filled] { background: rgba(255, 255, 255, 0.12); color: var(--color-text-secondary); }
+.slot-picker-cell.is-active {
+  background: var(--color-accent);
+  border-color: var(--color-accent-strong);
+  color: #ffffff;
 }

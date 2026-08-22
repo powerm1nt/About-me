@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  ANCHORS,
   FREE_ROW_HEIGHT,
   GRID_COLUMNS,
   SIZE_SPAN,
@@ -13,14 +14,20 @@ import {
   moveWidget,
   placementOf,
   removeWidget,
+  columnsOf,
+  rowHeightOf,
   scrollOf,
   sizeForSpan,
+  slotOf,
   withPlacement,
   wrapWidgets,
   FLOWS,
 } from "../../../Services/layout";
 import type { MenuItem, Widget, WidgetBoardProps } from "../../../Types";
 import { styleOf, styleVariables } from "../../../Services/widgetStyle";
+
+/** A stand-in widget, so a slot backdrop can reuse the widget style pipeline. */
+const EMPTY = { id: "", kind: "spacer", size: "small" } as const;
 import { WIDGET_REGISTRY } from "../../../Widgets";
 import { usePageLayout } from "../../../Services/pageLayout";
 import { DRAG_TYPE, readWidgetDrag } from "../../../Services/widgetDrag";
@@ -72,6 +79,9 @@ export default function WidgetBoard({
   widgets,
   flow = "grid",
   scroll = "none",
+  slots,
+  columns,
+  rowHeight,
   editing = false,
   anchor,
   containerId,
@@ -100,6 +110,7 @@ export default function WidgetBoard({
   const flipRef = useFlip();
 
   const free = flow === "free";
+  const anchored = flow === "anchors";
   const {
     announceDrag,
     dragging: draggingGlobal,
@@ -445,7 +456,12 @@ export default function WidgetBoard({
         data-scroll={scroll}
         data-overflow={overflow.overflowing === "none" ? undefined : overflow.overflowing}
         // The cell height a free board snaps to, so the CSS and the arithmetic cannot disagree.
-        style={free ? ({ "--free-row": `${FREE_ROW_HEIGHT}px` } as React.CSSProperties) : undefined}
+        style={
+          {
+            ...(free ? { "--free-row": `${rowHeight ?? FREE_ROW_HEIGHT}px` } : {}),
+            ...(flow === "grid" || free ? { "--grid-columns": String(columns ?? GRID_COLUMNS) } : {}),
+          } as React.CSSProperties
+        }
         onPointerDown={startLasso}
         onPointerMove={(e) => {
           if (!lasso.current) return;
@@ -505,6 +521,23 @@ export default function WidgetBoard({
           }
         }}
       >
+        {anchored &&
+          ANCHORS.map((slot) => {
+            const style = slots?.[slot];
+            if (!style && !editing) return null;
+            return (
+              <div
+                key={`slot-${slot}`}
+                className="board-slot"
+                style={{ gridArea: slot, ...(style ? styleVariables(styleOf({ ...EMPTY, style })) : {}) }}
+                data-slot={slot}
+                data-border={style?.border && style.border !== "none" ? style.border : undefined}
+                data-shadow={style?.shadow && style.shadow !== "none" ? style.shadow : undefined}
+                aria-hidden="true"
+              />
+            );
+          })}
+
         {editing && widgets.length === 0 && <EmptyBoard />}
 
         {widgets.map((widget) => {
@@ -519,6 +552,9 @@ export default function WidgetBoard({
                   widgets={widget.children ?? []}
                   flow={flowOf(widget)}
                   scroll={scrollOf(widget)}
+                  slots={widget.slots}
+                  columns={columnsOf(widget)}
+                  rowHeight={rowHeightOf(widget)}
                   editing={editing}
                   anchor={anchor}
                   containerId={widget.id}
@@ -542,6 +578,9 @@ export default function WidgetBoard({
               style={{
                 // A free board places by cell; an ordinary grid by span. A row or a column is laid
                 // out by what is in it, and a grid-column on a flex item is simply ignored.
+                ...(anchored
+                  ? { gridArea: slotOf(widget) }
+                  : {}),
                 ...(free
                   ? (() => {
                       const p = placementOf(widget);
