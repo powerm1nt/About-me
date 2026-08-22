@@ -1,22 +1,8 @@
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import type { ConfirmDialogProps } from "../../../Types";
 
-export interface ConfirmDialogProps {
-  title: string;
-  message: string;
-  confirmLabel: string;
-  cancelLabel: string;
-  onConfirm: () => void;
-  onCancel: () => void;
-}
-
-/**
- * A yes-or-no dialog for something that cannot be undone.
- *
- * Deliberately modal and deliberately focused on Cancel: it is shown before deleting a widget that
- * the gallery would have to rebuild from scratch, so the safe answer should be the one a stray
- * Return key gives you.
- */
+/** Modal, and focused on Cancel: the safe answer should be the one a stray Return key gives. */
 export default function ConfirmDialog({
   title,
   message,

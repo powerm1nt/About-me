@@ -239,6 +239,18 @@
     "reset": "Reset everything",
     "resetNote": "Puts every board, widget and setting back to the way the app ships.",
     "resetTitle": "Reset all customisations?",
-    "resetMessage": "Every board, widget and setting goes back to the default page. Anything you typed into a widget is lost. This cannot be undone."
+    "resetMessage": "Every board, widget and setting goes back to the default page. Anything you typed into a widget is lost. This cannot be undone.",
+    "enabled": "Enabled",
+    "enabledNote": "A disabled anchor is hidden and refuses widgets dropped on it.",
+    "dropHere": "Drag a widget here",
+    "background": "Background",
+    "backgrounds": {
+      "none": "None",
+      "shadow": "Shadow",
+      "blur": "Blur",
+      "solid": "Solid"
+    },
+    "intensity": "Intensity",
+    "colour": "Colour"
   }
 }

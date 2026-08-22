@@ -1,21 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-
-export interface MenuItem {
-  label: string;
-  /** A leaf does something; a branch opens a submenu. One or the other, never both. */
-  onSelect?: () => void;
-  items?: MenuItem[];
-  danger?: boolean;
-}
-
-export interface ContextMenuProps {
-  /** Where it was summoned, in viewport coordinates. */
-  x: number;
-  y: number;
-  items: MenuItem[];
-  onClose: () => void;
-}
+import type { ContextMenuProps } from "../../../Types";
 
 /** Kept off the edges: a menu opened near the bottom right should not open off-screen. */
 const MARGIN = 8;

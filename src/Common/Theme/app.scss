@@ -1449,3 +1449,51 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
    scroll container and take the vertical scrolling with it, while clip leaves the other axis alone.
    Anything that genuinely needs to scroll sideways says so on its own container. */
 #app { overflow-x: clip; }
+
+
+/* ── Anchor backgrounds ────────────────────────────────────────────────
+   Painted behind whatever is at an anchor, and only when something is there. Top and bottom default
+   to a shadow so thin chrome stays readable over any wallpaper. */
+.anchor-region[data-background="shadow"] {
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--anchor-color, #000000) calc(var(--anchor-intensity, 0.55) * 100%), transparent),
+    transparent
+  );
+}
+.anchor-region[data-anchor="bottom"][data-background="shadow"] {
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--anchor-color, #000000) calc(var(--anchor-intensity, 0.55) * 100%), transparent),
+    transparent
+  );
+}
+.anchor-region[data-background="blur"] {
+  backdrop-filter: blur(var(--anchor-blur, 20px)) saturate(130%);
+}
+.anchor-region[data-background="solid"] {
+  background: color-mix(in srgb, var(--anchor-color, #101020) calc(var(--anchor-intensity, 0.55) * 100%), transparent);
+}
+
+/* Where a dragged widget would land. */
+.anchor-region.is-drop-target { outline: 2px dashed var(--color-accent-strong); outline-offset: -2px; }
+.anchor-empty {
+  margin: 0;
+  padding: 1.4em 0;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+}
+
+
+/* The middle band: optional rails either side of whatever the route renders. */
+.page-middle { display: flex; align-items: stretch; min-width: 0; flex: 1; }
+.page-middle > .profile-custom,
+.page-middle > main { flex: 1 1 auto; min-width: 0; }
+.page-side { flex: 0 0 auto; width: clamp(180px, 18vw, 280px); padding: 1em; }
+@media screen and (max-width: 900px) {
+  /* Rails become rows above and below the content rather than squeezing it to nothing. */
+  .page-middle { flex-direction: column; }
+  .page-side { width: auto; }
+}

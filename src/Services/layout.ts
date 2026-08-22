@@ -1,6 +1,7 @@
 import type {
   Anchor,
   AnchoredLayout,
+  AnchorBackground,
   BoardSettings,
   PageSettings,
   ProfileLayout,
@@ -448,6 +449,26 @@ export const DEFAULT_BOARD_FLOW: Record<Anchor, Flow> = {
   bottom: "column",
 };
 
+/** The side rails are off until somebody wants them; the other three are the page. */
+const DEFAULT_ENABLED: Record<Anchor, boolean> = {
+  top: true,
+  left: false,
+  center: true,
+  right: false,
+  bottom: true,
+};
+
+/** Top and bottom carry a shadow so thin chrome stays readable over any wallpaper. */
+const DEFAULT_BACKGROUND: Record<Anchor, AnchorBackground> = {
+  top: "shadow",
+  left: "none",
+  center: "none",
+  right: "none",
+  bottom: "shadow",
+};
+
+export const BACKGROUNDS: AnchorBackground[] = ["none", "shadow", "blur", "solid"];
+
 /** Read back through the same clamp as everything else: this comes from a stored document. */
 export function readBoards(raw: unknown): Record<Anchor, BoardSettings> {
   const source = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
@@ -456,15 +477,46 @@ export function readBoards(raw: unknown): Record<Anchor, BoardSettings> {
   for (const anchor of ANCHORS) {
     const stored = source[anchor];
     const value = stored && typeof stored === "object" ? (stored as BoardSettings) : {};
+    const intensity = typeof value.intensity === "number" && Number.isFinite(value.intensity)
+      ? Math.min(1, Math.max(0, value.intensity))
+      : 0.55;
+
     boards[anchor] = {
       flow: (FLOWS as string[]).includes(String(value.flow))
         ? (value.flow as Flow)
         : DEFAULT_BOARD_FLOW[anchor],
       scroll: (SCROLLS as string[]).includes(String(value.scroll)) ? (value.scroll as Scroll) : "none",
+      enabled: typeof value.enabled === "boolean" ? value.enabled : DEFAULT_ENABLED[anchor],
+      background: (BACKGROUNDS as string[]).includes(String(value.background))
+        ? (value.background as AnchorBackground)
+        : DEFAULT_BACKGROUND[anchor],
+      intensity,
+      color: typeof value.color === "string" && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(value.color)
+        ? value.color
+        : undefined,
     };
   }
 
   return boards;
+}
+
+/** Moves a widget from one anchor's list to the end of another's. */
+export function moveToAnchor(
+  layout: AnchoredLayout,
+  id: string,
+  from: Anchor,
+  to: Anchor,
+): AnchoredLayout {
+  if (from === to) return layout;
+
+  const widget = layout[from].find((item) => item.id === id);
+  if (!widget) return layout;
+
+  return {
+    ...layout,
+    [from]: layout[from].filter((item) => item.id !== id),
+    [to]: [...layout[to], widget],
+  };
 }
 
 /** Where the wallpaper comes from, defaulting to the picture of the day. */

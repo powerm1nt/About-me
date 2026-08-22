@@ -1,13 +1,9 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { WIDGETS, galleryKinds, newId } from "../../../Services/layout";
-import type { Widget, WidgetKind } from "../../../Types";
+import type { Widget, WidgetGalleryProps, WidgetKind } from "../../../Types";
 import { ProfileScopeProvider, WIDGET_REGISTRY } from "../../../Widgets";
 import { DEMO_SCOPE } from "../../../Widgets/demo";
-
-export interface WidgetGalleryProps {
-  onAdd: (kind: WidgetKind) => void;
-}
 
 const STORAGE_KEY = "hisuiki.gallery.open";
 

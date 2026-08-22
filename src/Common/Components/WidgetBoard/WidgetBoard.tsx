@@ -18,16 +18,15 @@ import {
   withPlacement,
   wrapWidgets,
   FLOWS,
-  type Flow,
-  type Scroll,
 } from "../../../Services/layout";
-import type { Widget } from "../../../Types";
+import type { MenuItem, Widget, WidgetBoardProps } from "../../../Types";
 import { styleOf, styleVariables } from "../../../Services/widgetStyle";
 import { WIDGET_REGISTRY } from "../../../Widgets";
+import { DRAG_TYPE } from "../../../Services/widgetDrag";
 import { useFitRow } from "../../Hooks/useFitRow";
 import { useFlip } from "../../Hooks/useFlip";
 import ConfirmDialog from "../ConfirmDialog/ConfirmDialog";
-import ContextMenu, { type MenuItem } from "../ContextMenu/ContextMenu";
+import ContextMenu from "../ContextMenu/ContextMenu";
 import WidgetInspector from "../Inspector/WidgetInspector";
 
 /**
@@ -63,18 +62,6 @@ const WidgetSlot = memo(function WidgetSlot({
   );
 });
 
-export interface WidgetBoardProps {
-  widgets: Widget[];
-  /** How this level lays its widgets out. A container passes its own flow to its children. */
-  flow?: Flow;
-  /** Whether this level scrolls. Off unless a container was set to. */
-  scroll?: Scroll;
-  /** Editing turns the board into its own editor: the real page, with handles on it. */
-  editing?: boolean;
-  /** Takes an updater as well as a list, so change handlers can be stable. */
-  onChange?: (widgets: Widget[] | ((prev: Widget[]) => Widget[])) => void;
-}
-
 /**
  * The board a page is arranged on, and — when `editing` — the editor for it.
  *
@@ -94,6 +81,7 @@ export default function WidgetBoard({
   flow = "grid",
   scroll = "none",
   editing = false,
+  anchor,
   onChange,
 }: WidgetBoardProps) {
   const { t } = useTranslation();
@@ -496,6 +484,9 @@ export default function WidgetBoard({
               onDragStart={(e) => {
                 draggedNode.current = e.currentTarget;
                 setDragging(widget.id);
+                // So another anchor can identify what landed on it.
+                e.dataTransfer.setData(DRAG_TYPE, JSON.stringify({ id: widget.id, anchor }));
+                e.dataTransfer.effectAllowed = "move";
               }}
               onDragEnd={() => {
                 draggedNode.current = null;

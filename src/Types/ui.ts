@@ -6,6 +6,8 @@ export interface WidgetBoardProps {
   flow?: Flow;
   scroll?: Scroll;
   editing?: boolean;
+  /** Which anchor this board belongs to, so a drag can be recognised by another one. */
+  anchor?: Anchor;
   /** Takes an updater as well as a list, so change handlers can be stable. */
   onChange?: (widgets: Widget[] | ((prev: Widget[]) => Widget[])) => void;
 }

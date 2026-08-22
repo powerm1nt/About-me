@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FLOWS, SCROLLS } from "../../../Services/layout";
+import { BACKGROUNDS, FLOWS, SCROLLS } from "../../../Services/layout";
 import { fetchFeed } from "../../../Services/api";
 import { assetUrl } from "../../../Services/config";
 import { fetchMyProfile } from "../../../Services/profile";
@@ -8,11 +8,11 @@ import { usePageLayout } from "../../../Services/pageLayout";
 import type { BoardInspectorProps, PostMediaSummary } from "../../../Types";
 import ConfirmDialog from "../ConfirmDialog/ConfirmDialog";
 import Inspector from "./Inspector";
-import { Group, Note, Select, TextField } from "./fields";
+import { Check, Group, Note, Select, Slider, TextField } from "./fields";
 
 export default function BoardInspector({ anchor, trigger, onClose }: BoardInspectorProps) {
   const { t } = useTranslation();
-  const { boards, setBoard, page, setPage, reset } = usePageLayout();
+  const { anchors, boards, setBoard, page, setPage, reset } = usePageLayout();
   const [confirmReset, setConfirmReset] = useState(false);
   const [media, setMedia] = useState<PostMediaSummary[] | null>(null);
 
@@ -37,8 +37,18 @@ export default function BoardInspector({ anchor, trigger, onClose }: BoardInspec
     };
   }, [wallpaper.source, media]);
 
+  const filled = (anchors[anchor] ?? []).length > 0;
+  const background = board.background ?? "none";
+
   const layout = () => (
     <>
+      <Check
+        label={t("boardInspector.enabled")}
+        checked={board.enabled !== false}
+        onChange={(enabled) => setBoard(anchor, { enabled })}
+      />
+      <Note>{t("boardInspector.enabledNote")}</Note>
+
       <Select
         label={t("board.layout")}
         value={String(board.flow)}
@@ -52,6 +62,56 @@ export default function BoardInspector({ anchor, trigger, onClose }: BoardInspec
         onChange={(scroll) => setBoard(anchor, { scroll })}
       />
       {board.scroll !== "none" && <Note>{t("inspector.scrollNote")}</Note>}
+
+      {/* Only where there is something to paint behind. */}
+      {filled && (
+        <>
+          <Select
+            label={t("boardInspector.background")}
+            value={background}
+            options={BACKGROUNDS.map((kind) => ({
+              value: kind,
+              label: t(`boardInspector.backgrounds.${kind}`),
+            }))}
+            onChange={(value) => setBoard(anchor, { background: value })}
+          />
+
+          {background !== "none" && (
+            <Slider
+              label={t("boardInspector.intensity")}
+              value={board.intensity ?? 0.55}
+              min={0}
+              max={1}
+              step={0.05}
+              display={`${Math.round((board.intensity ?? 0.55) * 100)}%`}
+              onChange={(intensity) => setBoard(anchor, { intensity })}
+            />
+          )}
+
+          {(background === "shadow" || background === "solid") && (
+            <Group label={t("boardInspector.colour")}>
+              <span className="inspector-colour">
+                <input
+                  type="color"
+                  aria-label={t("boardInspector.colour")}
+                  value={board.color ?? "#000000"}
+                  onChange={(e) => setBoard(anchor, { color: e.target.value })}
+                />
+                <code className="inspector-hex">{board.color ?? t("inspector.inherited")}</code>
+                {board.color && (
+                  <button
+                    type="button"
+                    className="widget-btn"
+                    onClick={() => setBoard(anchor, { color: undefined })}
+                  >
+                    {t("inspector.clear")}
+                  </button>
+                )}
+              </span>
+            </Group>
+          )}
+        </>
+      )}
     </>
   );
 

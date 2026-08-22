@@ -8,6 +8,7 @@ import { About, FileViewer, Profile, Landing, Photos, Settings, SignIn } from ".
 import { AuthProvider, useAuth } from "./Services/auth";
 import { PageLayoutProvider, usePageLayout } from "./Services/pageLayout";
 import { addWidget } from "./Services/layout";
+import type { WidgetKind } from "./Types";
 import { setLanguage } from "./Services/i18n";
 import { ExternalLinkProvider } from "./Services/externalLink";
 import { RouterProvider, resolveRoute, useRouter } from "./Services/router";
@@ -135,12 +136,15 @@ function Shell() {
           too, it has to be reachable while arranging any of them. */}
       {editing && (
         <div className="page-rail">
-          <WidgetGallery onAdd={(kind) => setAnchor("center", addWidget(anchors.center, kind))} />
+          <WidgetGallery onAdd={(kind: WidgetKind) => setAnchor("center", addWidget(anchors.center, kind))} />
           <SaveIndicator />
         </div>
       )}
 
-      <div className={isProfileSite ? "profile-custom" : undefined}>
+      <div className="page-middle">
+        <AnchorRegion anchor="left" className="page-side" />
+
+        <div className={isProfileSite ? "profile-custom" : undefined}>
       {route === null ? (
         <NotFound />
       ) : route.kind === "landing" ? (
@@ -194,6 +198,9 @@ function Shell() {
       ) : (
         <FileViewer slug={route.slug} isHome={route.isHome} isJapanese={route.japanese} />
       )}
+        </div>
+
+        <AnchorRegion anchor="right" className="page-side" />
       </div>
 
       <footer className="page-bottom">

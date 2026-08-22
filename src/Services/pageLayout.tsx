@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { defaultAnchors, readBoards, readLayout, readPage, writeLayout } from "./layout";
+import { defaultAnchors, moveToAnchor, readBoards, readLayout, readPage, writeLayout } from "./layout";
 import { fetchMyProfile, updateMyProfile } from "./profile";
 import type { Anchor, AnchoredLayout, BoardSettings, PageSettings, Widget } from "../Types";
 import { useAuth } from "./auth";
@@ -29,6 +29,8 @@ interface PageLayoutValue {
   /** Settings for the page as a whole: the wallpaper, for now. */
   page: PageSettings;
   setPage: (page: PageSettings) => void;
+  /** Moves a widget from one anchor to another, for a drag that crosses boards. */
+  moveWidget: (id: string, from: Anchor, to: Anchor) => void;
   /** Throws away every customisation and goes back to the page the app ships. */
   reset: () => void;
   /** True while the owner is arranging the page. */
@@ -57,6 +59,7 @@ const PageLayoutContext = createContext<PageLayoutValue>({
   setBoard: () => {},
   page: { wallpaper: { source: "bing" } },
   setPage: () => {},
+  moveWidget: () => {},
   reset: () => {},
   editing: false,
   setEditing: () => {},
@@ -152,6 +155,11 @@ export function PageLayoutProvider({ children }: { children: ReactNode }) {
     setDirty(true);
   }, []);
 
+  const moveWidget = useCallback((id: string, from: Anchor, to: Anchor) => {
+    setAnchors((current) => moveToAnchor(current, id, from, to));
+    setDirty(true);
+  }, []);
+
   const setPage = useCallback((next: PageSettings) => {
     setPageState((current) => ({ ...current, ...next }));
     setDirty(true);
@@ -175,8 +183,8 @@ export function PageLayoutProvider({ children }: { children: ReactNode }) {
   // Memoised for the same reason: a fresh object here re-renders every consumer on every render of
   // this provider, whatever actually changed.
   const layout = useMemo(
-    () => ({ anchors, setAnchor, boards, setBoard, page, setPage, reset, editing, setEditing }),
-    [anchors, setAnchor, boards, setBoard, page, setPage, reset, editing],
+    () => ({ anchors, setAnchor, boards, setBoard, page, setPage, moveWidget, reset, editing, setEditing }),
+    [anchors, setAnchor, boards, setBoard, page, setPage, moveWidget, reset, editing],
   );
 
   const status = useMemo(() => ({ saveState, saveError }), [saveState, saveError]);

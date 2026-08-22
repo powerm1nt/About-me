@@ -65,9 +65,19 @@ export interface Placement {
   h: number;
 }
 
+/** How an anchor paints itself behind whatever is in it. */
+export type AnchorBackground = "none" | "shadow" | "blur" | "solid";
+
 export interface BoardSettings {
   flow?: string;
   scroll?: string;
+  /** Whether the anchor takes widgets at all. Off hides it and refuses drops. */
+  enabled?: boolean;
+  background?: AnchorBackground;
+  /** 0 to 1. A shadow's darkness, a blur's radius, a solid's opacity. */
+  intensity?: number;
+  /** Hex. Tints the shadow or the solid; ignored by blur. */
+  color?: string;
 }
 
 export interface WallpaperSetting {
