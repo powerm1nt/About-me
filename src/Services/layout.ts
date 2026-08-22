@@ -274,12 +274,17 @@ export const isContainer = (item: Widget): boolean => WIDGETS[item.kind].contain
 export const newId = (): string =>
   `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 
-const make = (kind: WidgetKind, extra: Partial<Widget> = {}): Widget => ({
+export const makeWidget = (kind: WidgetKind, extra: Partial<Widget> = {}): Widget => ({
   id: newId(),
   kind,
   size: WIDGETS[kind].defaultSize,
+  // A container's flow lives in props, which is where flowOf and readWidget both look for it.
+  props: WIDGETS[kind].container ? { flow: "row" } : {},
+  ...(WIDGETS[kind].container ? { children: [] } : {}),
   ...extra,
 });
+
+const make = makeWidget;
 
 /**
  * The page as it comes: a bar at the top, the profile down the middle, a colophon at the bottom.
@@ -518,6 +523,48 @@ export function readBoards(raw: unknown): Record<Anchor, BoardSettings> {
   return boards;
 }
 
+/** Extracts a widget by id from a tree of widgets, returning the widget and the modified tree. */
+export function extractWidget(
+  widgets: Widget[],
+  id: string,
+): { widget: Widget; remaining: Widget[] } | null {
+  for (let i = 0; i < widgets.length; i++) {
+    const item = widgets[i]!;
+    if (item.id === id) {
+      return {
+        widget: item,
+        remaining: [...widgets.slice(0, i), ...widgets.slice(i + 1)],
+      };
+    }
+    if (item.children && item.children.length > 0) {
+      const found = extractWidget(item.children, id);
+      if (found) {
+        const nextItem = { ...item, children: found.remaining };
+        return {
+          widget: found.widget,
+          remaining: [...widgets.slice(0, i), nextItem, ...widgets.slice(i + 1)],
+        };
+      }
+    }
+  }
+  return null;
+}
+
+/** Whether a container already holds this child, anywhere in the layout. */
+export function containsChild(
+  layout: AnchoredLayout,
+  containerId: string,
+  childId: string,
+): boolean {
+  const search = (widgets: Widget[]): boolean =>
+    widgets.some((item) => {
+      if (item.id === containerId) return (item.children ?? []).some((c) => c.id === childId);
+      return item.children ? search(item.children) : false;
+    });
+
+  return ANCHORS.some((anchor) => search(layout[anchor] ?? []));
+}
+
 /** Moves a widget from one anchor's list to the end of another's. */
 export function moveToAnchor(
   layout: AnchoredLayout,
@@ -527,14 +574,92 @@ export function moveToAnchor(
 ): AnchoredLayout {
   if (from === to) return layout;
 
-  const widget = layout[from].find((item) => item.id === id);
-  if (!widget) return layout;
+  let extracted = extractWidget(layout[from] ?? [], id);
+  let sourceAnchor = from;
+
+  if (!extracted) {
+    for (const a of ANCHORS) {
+      if (a === to) continue;
+      const res = extractWidget(layout[a] ?? [], id);
+      if (res) {
+        extracted = res;
+        sourceAnchor = a;
+        break;
+      }
+    }
+  }
+
+  if (!extracted) return layout;
 
   return {
     ...layout,
-    [from]: layout[from].filter((item) => item.id !== id),
-    [to]: [...layout[to], widget],
+    [sourceAnchor]: extracted.remaining,
+    [to]: [...(layout[to] ?? []), extracted.widget],
   };
+}
+
+/** Inserts a widget into a container's children list. */
+export function insertIntoContainer(
+  widgets: Widget[],
+  targetContainerId: string,
+  widgetToInsert: Widget,
+): { widgets: Widget[]; inserted: boolean } {
+  for (let i = 0; i < widgets.length; i++) {
+    const item = widgets[i]!;
+    if (item.id === targetContainerId && isContainer(item)) {
+      const existing = item.children ?? [];
+      const nextChildren = existing.some((w) => w.id === widgetToInsert.id)
+        ? existing
+        : [...existing, widgetToInsert];
+      const nextItem = { ...item, children: nextChildren };
+      return {
+        widgets: [...widgets.slice(0, i), nextItem, ...widgets.slice(i + 1)],
+        inserted: true,
+      };
+    }
+    if (item.children && item.children.length > 0) {
+      const sub = insertIntoContainer(item.children, targetContainerId, widgetToInsert);
+      if (sub.inserted) {
+        const nextItem = { ...item, children: sub.widgets };
+        return {
+          widgets: [...widgets.slice(0, i), nextItem, ...widgets.slice(i + 1)],
+          inserted: true,
+        };
+      }
+    }
+  }
+  return { widgets, inserted: false };
+}
+
+/** Moves a widget from wherever it is in the layout tree into a target container. */
+export function moveToContainer(
+  layout: AnchoredLayout,
+  widgetId: string,
+  targetContainerId: string,
+): AnchoredLayout {
+  if (widgetId === targetContainerId) return layout;
+
+  let extractedWidget: Widget | null = null;
+  const layoutWithoutWidget = {} as AnchoredLayout;
+
+  for (const a of ANCHORS) {
+    const res = extractWidget(layout[a] ?? [], widgetId);
+    if (res) {
+      extractedWidget = res.widget;
+      layoutWithoutWidget[a] = res.remaining;
+    } else {
+      layoutWithoutWidget[a] = layout[a] ?? [];
+    }
+  }
+
+  if (!extractedWidget) return layout;
+
+  const result = {} as AnchoredLayout;
+  for (const a of ANCHORS) {
+    const res = insertIntoContainer(layoutWithoutWidget[a] ?? [], targetContainerId, extractedWidget);
+    result[a] = res.widgets;
+  }
+  return result;
 }
 
 /** Where the wallpaper comes from, defaulting to the picture of the day. */

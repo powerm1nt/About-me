@@ -4,12 +4,26 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
-import { defaultAnchors, moveToAnchor, readBoards, readLayout, readPage, writeLayout } from "./layout";
+import {
+  ANCHORS,
+  defaultAnchors,
+  extractWidget,
+  insertIntoContainer,
+  makeWidget,
+  containsChild,
+  moveToAnchor,
+  moveToContainer,
+  readBoards,
+  readLayout,
+  readPage,
+  writeLayout,
+} from "./layout";
 import { fetchMyProfile, updateMyProfile } from "./profile";
-import type { Anchor, AnchoredLayout, BoardSettings, PageSettings, Widget } from "../Types";
+import type { Anchor, AnchoredLayout, BoardSettings, PageSettings, Widget, WidgetKind } from "../Types";
 import type { WidgetDrag } from "./widgetDrag";
 import { useAuth } from "./auth";
 
@@ -32,9 +46,19 @@ interface PageLayoutValue {
   setPage: (page: PageSettings) => void;
   /** Moves a widget from one anchor to another, for a drag that crosses boards. */
   moveWidget: (id: string, from: Anchor, to: Anchor) => void;
+  /** Moves a widget into a container's children list. */
+  moveWidgetToContainer: (id: string, targetContainerId: string) => void;
   /** What is being dragged right now, so every anchor can offer itself as a target. */
   dragging: WidgetDrag | null;
   announceDrag: (drag: WidgetDrag | null) => void;
+  /** Inserts a preview widget live into target anchor during drag from gallery. */
+  insertPreviewWidget: (id: string, kind: WidgetKind, targetAnchor: Anchor) => void;
+  /** Inserts a preview widget live into target container during drag from gallery. */
+  insertPreviewIntoContainer: (id: string, kind: WidgetKind, targetContainerId: string) => void;
+  /** Cleans up an unfinalized preview widget from all anchors if drag is cancelled. */
+  cancelPreview: () => void;
+  /** Finalizes the previewed widget in place on drop. */
+  finalizePreview: () => void;
   /** Throws away every customisation and goes back to the page the app ships. */
   reset: () => void;
   /** True while the owner is arranging the page. */
@@ -64,8 +88,13 @@ const PageLayoutContext = createContext<PageLayoutValue>({
   page: { wallpaper: { source: "bing" } },
   setPage: () => {},
   moveWidget: () => {},
+  moveWidgetToContainer: () => {},
   dragging: null,
   announceDrag: () => {},
+  insertPreviewWidget: () => {},
+  insertPreviewIntoContainer: () => {},
+  cancelPreview: () => {},
+  finalizePreview: () => {},
   reset: () => {},
   editing: false,
   setEditing: () => {},
@@ -169,6 +198,103 @@ export function PageLayoutProvider({ children }: { children: ReactNode }) {
     setDirty(true);
   }, []);
 
+  const moveWidgetToContainer = useCallback((id: string, targetContainerId: string) => {
+    setAnchors((current) => moveToContainer(current, id, targetContainerId));
+    setDirty(true);
+  }, []);
+
+  const previewWidgetId = useRef<string | null>(null);
+
+  const insertPreviewWidget = useCallback((id: string, kind: WidgetKind, targetAnchor: Anchor) => {
+    previewWidgetId.current = id;
+    setAnchors((current) => {
+      // dragover fires continuously. Returning a new object each time would re-render every widget
+      // on the page dozens of times a second, so nothing is returned unless it actually moved.
+      let changed = false;
+      const next = {} as AnchoredLayout;
+
+      for (const a of ANCHORS) {
+        if (a === targetAnchor) {
+          const existing = current[a] ?? [];
+          if (existing.some((w) => w.id === id)) {
+            next[a] = existing;
+          } else {
+            next[a] = [...existing, makeWidget(kind, { id })];
+            changed = true;
+          }
+        } else {
+          const extracted = extractWidget(current[a] ?? [], id);
+          next[a] = extracted ? extracted.remaining : (current[a] ?? []);
+          if (extracted) changed = true;
+        }
+      }
+
+      return changed ? next : current;
+    });
+  }, []);
+
+  const insertPreviewIntoContainer = useCallback(
+    (id: string, kind: WidgetKind, targetContainerId: string) => {
+      previewWidgetId.current = id;
+      setAnchors((current) => {
+        // Already in the container it is being dragged over: nothing to do, and returning a new
+        // object here would re-render the page on every dragover.
+        if (containsChild(current, targetContainerId, id)) return current;
+
+        let created = makeWidget(kind, { id });
+        const layoutWithout = {} as AnchoredLayout;
+        for (const a of ANCHORS) {
+          const res = extractWidget(current[a] ?? [], id);
+          if (res) {
+            created = res.widget;
+            layoutWithout[a] = res.remaining;
+          } else {
+            layoutWithout[a] = current[a] ?? [];
+          }
+        }
+
+        let inserted = false;
+        const next = {} as AnchoredLayout;
+        for (const a of ANCHORS) {
+          const res = insertIntoContainer(layoutWithout[a] ?? [], targetContainerId, created);
+          next[a] = res.widgets;
+          if (res.inserted) inserted = true;
+        }
+
+        return inserted ? next : current;
+      });
+    },
+    [],
+  );
+
+  const finalizePreview = useCallback(() => {
+    previewWidgetId.current = null;
+    setDirty(true);
+    setDragging(null);
+  }, []);
+
+  const cancelPreview = useCallback(() => {
+    const id = previewWidgetId.current;
+    previewWidgetId.current = null;
+    if (id) {
+      setAnchors((current) => {
+        let changed = false;
+        const next = {} as AnchoredLayout;
+        for (const a of ANCHORS) {
+          const extracted = extractWidget(current[a] ?? [], id);
+          if (extracted) {
+            next[a] = extracted.remaining;
+            changed = true;
+          } else {
+            next[a] = current[a] ?? [];
+          }
+        }
+        return changed ? next : current;
+      });
+    }
+    setDragging(null);
+  }, []);
+
   const setPage = useCallback((next: PageSettings) => {
     setPageState((current) => ({ ...current, ...next }));
     setDirty(true);
@@ -200,8 +326,13 @@ export function PageLayoutProvider({ children }: { children: ReactNode }) {
       page,
       setPage,
       moveWidget,
+      moveWidgetToContainer,
       dragging,
       announceDrag,
+      insertPreviewWidget,
+      insertPreviewIntoContainer,
+      cancelPreview,
+      finalizePreview,
       reset,
       editing,
       setEditing,
@@ -214,8 +345,13 @@ export function PageLayoutProvider({ children }: { children: ReactNode }) {
       page,
       setPage,
       moveWidget,
+      moveWidgetToContainer,
       dragging,
       announceDrag,
+      insertPreviewWidget,
+      insertPreviewIntoContainer,
+      cancelPreview,
+      finalizePreview,
       reset,
       editing,
     ],

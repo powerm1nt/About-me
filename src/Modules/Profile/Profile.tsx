@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import InfoBubble from "../../Common/Components/InfoBubble/InfoBubble";
 import Skeleton from "../../Common/Components/Skeleton/Skeleton";
-import WidgetBoard from "../../Common/Components/WidgetBoard/WidgetBoard";
+import AnchorRegion from "../../Common/Components/AnchorRegion/AnchorRegion";
 import { fetchFeed } from "../../Services/api";
 import { fetchProfile } from "../../Services/profile";
 import type { ProfileData } from "../../Types";
@@ -27,7 +27,7 @@ export interface ProfileProps {
 export default function Profile({ handle, editing = false }: ProfileProps) {
   const { t } = useTranslation();
   const auth = useAuth();
-  const { anchors, setAnchor, editing: arranging, setEditing } = usePageLayout();
+  const { setEditing } = usePageLayout();
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [posts, setPosts] = useState<PostSummary[] | null>(null);
@@ -82,12 +82,7 @@ export default function Profile({ handle, editing = false }: ProfileProps) {
   return (
     <ProfileScopeProvider value={{ profile, posts, readme, timeline, handle }}>
       <div className="profile">
-        <WidgetBoard
-          widgets={anchors.center}
-          flow="grid"
-          editing={arranging}
-          onChange={(next) => setAnchor("center", next)}
-        />
+        <AnchorRegion anchor="center" />
       </div>
     </ProfileScopeProvider>
   );

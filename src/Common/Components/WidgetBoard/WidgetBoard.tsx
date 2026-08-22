@@ -9,6 +9,7 @@ import {
   duplicateWidget,
   flowOf,
   isContainer,
+  makeWidget,
   moveWidget,
   placementOf,
   removeWidget,
@@ -22,7 +23,7 @@ import type { MenuItem, Widget, WidgetBoardProps } from "../../../Types";
 import { styleOf, styleVariables } from "../../../Services/widgetStyle";
 import { WIDGET_REGISTRY } from "../../../Widgets";
 import { usePageLayout } from "../../../Services/pageLayout";
-import { DRAG_TYPE } from "../../../Services/widgetDrag";
+import { DRAG_TYPE, readWidgetDrag } from "../../../Services/widgetDrag";
 import { useFitRow } from "../../Hooks/useFitRow";
 import { useOverflow } from "../../Hooks/useOverflow";
 import { useFlip } from "../../Hooks/useFlip";
@@ -58,25 +59,13 @@ const WidgetSlot = memo(function WidgetSlot({
   const View = WIDGET_REGISTRY[widget.kind];
   const onChange = useCallback((next: Widget) => replace(widget.id, next), [replace, widget.id]);
 
-  return (
-    <View widget={widget} editing={editing} onChange={onChange}>
-      {children}
-    </View>
-  );
+  return <View widget={widget} editing={editing} onChange={onChange}>{children}</View>;
 });
 
 /**
- * The board a page is arranged on, and — when `editing` — the editor for it.
+ * The surface widgets sit on.
  *
- * There is deliberately no separate preview pane. What is being edited is the page itself, with
- * handles laid over the real widgets, because an editor showing an abstraction of the page makes you
- * imagine the result rather than see it.
- *
- * Containers hold boards of their own, which is how one component renders the header bar, the
- * footer, a sidebar and the profile body: they differ only in which anchor they sit at and which
- * flow they were set to.
- *
- * Dragging is pointer-only by nature, so everything a drag does is also on a button: resize,
+ * It handles the five things every board shares, whatever anchor it lives at: selection, reordering,
  * duplicate, remove, and a container's layout. A page should not be arrangeable only with a mouse.
  */
 export default function WidgetBoard({
@@ -85,6 +74,7 @@ export default function WidgetBoard({
   scroll = "none",
   editing = false,
   anchor,
+  containerId,
   onChange,
 }: WidgetBoardProps) {
   const { t } = useTranslation();
@@ -110,7 +100,18 @@ export default function WidgetBoard({
   const flipRef = useFlip();
 
   const free = flow === "free";
-  const { announceDrag } = usePageLayout();
+  const {
+    announceDrag,
+    dragging: draggingGlobal,
+    finalizePreview,
+    moveWidgetToContainer,
+    insertPreviewIntoContainer,
+  } = usePageLayout();
+  const activeDraggingId =
+    dragging ??
+    (draggingGlobal?.id && widgets.some((w) => w.id === draggingGlobal.id)
+      ? draggingGlobal.id
+      : null);
 
   // The safety net for a resize: capture can be lost when the handle is reconciled mid-drag, and
   // without this the release never arrives and the widget stays locked out of dragging.
@@ -182,7 +183,7 @@ export default function WidgetBoard({
   // Only worth flagging where nothing can be done about it by scrolling.
   const overflow = useOverflow(editing && scroll === "none");
 
-  const update = (next: Widget[]) => onChange?.(next);
+  const update = (next: Widget[] | ((prev: Widget[]) => Widget[])) => onChange?.(next);
   const replace = (id: string, next: Widget) =>
     update(widgets.map((item) => (item.id === id ? next : item)));
 
@@ -243,19 +244,25 @@ export default function WidgetBoard({
    * means swapping back requires actually moving back.
    */
   const reorderOver = (target: Widget, event: { clientX: number; clientY: number }) => {
-    if (dragging === null || dragging === target.id) return;
+    if (activeDraggingId === null || activeDraggingId === target.id) return;
 
-    const from = widgets.findIndex((item) => item.id === dragging);
+    const from = widgets.findIndex((item) => item.id === activeDraggingId);
     const to = widgets.findIndex((item) => item.id === target.id);
     if (from === -1 || to === -1 || from === to) return;
 
-    const carried = draggedNode.current?.getBoundingClientRect();
+    const carried = draggedNode.current?.getBoundingClientRect() ?? flipRef.rect(activeDraggingId);
     const over = flipRef.rect(target.id);
 
-    if (carried && over) {
-      // Widgets side by side are approached across; stacked ones from above or below. Whichever
-      // separation is larger is the axis the gesture is actually happening on.
-      const horizontal = Math.abs(over.left - carried.left) > Math.abs(over.top - carried.top);
+    if (over) {
+      const horizontal =
+        flow === "row"
+          ? true
+          : flow === "column"
+            ? false
+            : carried
+              ? Math.abs(over.left - carried.left) > Math.abs(over.top - carried.top)
+              : over.width >= over.height;
+
       const forward = from < to;
 
       if (horizontal) {
@@ -445,6 +452,52 @@ export default function WidgetBoard({
           lasso.current = null;
           drawBand();
         }}
+        onDragOver={(e) => {
+          if (!editing || draggingGlobal === null) return;
+          if (containerId && draggingGlobal.id === containerId) return;
+
+          e.preventDefault();
+          if (containerId) e.stopPropagation();
+          e.dataTransfer.dropEffect = draggingGlobal.kind ? "copy" : "move";
+
+          if (containerId && draggingGlobal.kind && draggingGlobal.id) {
+            insertPreviewIntoContainer(draggingGlobal.id, draggingGlobal.kind, containerId);
+          } else if (activeDraggingId !== null && free) {
+            const item = widgets.find((w) => w.id === activeDraggingId);
+            if (item) placeOver(item, e);
+          }
+        }}
+        onDrop={(e) => {
+          if (!editing || draggingGlobal === null) return;
+          if (containerId && draggingGlobal.id === containerId) return;
+
+          e.preventDefault();
+          if (containerId) e.stopPropagation();
+
+          const payload = readWidgetDrag(e.dataTransfer);
+          if (!payload) return;
+
+          if (payload.kind && payload.id) {
+            finalizePreview();
+            return;
+          }
+
+          if (payload.kind) {
+            const created = makeWidget(payload.kind);
+            update((prev) => [...prev, created]);
+            finalizePreview();
+            return;
+          }
+
+          if (payload.id && containerId) {
+            moveWidgetToContainer(payload.id, containerId);
+          } else if (activeDraggingId !== null) {
+            draggedNode.current = null;
+            setDragging(null);
+            finalizePreview();
+            announceDrag(null);
+          }
+        }}
       >
         {editing && widgets.length === 0 && <EmptyBoard />}
 
@@ -461,6 +514,8 @@ export default function WidgetBoard({
                   flow={flowOf(widget)}
                   scroll={scrollOf(widget)}
                   editing={editing}
+                  anchor={anchor}
+                  containerId={widget.id}
                   onChange={(children) => replaceChildren(widget.id, children)}
                 />
               )}
@@ -473,7 +528,7 @@ export default function WidgetBoard({
               ref={flipRef.node(widget.id)}
               className={[
                 "widget",
-                dragging === widget.id ? "is-dragging" : "",
+                activeDraggingId === widget.id ? "is-dragging" : "",
                 selected.has(widget.id) ? "is-selected" : "",
               ]
                 .filter(Boolean)
@@ -531,21 +586,62 @@ export default function WidgetBoard({
                 announceDrag(null);
               }}
               onDragOver={(e) => {
-                if (!editing) return;
-                e.preventDefault();
-                // A container's own board handles drops inside it; this level must not also claim
-                // them, or dragging into a container would reorder the container instead.
-                e.stopPropagation();
-                if (free) placeOver(widget, e);
-                else reorderOver(widget, e);
+                if (!editing || draggingGlobal === null) return;
+                if (containerId && draggingGlobal.id === containerId) return;
+
+                if (activeDraggingId !== null) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (free) {
+                    const item = widgets.find((w) => w.id === activeDraggingId);
+                    if (item) placeOver(item, e);
+                  } else {
+                    reorderOver(widget, e);
+                  }
+                } else if (containerId && draggingGlobal.kind && draggingGlobal.id) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  insertPreviewIntoContainer(draggingGlobal.id, draggingGlobal.kind, containerId);
+                }
               }}
               onDrop={(e) => {
-                if (!editing) return;
-                // The order is already what the drag showed, so dropping only ends the gesture.
-                e.preventDefault();
-                e.stopPropagation();
-                draggedNode.current = null;
-                setDragging(null);
+                if (!editing || draggingGlobal === null) return;
+                if (containerId && draggingGlobal.id === containerId) return;
+
+                if (activeDraggingId !== null) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  draggedNode.current = null;
+                  setDragging(null);
+                  finalizePreview();
+                  announceDrag(null);
+                  return;
+                }
+
+                const payload = readWidgetDrag(e.dataTransfer);
+                if (!payload) return;
+
+                if (payload.kind && payload.id) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  finalizePreview();
+                  return;
+                }
+
+                if (payload.kind) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const created = makeWidget(payload.kind);
+                  update((prev) => [...prev, created]);
+                  finalizePreview();
+                  return;
+                }
+
+                if (payload.id && containerId) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  moveWidgetToContainer(payload.id, containerId);
+                }
               }}
             >
               {/* The corner badge an iPhone puts on a jiggling icon: it acts on this one widget, so

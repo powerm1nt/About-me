@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { WIDGETS, galleryKinds, newId } from "../../../Services/layout";
 import { fetchFeed } from "../../../Services/api";
@@ -39,7 +39,9 @@ export default function WidgetGallery({ onAdd }: WidgetGalleryProps) {
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [confirming, setConfirming] = useState<WidgetKind | null>(null);
-  const { announceDrag } = usePageLayout();
+  const { announceDrag, cancelPreview } = usePageLayout();
+  const toggleBtnRef = useRef<HTMLButtonElement>(null);
+  const [arrowX, setArrowX] = useState<number>(36);
 
   const [open, setOpen] = useState(() => {
     try {
@@ -48,6 +50,22 @@ export default function WidgetGallery({ onAdd }: WidgetGalleryProps) {
       return true;
     }
   });
+
+  useLayoutEffect(() => {
+    if (!open || !toggleBtnRef.current) return;
+    const updateArrow = () => {
+      const btn = toggleBtnRef.current;
+      if (!btn) return;
+      const rect = btn.getBoundingClientRect();
+      const parent = btn.parentElement?.parentElement;
+      const parentRect = parent?.getBoundingClientRect();
+      const x = rect.left - (parentRect?.left ?? rect.left) + rect.width / 2;
+      setArrowX(Math.max(16, Math.round(x)));
+    };
+    updateArrow();
+    window.addEventListener("resize", updateArrow);
+    return () => window.removeEventListener("resize", updateArrow);
+  }, [open]);
 
   const [real, setReal] = useState<ProfileScope | null>(null);
 
@@ -106,64 +124,80 @@ export default function WidgetGallery({ onAdd }: WidgetGalleryProps) {
   return (
     <section className="widget-gallery" aria-label={t("gallery.title")}>
       <div className="widget-gallery-bar">
-        <button type="button" className="widget-gallery-toggle" aria-expanded={open} onClick={toggle}>
+        <button
+          type="button"
+          ref={toggleBtnRef}
+          className="widget-gallery-toggle"
+          aria-expanded={open}
+          onClick={toggle}
+        >
           <span className="widget-gallery-caret" aria-hidden="true">{open ? "▾" : "▸"}</span>
           {t("gallery.title")}
         </button>
-
-        {open && (
-          <input
-            type="search"
-            className="widget-gallery-search"
-            value={query}
-            placeholder={t("gallery.search")}
-            aria-label={t("gallery.search")}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-        )}
       </div>
 
       {open && (
-        <ProfileScopeProvider value={scope}>
-          {kinds.length === 0 ? (
-            <p className="inspector-note">{t("gallery.noMatch")}</p>
-          ) : (
-            <ul className="widget-gallery-grid">
-              {kinds.map((kind) => {
-                const View = WIDGET_REGISTRY[kind];
-                const label = t(`widgets.${kind}.label`);
+        <div
+          className="widget-gallery-tooltip"
+          style={{ ["--gallery-arrow-x" as string]: `${arrowX}px` }}
+        >
+          <span className="gallery-tooltip-arrow" aria-hidden="true" />
 
-                return (
-                  <li className="widget-card" key={kind} data-widget={kind}>
-                    {/* inert: a preview holds real links and real buttons. */}
-                    <div className="widget-card-preview" inert aria-hidden="true">
-                      <View widget={sample(kind, t)} editing={false} preview onChange={() => {}} />
-                    </div>
+          <div className="widget-gallery-search-bar">
+            <input
+              type="search"
+              className="widget-gallery-search"
+              value={query}
+              placeholder={t("gallery.search")}
+              aria-label={t("gallery.search")}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
 
-                    {/* Also a button, so the shelf is not pointer-only. */}
-                    <button
-                      type="button"
-                      className="widget-card-button"
-                      draggable
-                      aria-label={`${t("gallery.drag")}: ${label}`}
-                      title={t("gallery.dragHint")}
-                      onDragStart={(e) => {
-                        e.dataTransfer.setData(DRAG_TYPE, JSON.stringify({ kind }));
-                        e.dataTransfer.effectAllowed = "copy";
-                        announceDrag({ kind });
-                      }}
-                      onDragEnd={() => announceDrag(null)}
-                      // Clicking is the fallback, not the way: it asks first, and says why.
-                      onClick={() => setConfirming(kind)}
-                    >
-                      <span className="widget-card-name">{label}</span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </ProfileScopeProvider>
+          <ProfileScopeProvider value={scope}>
+            {kinds.length === 0 ? (
+              <p className="inspector-note">{t("gallery.noMatch")}</p>
+            ) : (
+              <ul className="widget-gallery-grid">
+                {kinds.map((kind) => {
+                  const View = WIDGET_REGISTRY[kind];
+                  const label = t(`widgets.${kind}.label`);
+
+                  return (
+                    <li className="widget-card" key={kind} data-widget={kind}>
+                      {/* inert: a preview holds real links and real buttons. */}
+                      <div className="widget-card-preview" inert aria-hidden="true">
+                        <View widget={sample(kind, t)} editing={false} preview onChange={() => {}} />
+                      </div>
+
+                      {/* Also a button, so the shelf is not pointer-only. */}
+                      <button
+                        type="button"
+                        className="widget-card-button"
+                        draggable
+                        aria-label={`${t("gallery.drag")}: ${label}`}
+                        title={t("gallery.dragHint")}
+                        onDragStart={(e) => {
+                          const id = `w-${newId()}`;
+                          e.dataTransfer.setData(DRAG_TYPE, JSON.stringify({ id, kind }));
+                          e.dataTransfer.effectAllowed = "copy";
+                          announceDrag({ id, kind });
+                        }}
+                        onDragEnd={() => {
+                          cancelPreview();
+                        }}
+                        // Clicking is the fallback, not the way: it asks first, and says why.
+                        onClick={() => setConfirming(kind)}
+                      >
+                        <span className="widget-card-name">{label}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </ProfileScopeProvider>
+        </div>
       )}
 
       {confirming !== null && (

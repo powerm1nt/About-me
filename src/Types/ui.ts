@@ -8,6 +8,8 @@ export interface WidgetBoardProps {
   editing?: boolean;
   /** Which anchor this board belongs to, so a drag can be recognised by another one. */
   anchor?: Anchor;
+  /** Set if this board is nested inside a container widget. */
+  containerId?: string;
   /** Takes an updater as well as a list, so change handlers can be stable. */
   onChange?: (widgets: Widget[] | ((prev: Widget[]) => Widget[])) => void;
 }

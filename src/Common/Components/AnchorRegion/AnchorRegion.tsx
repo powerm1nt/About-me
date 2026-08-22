@@ -10,7 +10,17 @@ import WidgetBoard from "../WidgetBoard/WidgetBoard";
 /** One of the page's five positions, and whatever has been put there. */
 export default function AnchorRegion({ anchor, className, rail }: AnchorRegionProps) {
   const { t } = useTranslation();
-  const { anchors, setAnchor, boards, editing, moveWidget, dragging } = usePageLayout();
+  const {
+    anchors,
+    setAnchor,
+    boards,
+    setBoard,
+    editing,
+    moveWidget,
+    dragging,
+    insertPreviewWidget,
+    finalizePreview,
+  } = usePageLayout();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [over, setOver] = useState(false);
   const gear = useRef<HTMLButtonElement>(null);
@@ -34,7 +44,60 @@ export default function AnchorRegion({ anchor, className, rail }: AnchorRegionPr
 
   if (!enabled) {
     return (
-      <div className="anchor-region is-disabled" data-anchor={anchor}>
+      <div
+        className={[
+          "anchor-region",
+          "is-disabled",
+          isTarget ? "is-target" : "",
+          over ? "is-drop-target" : "",
+          className ?? "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        data-anchor={anchor}
+        onDragOver={(e) => {
+          if (!editing || !isTarget) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = dragging?.kind ? "copy" : "move";
+          setOver(true);
+
+          // Deliberately not enabling the anchor here: hovering is not a decision, and doing it on
+          // dragover both turned the anchor on without a drop and marked the layout dirty on every
+          // event. The drop below is what enables it.
+          if (dragging?.kind && dragging.id) {
+            insertPreviewWidget(dragging.id, dragging.kind, anchor);
+          }
+        }}
+        onDragLeave={(e) => {
+          if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+          setOver(false);
+        }}
+        onDrop={(e) => {
+          setOver(false);
+          if (!editing) return;
+
+          const payload = readWidgetDrag(e.dataTransfer);
+          if (!payload) return;
+          e.preventDefault();
+
+          setBoard(anchor, { enabled: true });
+
+          if (payload.kind && payload.id) {
+            finalizePreview();
+            return;
+          }
+
+          if (payload.kind) {
+            setAnchor(anchor, (prev) => addWidget(prev, payload.kind!));
+            return;
+          }
+
+          const source = payload.anchor ?? dragging?.anchor;
+          if (payload.id && source && source !== anchor) {
+            moveWidget(payload.id, source, anchor);
+          }
+        }}
+      >
         <button
           type="button"
           ref={gear}
@@ -48,6 +111,8 @@ export default function AnchorRegion({ anchor, className, rail }: AnchorRegionPr
         <p className="anchor-disabled-label">
           {t("anchors." + anchor)} · {t("boardInspector.disabled")}
         </p>
+
+        {isTarget && <span className="anchor-guide">{t(`anchors.${anchor}`)}</span>}
 
         {settingsOpen && (
           <BoardInspector anchor={anchor} trigger={gear} onClose={() => setSettingsOpen(false)} />
@@ -74,14 +139,22 @@ export default function AnchorRegion({ anchor, className, rail }: AnchorRegionPr
         ...(board.color ? { ["--anchor-color" as string]: board.color } : {}),
       }}
       onDragOver={(e) => {
-        if (!editing) return;
-        const payload = readWidgetDrag(e.dataTransfer);
-        // A new widget from the gallery, or one being moved here from somewhere else.
-        if (!payload || (payload.id && payload.anchor === anchor)) return;
+        // Decided from the drag in flight rather than from the DataTransfer: getData returns nothing
+        // during dragover in every browser — only drop may read it — so inspecting it here always
+        // came back empty, the guard bailed, preventDefault never ran and no drop was ever allowed.
+        if (!editing || !isTarget) return;
         e.preventDefault();
+        e.dataTransfer.dropEffect = dragging?.kind ? "copy" : "move";
         setOver(true);
+
+        if (dragging?.kind && dragging.id) {
+          insertPreviewWidget(dragging.id, dragging.kind, anchor);
+        }
       }}
-      onDragLeave={() => setOver(false)}
+      onDragLeave={(e) => {
+        if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+        setOver(false);
+      }}
       onDrop={(e) => {
         setOver(false);
         if (!editing) return;
@@ -90,13 +163,19 @@ export default function AnchorRegion({ anchor, className, rail }: AnchorRegionPr
         if (!payload) return;
         e.preventDefault();
 
+        if (payload.kind && payload.id) {
+          finalizePreview();
+          return;
+        }
+
         if (payload.kind) {
           setAnchor(anchor, (prev) => addWidget(prev, payload.kind!));
           return;
         }
 
-        if (payload.id && payload.anchor && payload.anchor !== anchor) {
-          moveWidget(payload.id, payload.anchor, anchor);
+        const source = payload.anchor ?? dragging?.anchor;
+        if (payload.id && source && source !== anchor) {
+          moveWidget(payload.id, source, anchor);
         }
       }}
     >
