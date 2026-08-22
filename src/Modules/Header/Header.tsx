@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import ExternalLink from "../../Common/Components/ExternalLink/ExternalLink";
 import HeadlineLogo from "../../Common/Components/HeadlineLogo/HeadlineLogo";
 import SmartImage from "../../Common/Components/SmartImage/SmartImage";
-import { Link, useRouter } from "../../Services/router";
+import { Link, apexHref, useRouter } from "../../Services/router";
 import { fetchMyProfile, updateMyProfile } from "../../Services/profile";
 import type { HeaderLink } from "../../Services/types";
 import { useAuth, signInHref } from "../../Services/auth";
@@ -120,9 +120,11 @@ export default function Header({ isJapanese }: HeaderProps) {
   // rather than following the reader around every page.
   const isCustomizing = activePath.toLowerCase().startsWith("/customize");
 
-  const homeHref = isJapanese ? "/ja" : "/";
-  const mediaHref = isJapanese ? "/media/ja" : "/media";
-  const exploreHref = isJapanese ? "/explore/ja" : "/explore";
+  // Always the feed. On a profile subdomain "/" is that person's profile, so Home points at the
+  // apex instead — the feed is the whole site's, not one profile's.
+  const homeHref = apexHref(isJapanese ? "/ja" : "/");
+  const mediaHref = apexHref(isJapanese ? "/media/ja" : "/media");
+  const exploreHref = apexHref(isJapanese ? "/explore/ja" : "/explore");
 
   const title = auth.isSignedIn && auth.user ? auth.user.name || "Hisuiki" : "Hisuiki";
   

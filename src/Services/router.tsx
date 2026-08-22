@@ -22,6 +22,26 @@ const RouterContext = createContext<RouterValue>({
 });
 
 /** Returns the handle of the current profile, parsed from subdomain or /users/:handle */
+/**
+ * The apex site, where the feed lives.
+ *
+ * A profile subdomain serves that person's profile at its root, so "Home" cannot simply be "/" —
+ * there it would mean the profile. This returns the address of the main site so Home always means
+ * the feed, whichever profile you happen to be reading.
+ */
+export function apexHref(path = "/"): string {
+  if (typeof window === "undefined") return path;
+
+  const { hostname, protocol, port } = window.location;
+  const parts = hostname.split(".");
+
+  // Not on a profile subdomain: an ordinary in-app path is already correct.
+  if (parts.length < 3) return path;
+
+  const apex = parts.slice(1).join(".");
+  return `${protocol}//${apex}${port ? `:${port}` : ""}${path}`;
+}
+
 export function getSiteHandle(): string | undefined {
   if (typeof window === "undefined") return undefined;
   const host = window.location.hostname;
@@ -90,6 +110,10 @@ export function Link({
         // Anything but a plain left-click means "open elsewhere" — let the browser have it.
         if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
         if (rest.target && rest.target !== "_self") return;
+
+        // Another origin — a profile subdomain linking back to the apex, say. pushState throws on a
+        // cross-origin URL, so this has to be a real navigation.
+        if (new URL(href, window.location.href).origin !== window.location.origin) return;
         e.preventDefault();
         navigate(injectedHref);
       }}
