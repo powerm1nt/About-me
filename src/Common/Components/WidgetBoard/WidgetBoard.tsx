@@ -1,4 +1,4 @@
-import { memo, useCallback, useRef, useState, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
   FREE_ROW_HEIGHT,
@@ -6,7 +6,6 @@ import {
   SIZE_SPAN,
   WIDGETS,
   cycleFlow,
-  cycleSize,
   duplicateWidget,
   flowOf,
   isContainer,
@@ -22,6 +21,7 @@ import {
 import type { MenuItem, Widget, WidgetBoardProps } from "../../../Types";
 import { styleOf, styleVariables } from "../../../Services/widgetStyle";
 import { WIDGET_REGISTRY } from "../../../Widgets";
+import { usePageLayout } from "../../../Services/pageLayout";
 import { DRAG_TYPE } from "../../../Services/widgetDrag";
 import { useFitRow } from "../../Hooks/useFitRow";
 import { useFlip } from "../../Hooks/useFlip";
@@ -107,6 +107,24 @@ export default function WidgetBoard({
   const flipRef = useFlip();
 
   const free = flow === "free";
+  const { announceDrag } = usePageLayout();
+
+  // The safety net for a resize: capture can be lost when the handle is reconciled mid-drag, and
+  // without this the release never arrives and the widget stays locked out of dragging.
+  useEffect(() => {
+    if (resizing === null) return;
+
+    const stop = () => setResizing(null);
+    window.addEventListener("pointerup", stop);
+    window.addEventListener("pointercancel", stop);
+    window.addEventListener("blur", stop);
+
+    return () => {
+      window.removeEventListener("pointerup", stop);
+      window.removeEventListener("pointercancel", stop);
+      window.removeEventListener("blur", stop);
+    };
+  }, [resizing]);
 
   /**
    * The widgets picked out, at this level only.
@@ -128,6 +146,16 @@ export default function WidgetBoard({
    */
   const lasso = useRef<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
   const band = useRef<HTMLDivElement | null>(null);
+
+  /** Clamped to the board: a lasso belongs to the board it started on, not to the whole viewport. */
+  const clampToBoard = (x: number, y: number) => {
+    const rect = boardRef.current?.getBoundingClientRect();
+    if (!rect) return { x, y };
+    return {
+      x: Math.min(Math.max(x, rect.left), rect.right),
+      y: Math.min(Math.max(y, rect.top), rect.bottom),
+    };
+  };
 
   const drawBand = () => {
     const box = lasso.current;
@@ -301,7 +329,8 @@ export default function WidgetBoard({
     if (event.target !== event.currentTarget) return;
 
     event.currentTarget.setPointerCapture(event.pointerId);
-    lasso.current = { x1: event.clientX, y1: event.clientY, x2: event.clientX, y2: event.clientY };
+    const start = clampToBoard(event.clientX, event.clientY);
+    lasso.current = { x1: start.x, y1: start.y, x2: start.x, y2: start.y };
     drawBand();
     // Only if something was selected: an unconditional set would re-render the board on every click
     // on the background.
@@ -406,7 +435,8 @@ export default function WidgetBoard({
         onPointerDown={startLasso}
         onPointerMove={(e) => {
           if (!lasso.current) return;
-          lasso.current = { ...lasso.current, x2: e.clientX, y2: e.clientY };
+          const point = clampToBoard(e.clientX, e.clientY);
+          lasso.current = { ...lasso.current, x2: point.x, y2: point.y };
           drawBand();
         }}
         onPointerUp={endLasso}
@@ -484,13 +514,16 @@ export default function WidgetBoard({
               onDragStart={(e) => {
                 draggedNode.current = e.currentTarget;
                 setDragging(widget.id);
-                // So another anchor can identify what landed on it.
+                // So another anchor can identify what landed on it, and so every anchor knows a
+                // drag is in flight and can offer itself as a target.
                 e.dataTransfer.setData(DRAG_TYPE, JSON.stringify({ id: widget.id, anchor }));
                 e.dataTransfer.effectAllowed = "move";
+                announceDrag({ id: widget.id, anchor });
               }}
               onDragEnd={() => {
                 draggedNode.current = null;
                 setDragging(null);
+                announceDrag(null);
               }}
               onDragOver={(e) => {
                 if (!editing) return;
@@ -552,15 +585,6 @@ export default function WidgetBoard({
                     <button
                       type="button"
                       className="widget-btn"
-                      title={t("board.resize")}
-                      disabled={spec.sizes.length < 2}
-                      onClick={() => replace(widget.id, { ...widget, size: cycleSize(widget) })}
-                    >
-                      {widget.size}
-                    </button>
-                    <button
-                      type="button"
-                      className="widget-btn"
                       title={t("board.duplicate")}
                       onClick={() => update(duplicateWidget(widgets, widget.id))}
                     >
@@ -595,7 +619,12 @@ export default function WidgetBoard({
                   onPointerDown={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    e.currentTarget.setPointerCapture(e.pointerId);
+                    try {
+                      e.currentTarget.setPointerCapture(e.pointerId);
+                    } catch {
+                      // Capture is an optimisation here; the window listeners are what guarantee
+                      // the release.
+                    }
                     setResizing(widget.id);
                   }}
                   onPointerMove={(e) => {
@@ -603,7 +632,11 @@ export default function WidgetBoard({
                     resizeTo(widget, e);
                   }}
                   onPointerUp={(e) => {
-                    e.currentTarget.releasePointerCapture(e.pointerId);
+                    try {
+                      e.currentTarget.releasePointerCapture(e.pointerId);
+                    } catch {
+                      // Already released, or never captured.
+                    }
                     setResizing(null);
                   }}
                   onPointerCancel={() => setResizing(null)}

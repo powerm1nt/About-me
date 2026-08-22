@@ -9,7 +9,7 @@ import WidgetBoard from "../WidgetBoard/WidgetBoard";
 /** One of the page's five positions, and whatever has been put there. */
 export default function AnchorRegion({ anchor, className }: AnchorRegionProps) {
   const { t } = useTranslation();
-  const { anchors, setAnchor, boards, editing, moveWidget } = usePageLayout();
+  const { anchors, setAnchor, boards, editing, moveWidget, dragging } = usePageLayout();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [over, setOver] = useState(false);
   const gear = useRef<HTMLButtonElement>(null);
@@ -17,6 +17,9 @@ export default function AnchorRegion({ anchor, className }: AnchorRegionProps) {
   const widgets = anchors[anchor] ?? [];
   const board = boards[anchor];
   const enabled = board.enabled !== false;
+
+  // Somewhere this widget could go: a drag is in flight and it did not start here.
+  const isTarget = Boolean(dragging && dragging.anchor !== anchor);
 
   // A disabled anchor is not a place widgets can be. An empty one shows only while arranging, so
   // the rails are somewhere to drop onto rather than four empty strips on a finished page.
@@ -29,7 +32,14 @@ export default function AnchorRegion({ anchor, className }: AnchorRegionProps) {
 
   return (
     <div
-      className={`anchor-region ${over ? "is-drop-target" : ""} ${className ?? ""}`.trim()}
+      className={[
+        "anchor-region",
+        isTarget ? "is-target" : "",
+        over ? "is-drop-target" : "",
+        className ?? "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
       data-anchor={anchor}
       data-background={background}
       style={{
@@ -79,6 +89,9 @@ export default function AnchorRegion({ anchor, className }: AnchorRegionProps) {
       {editing && widgets.length === 0 && (
         <p className="anchor-empty">{t("boardInspector.dropHere")}</p>
       )}
+
+      {/* Named while a drag is in flight, so the rails are findable rather than guessed at. */}
+      {isTarget && <span className="anchor-guide">{t(`anchors.${anchor}`)}</span>}
 
       {settingsOpen && (
         <BoardInspector anchor={anchor} trigger={gear} onClose={() => setSettingsOpen(false)} />

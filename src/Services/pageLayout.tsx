@@ -10,6 +10,7 @@ import {
 import { defaultAnchors, moveToAnchor, readBoards, readLayout, readPage, writeLayout } from "./layout";
 import { fetchMyProfile, updateMyProfile } from "./profile";
 import type { Anchor, AnchoredLayout, BoardSettings, PageSettings, Widget } from "../Types";
+import type { WidgetDrag } from "./widgetDrag";
 import { useAuth } from "./auth";
 
 interface PageLayoutValue {
@@ -31,6 +32,9 @@ interface PageLayoutValue {
   setPage: (page: PageSettings) => void;
   /** Moves a widget from one anchor to another, for a drag that crosses boards. */
   moveWidget: (id: string, from: Anchor, to: Anchor) => void;
+  /** What is being dragged right now, so every anchor can offer itself as a target. */
+  dragging: WidgetDrag | null;
+  announceDrag: (drag: WidgetDrag | null) => void;
   /** Throws away every customisation and goes back to the page the app ships. */
   reset: () => void;
   /** True while the owner is arranging the page. */
@@ -60,6 +64,8 @@ const PageLayoutContext = createContext<PageLayoutValue>({
   page: { wallpaper: { source: "bing" } },
   setPage: () => {},
   moveWidget: () => {},
+  dragging: null,
+  announceDrag: () => {},
   reset: () => {},
   editing: false,
   setEditing: () => {},
@@ -155,6 +161,9 @@ export function PageLayoutProvider({ children }: { children: ReactNode }) {
     setDirty(true);
   }, []);
 
+  const [dragging, setDragging] = useState<WidgetDrag | null>(null);
+  const announceDrag = useCallback((drag: WidgetDrag | null) => setDragging(drag), []);
+
   const moveWidget = useCallback((id: string, from: Anchor, to: Anchor) => {
     setAnchors((current) => moveToAnchor(current, id, from, to));
     setDirty(true);
@@ -183,8 +192,33 @@ export function PageLayoutProvider({ children }: { children: ReactNode }) {
   // Memoised for the same reason: a fresh object here re-renders every consumer on every render of
   // this provider, whatever actually changed.
   const layout = useMemo(
-    () => ({ anchors, setAnchor, boards, setBoard, page, setPage, moveWidget, reset, editing, setEditing }),
-    [anchors, setAnchor, boards, setBoard, page, setPage, moveWidget, reset, editing],
+    () => ({
+      anchors,
+      setAnchor,
+      boards,
+      setBoard,
+      page,
+      setPage,
+      moveWidget,
+      dragging,
+      announceDrag,
+      reset,
+      editing,
+      setEditing,
+    }),
+    [
+      anchors,
+      setAnchor,
+      boards,
+      setBoard,
+      page,
+      setPage,
+      moveWidget,
+      dragging,
+      announceDrag,
+      reset,
+      editing,
+    ],
   );
 
   const status = useMemo(() => ({ saveState, saveError }), [saveState, saveError]);

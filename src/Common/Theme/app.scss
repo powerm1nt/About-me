@@ -1497,3 +1497,30 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   .page-middle { flex-direction: column; }
   .page-side { width: auto; }
 }
+
+
+/* ── Drop guides ───────────────────────────────────────────────────────
+   Every anchor that could take the widget says so while it is in the air. */
+.anchor-region.is-target {
+  outline: 1px dashed var(--color-accent-strong);
+  outline-offset: -1px;
+  min-height: 3em;
+}
+.anchor-guide {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  z-index: 5;
+  padding: 0.1em 0.5em;
+  background: var(--color-accent);
+  color: #ffffff;
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-shadow: none;
+  pointer-events: none;
+}
+.anchor-region.is-drop-target { outline: 2px solid var(--color-accent-strong); outline-offset: -2px; }
+
+/* The band never leaves the board it started on. */
+.widget-lasso { z-index: 1400; }
