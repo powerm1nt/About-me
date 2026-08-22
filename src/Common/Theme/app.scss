@@ -493,8 +493,6 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   .history-compare { grid-template-columns: 1fr; }
 }
 
-
-
 /* ── Photos — square grid, flat tiles, no card chrome ─────────────────── */
 .photo-gallery { margin: 1.5em 0; }
 .photo-gallery h2 { font-size: 1.3rem; color: #ffffff; margin: 0; }
@@ -825,17 +823,20 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 .page-rail { width: clamp(280px, 85%, 1200px); margin: 0 auto; }
 /* No background of its own: the anchor inside paints it, from the setting in its board Inspector.
    Two sources for one effect meant the setting could never turn it off. */
+/* No padding here: the anchor inside paints the background, so anything between it and the top of
+   the window shows as a gap above the shadow. The spacing belongs to the anchor. */
 .page-top {
   position: relative;
   z-index: 100;
   width: 100%;
-  padding: 2em 0 0.6em;
   text-shadow: none;
 }
 .page-bottom { position: relative; z-index: 1; width: 100%; margin-top: auto; }
 .anchor-region { position: relative; min-width: 0; }
 .page-top > .anchor-region,
 .page-bottom > .anchor-region { width: 100%; }
+.page-top > .anchor-region { padding: 2em 0 0.6em; }
+.page-bottom > .anchor-region { padding: 0.6em 0 1.2em; }
 
 .link-widget-edit { display: inline-flex; align-items: baseline; gap: 0.5em; }
 .link-widget-href { font-size: 0.85rem; max-width: 18ch; }
@@ -851,43 +852,15 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 .widget { min-width: 0; }
 .widget-content { min-width: 0; }
 
-/* ── The edit-mode dance ────────────────────────────────────────────────
-   The rocking every icon does on an iPhone home screen once you hold one down. It is not decoration:
-   it is the only thing that says the whole board is live and every piece of it can be picked up, and
-   it says so without a banner or a mode indicator anywhere on screen.
-
-   Two keyframes and two durations, alternating, so the board does not rock in lockstep like a single
-   rigid sheet. The amplitude is under half a degree — enough to read as movement at a glance, small
-   enough that text stays legible while you aim at it.
-
-   The transform lands on the widget itself, which also carries `backdrop-filter`. That is safe: an
-   element's own transform makes it a backdrop root for its *descendants*, and everything inside a
-   widget already has `backdrop-filter: none`. What must never happen is a transform on an ancestor
-   like .file-content, which is what once silently killed the blur across the whole page. */
-@keyframes widget-dance-a {
-  0%, 100% { transform: rotate(-0.45deg) translate(-0.5px, 0.4px); }
-  50%      { transform: rotate(0.45deg) translate(0.5px, -0.4px); }
-}
-@keyframes widget-dance-b {
-  0%, 100% { transform: rotate(0.4deg) translate(0.5px, -0.4px); }
-  50%      { transform: rotate(-0.4deg) translate(-0.5px, 0.4px); }
-}
-
 /* Only in edit mode does a widget look like an object you can pick up. */
 .widget-board.is-editing .widget {
   border: 1px dashed rgba(255,255,255,0.25);
   padding: 0.6em;
   cursor: grab;
   transition: border-color 0.15s, opacity 0.15s;
-  animation: widget-dance-a 0.34s ease-in-out infinite;
-}
-.widget-board.is-editing .widget:nth-child(even) {
-  animation-name: widget-dance-b;
-  animation-duration: 0.3s;
 }
 .widget-board.is-editing .widget:hover { border-color: var(--color-accent); }
-/* The one in your hand holds still — it is following the pointer, not sitting on the board. */
-.widget-board.is-editing .widget.is-dragging { opacity: 0.45; cursor: grabbing; animation: none; }
+.widget-board.is-editing .widget.is-dragging { opacity: 0.45; cursor: grabbing; }
 /* No drop-target highlight: the board reorders under the pointer, so the gap already shows where the
    widget lands. Only the one being carried is marked, and it is marked by being faded out. */
 
@@ -915,15 +888,6 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 .widget-remove-badge:hover { background: var(--color-accent); color: #ffffff; }
-
-/* Held still while something is being dragged, so every rect measured during the gesture is the
-   widget's real box rather than its tilted one. */
-.widget-board.is-reordering .widget { animation: none; }
-
-@media (prefers-reduced-motion: reduce) {
-  .widget-board.is-editing .widget,
-  .widget-board.is-editing .widget:nth-child(even) { animation: none; }
-}
 
 .widget-chrome { display: flex; align-items: center; justify-content: space-between; gap: 0.6em; margin-bottom: 0.6em; flex-wrap: wrap; }
 /* The badge straddles the top-right corner, so the controls have to start clear of where it lands. */
@@ -1142,7 +1106,6 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
    with a message and take the unsaved arrangement with it. */
 .editor-status.is-error { color: var(--color-danger); }
 
-
 /* ── Inspector ─────────────────────────────────────────────────────────
    One widget's whole configuration, hanging off the widget itself so there is never any doubt what
    is being changed. Portalled to <body> and positioned in viewport coordinates by <Anchored>, which
@@ -1225,7 +1188,6 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 }
 .inspector-note { margin: 0; font-size: 0.75rem; line-height: 1.5; color: var(--color-text-muted); }
 
-
 /* ── Winamp (Webamp) ───────────────────────────────────────────────────
    The player draws its own chrome from a skin, so the widget only reserves room for it and keeps it
    inside its own box. The classic windows are a fixed 275px wide; below that the skin crops rather
@@ -1268,7 +1230,6 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   border: 1px dashed rgba(255, 255, 255, 0.3);
   background: rgba(255, 255, 255, 0.04);
 }
-
 
 /* ── Selection, lasso and context menu ─────────────────────────────────
    Picking several widgets at once, so they can be acted on together — wrapping them into a container
@@ -1325,7 +1286,6 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
 }
 
-
 /* ── Settings ──────────────────────────────────────────────────────────
    The account and nothing else: how a page looks is decided on the page, in the Inspector. */
 .settings-form { display: flex; flex-direction: column; gap: 1rem; margin-top: 2rem; }
@@ -1344,7 +1304,6 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   border-color: var(--color-danger);
   color: #ffffff;
 }
-
 
 /* ── Inspector: font and colour ────────────────────────────────────────
    Both are shown rather than named: a list of font names set in one font, or a hex field with no
@@ -1380,7 +1339,6 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   font-size: 0.75rem;
   color: var(--color-text-secondary);
 }
-
 
 /* ── Board settings gear, spacer, media picker ─────────────────────── */
 .anchor-settings {
@@ -1428,7 +1386,6 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 }
 .spacer-mark { width: 3.5em; height: 3.5em; }
 
-
 /* ── Anchored panels ───────────────────────────────────────────────────
    The arrow tracks the anchor, not the panel, so it keeps pointing at the right thing after the
    panel has been shifted to stay on screen. */
@@ -1460,7 +1417,6 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
    scroll container and take the vertical scrolling with it, while clip leaves the other axis alone.
    Anything that genuinely needs to scroll sideways says so on its own container. */
 #app { overflow-x: clip; }
-
 
 /* ── Anchor backgrounds ────────────────────────────────────────────────
    Painted behind whatever is at an anchor, and only when something is there. Top and bottom default
@@ -1497,7 +1453,6 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   border: 1px dashed rgba(255, 255, 255, 0.18);
 }
 
-
 /* The middle band: optional rails either side of whatever the route renders. */
 .page-middle { display: flex; align-items: stretch; min-width: 0; flex: 1; }
 .page-middle > .profile-custom,
@@ -1508,7 +1463,6 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   .page-middle { flex-direction: column; }
   .page-side { width: auto; }
 }
-
 
 /* ── Drop guides ───────────────────────────────────────────────────────
    Every anchor that could take the widget says so while it is in the air. */
@@ -1535,7 +1489,6 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 
 /* The band never leaves the board it started on. */
 .widget-lasso { z-index: 1400; }
-
 
 /* ── Overflow warning ──────────────────────────────────────────────────
    A board holding more than it can show, where scrolling is off and nothing can be reached. The
@@ -1611,7 +1564,6 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 .overflow-tip-body { margin: 0 0 0.5em; line-height: 1.5; color: var(--color-text-secondary); }
 .overflow-tip-body:last-child { margin-bottom: 0; }
 
-
 /* ── Empty board ───────────────────────────────────────────────────────
    Shown wherever a board is empty while arranging, so nothing reads as broken or as finished. */
 .empty-board {
@@ -1631,7 +1583,6 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 /* A row lays its children out side by side; the placeholder is the only one and should fill it. */
 .widget-board[data-flow="row"] .empty-board,
 .widget-board[data-flow="wrap"] .empty-board { flex: 1 1 auto; padding: 0.8em; }
-
 
 /* A disabled anchor while arranging: just enough to find its settings again. */
 .anchor-region.is-disabled {

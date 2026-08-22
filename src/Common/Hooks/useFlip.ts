@@ -1,7 +1,6 @@
 import { useLayoutEffect, useRef } from "react";
 
-/** Below this many pixels a move is not worth animating — and the edit-mode dance alone can shift a
- *  measured rect by about a pixel, which would otherwise animate on every render. */
+/** Below this many pixels a move is not worth animating. */
 const THRESHOLD = 2;
 
 const DURATION = 220;

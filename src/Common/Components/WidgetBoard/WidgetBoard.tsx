@@ -415,16 +415,10 @@ export default function WidgetBoard({
 
   return (
     <>
-      {/* The dance stops for the duration of a drag. It is a transform, and every measurement made
-          here — where the pointer is relative to a widget's middle, where a widget has to slide from
-          — reads the transformed box: a full-width widget tilted less than half a degree still has
-          its corners several pixels off, which is enough to misread a midpoint and swap the wrong
-          pair. It resumes the moment the widget lands. */}
       <div
         className={[
           "widget-board",
           editing ? "is-editing" : "",
-          dragging !== null || resizing !== null ? "is-reordering" : "",
           resizing !== null ? "is-snapping" : "",
         ]
           .filter(Boolean)
