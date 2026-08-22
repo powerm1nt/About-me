@@ -171,9 +171,15 @@ export default function WidgetBoard({
       return;
     }
 
+    // Corners are kept in viewport coordinates because that is what the pointer reports; the band
+    // is positioned against the board, so they are converted here.
+    const rect = boardRef.current?.getBoundingClientRect();
+    const originX = rect?.left ?? 0;
+    const originY = rect?.top ?? 0;
+
     node.style.display = "block";
-    node.style.left = `${Math.min(box.x1, box.x2)}px`;
-    node.style.top = `${Math.min(box.y1, box.y2)}px`;
+    node.style.left = `${Math.min(box.x1, box.x2) - originX}px`;
+    node.style.top = `${Math.min(box.y1, box.y2) - originY}px`;
     node.style.width = `${Math.abs(box.x2 - box.x1)}px`;
     node.style.height = `${Math.abs(box.y2 - box.y1)}px`;
   };

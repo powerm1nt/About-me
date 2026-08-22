@@ -1286,8 +1286,12 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 
 /* Drawn in viewport coordinates, over everything, because the band is a gesture rather than part of
    the page: it must not be clipped by whichever container it happens to start in. */
+/* Absolute against the board, which is why drawBand converts the pointer's viewport coordinates
+   into board-relative ones. Without a position at all it sat in normal flow and its size pushed the
+   widgets around, which is what made it look like the coordinates were scrambled. */
 .widget-lasso {
-  z-index: 1400;
+  position: absolute;
+  z-index: 99999;
   pointer-events: none;
   border: 1px solid var(--color-accent-strong);
   background: rgba(84, 104, 224, 0.14);
@@ -1539,7 +1543,6 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 .anchor-region.is-drop-target { outline: 2px solid var(--color-accent-strong); outline-offset: -2px; }
 
 /* The band never leaves the board it started on. */
-.widget-lasso { z-index: 1400; }
 
 /* ── Overflow warning ──────────────────────────────────────────────────
    A board holding more than it can show, where scrolling is off and nothing can be reached. The
