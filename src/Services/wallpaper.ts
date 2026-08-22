@@ -1,5 +1,5 @@
 import { apiUrl, assetUrl } from "./config";
-import type { BingWallpaper } from "./types";
+import type { BingWallpaper } from "../Types";
 import { setCssVars } from "./palette";
 
 /** Used when the API or Bing is unreachable. */

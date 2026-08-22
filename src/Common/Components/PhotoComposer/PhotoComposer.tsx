@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from "r
 import InfoBubble from "../InfoBubble/InfoBubble";
 import { createPhoto, uploadMedia } from "../../../Services/photos";
 import { prepareVariants, type PreparedImage } from "../../../Services/imageResize";
-import type { PhotoPost } from "../../../Services/types";
+import type { PhotoPost } from "../../../Types";
 
 export interface PhotoComposerProps {
   isJapanese: boolean;

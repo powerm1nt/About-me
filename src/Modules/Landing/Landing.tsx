@@ -5,7 +5,7 @@ import SmartImage from "../../Common/Components/SmartImage/SmartImage";
 import InfoBubble from "../../Common/Components/InfoBubble/InfoBubble";
 import { fetchFeed } from "../../Services/api";
 import { assetUrl } from "../../Services/config";
-import type { PostSummary } from "../../Services/types";
+import type { PostSummary } from "../../Types";
 
 export interface LandingProps {
   isJapanese: boolean;

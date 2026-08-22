@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import type { Widget, WidgetKind, WidgetStyle } from "./profile";
+import type { Widget, WidgetKind, WidgetStyle } from "../Types";
 
 /**
  * A widget's own appearance, and how it becomes CSS.

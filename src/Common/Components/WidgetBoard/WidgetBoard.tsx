@@ -21,14 +21,14 @@ import {
   type Flow,
   type Scroll,
 } from "../../../Services/layout";
-import type { Widget } from "../../../Services/profile";
+import type { Widget } from "../../../Types";
 import { styleOf, styleVariables } from "../../../Services/widgetStyle";
 import { WIDGET_REGISTRY } from "../../../Widgets";
 import { useFitRow } from "../../Hooks/useFitRow";
 import { useFlip } from "../../Hooks/useFlip";
 import ConfirmDialog from "../ConfirmDialog/ConfirmDialog";
 import ContextMenu, { type MenuItem } from "../ContextMenu/ContextMenu";
-import Inspector from "../Inspector/Inspector";
+import WidgetInspector from "../Inspector/WidgetInspector";
 
 /**
  * One widget's view, memoised.
@@ -669,10 +669,10 @@ export default function WidgetBoard({
         if (!target) return null;
 
         return (
-          <Inspector
+          <WidgetInspector
             widget={target}
             anchor={inspectorAnchor}
-            onChange={(next) => replace(target.id, next)}
+            onChange={(next: Widget) => replace(target.id, next)}
             onClose={() => inspect(null)}
           />
         );

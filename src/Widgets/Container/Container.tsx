@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { flowOf } from "../../Services/layout";
-import type { WidgetProps } from "../types";
+import type { WidgetProps } from "../../Types";
 
 /**
  * A widget that holds other widgets.

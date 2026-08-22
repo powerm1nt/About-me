@@ -22,7 +22,8 @@
     "confirmTitle": "このウィジェットを削除しますか？",
     "confirmMessage": "すぐにページから外れます。ウィジェットギャラリーから追加し直せますが、入力した内容は失われます。",
     "confirm": "削除",
-    "cancel": "キャンセル"
+    "cancel": "キャンセル",
+    "settings": "ボード設定"
   },
   "gallery": {
     "title": "ウィジェットギャラリー",
@@ -98,6 +99,10 @@
     "webamp": {
       "label": "Winamp",
       "description": "Webamp による Winamp。ファイルをドロップするか、URL を指定します。"
+    },
+    "spacer": {
+      "label": "スペーサー",
+      "description": "余白。要素を離したり、間を空けたりします。"
     }
   },
   "text": {
@@ -180,7 +185,9 @@
     "font": "フォント",
     "fontSample": "いろはにほへと The quick brown fox 0123",
     "custom": "任意の色",
-    "inherited": "継承"
+    "inherited": "継承",
+    "width": "幅（セル）",
+    "height": "高さ（セル）"
   },
   "webamp": {
     "untitled": "無題",
@@ -212,5 +219,26 @@
     "deleteWarning": "アカウントを削除すると、すべての投稿と設定が完全に消去されます。元に戻すことはできません。",
     "delete": "アカウントを削除する",
     "deleteConfirm": "本当にアカウントを削除しますか？"
+  },
+  "boardInspector": {
+    "tabs": {
+      "layout": "レイアウト",
+      "page": "ページ",
+      "advanced": "詳細"
+    },
+    "wallpaper": "壁紙",
+    "wallpapers": {
+      "bing": "今日の画像",
+      "url": "URL から",
+      "media": "自分のメディアから"
+    },
+    "wallpaperUrl": "画像の URL",
+    "pickMedia": "自分のメディア",
+    "noMedia": "まだメディアを投稿していません。",
+    "wallpaperNote": "プロフィールを見るすべての人に適用されます。",
+    "reset": "すべて初期化",
+    "resetNote": "ボード、ウィジェット、設定を初期状態に戻します。",
+    "resetTitle": "すべてのカスタマイズを初期化しますか？",
+    "resetMessage": "ボード、ウィジェット、設定がすべて初期状態に戻ります。ウィジェットに入力した内容は失われます。元に戻せません。"
   }
 }

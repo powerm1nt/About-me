@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { WIDGETS, galleryKinds, newId } from "../../../Services/layout";
-import type { Widget, WidgetKind } from "../../../Services/profile";
+import type { Widget, WidgetKind } from "../../../Types";
 import { ProfileScopeProvider, WIDGET_REGISTRY } from "../../../Widgets";
 import { DEMO_SCOPE } from "../../../Widgets/demo";
 

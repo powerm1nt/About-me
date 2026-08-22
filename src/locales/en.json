@@ -22,7 +22,8 @@
     "confirmTitle": "Remove this widget?",
     "confirmMessage": "It comes off the page straight away. You can add it again from the Widgets Gallery, but anything you typed into it is gone.",
     "confirm": "remove",
-    "cancel": "cancel"
+    "cancel": "cancel",
+    "settings": "Board settings"
   },
   "gallery": {
     "title": "Widgets Gallery",
@@ -98,6 +99,10 @@
     "webamp": {
       "label": "Winamp",
       "description": "A working Winamp, by way of Webamp. Drop in a file, or point it at one."
+    },
+    "spacer": {
+      "label": "Spacer",
+      "description": "Empty room, to push things apart or hold a gap open."
     }
   },
   "text": {
@@ -180,7 +185,9 @@
     "font": "Font",
     "fontSample": "The quick brown fox jumps over the lazy dog",
     "custom": "Custom colour",
-    "inherited": "inherited"
+    "inherited": "inherited",
+    "width": "Width (cells)",
+    "height": "Height (cells)"
   },
   "webamp": {
     "untitled": "Untitled",
@@ -212,5 +219,26 @@
     "deleteWarning": "Deleting your account permanently removes all your posts and settings. This cannot be undone.",
     "delete": "Delete account",
     "deleteConfirm": "Are you sure you want to delete your account?"
+  },
+  "boardInspector": {
+    "tabs": {
+      "layout": "Layout",
+      "page": "Page",
+      "advanced": "Advanced"
+    },
+    "wallpaper": "Wallpaper",
+    "wallpapers": {
+      "bing": "Picture of the day",
+      "url": "From a URL",
+      "media": "From your media"
+    },
+    "wallpaperUrl": "Image URL",
+    "pickMedia": "Your media",
+    "noMedia": "You have not posted any media yet.",
+    "wallpaperNote": "Applies to your profile for everyone who visits it.",
+    "reset": "Reset everything",
+    "resetNote": "Puts every board, widget and setting back to the way the app ships.",
+    "resetTitle": "Reset all customisations?",
+    "resetMessage": "Every board, widget and setting goes back to the default page. Anything you typed into a widget is lost. This cannot be undone."
   }
 }

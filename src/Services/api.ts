@@ -1,5 +1,5 @@
 import { apiUrl } from "./config";
-import type { ArticleMetadata, Page, PageRaw, PageRevision, PostSummary } from "./types";
+import type { ArticleMetadata, Page, PageRaw, PageRevision, PostSummary } from "../Types";
 
 /** The API's problem document if there is one, so the UI can show why a write was refused. */
 export async function readErrorMessage(response: Response): Promise<string> {

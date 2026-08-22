@@ -1,6 +1,6 @@
 import { createContext, useContext, type ReactNode } from "react";
-import type { ProfileData } from "../Services/profile";
-import type { PostSummary } from "../Services/types";
+import type { ProfileData } from "../Types";
+import type { PostSummary } from "../Types";
 
 export interface ProfileScope {
   profile: ProfileData;

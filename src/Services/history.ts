@@ -8,9 +8,9 @@
  * files is not worth a server round trip or a dependency.
  */
 import { fetchPageHistory, fetchPageVersion } from "./api";
-import type { PageRevision } from "./types";
+import type { PageRevision } from "../Types";
 
-export type { PageRevision } from "./types";
+export type { PageRevision } from "../Types";
 
 export type DiffLineType = "context" | "added" | "removed";
 

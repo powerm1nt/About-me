@@ -1,4 +1,13 @@
-import type { Anchor, AnchoredLayout, ProfileLayout, Widget, WidgetKind, WidgetSize } from "./profile";
+import type {
+  Anchor,
+  AnchoredLayout,
+  BoardSettings,
+  PageSettings,
+  ProfileLayout,
+  Widget,
+  WidgetKind,
+  WidgetSize,
+} from "../Types";
 import { readStyle } from "./widgetStyle";
 
 /**
@@ -199,6 +208,16 @@ export const WIDGETS: Record<WidgetKind, WidgetSpec> = {
     confirmRemove: true,
     defaultSize: "large",
     sizes: ["large"],
+  },
+  spacer: {
+    label: { en: "Spacer", ja: "スペーサー" },
+    description: {
+      en: "Empty room, to push things apart or hold a gap open.",
+      ja: "余白。要素を離したり、間を空けたりします。",
+    },
+    confirmRemove: false,
+    defaultSize: "small",
+    sizes: ["small", "medium", "large"],
   },
   webamp: {
     label: { en: "Winamp", ja: "Winamp" },
@@ -420,9 +439,70 @@ function migrate(layout: ProfileLayout | null | undefined): AnchoredLayout {
   return anchors;
 }
 
-export const writeLayout = (anchors: AnchoredLayout): ProfileLayout => ({
+/** The flow each anchor uses when nothing has been chosen: what that position is usually for. */
+export const DEFAULT_BOARD_FLOW: Record<Anchor, Flow> = {
+  top: "column",
+  left: "column",
+  center: "grid",
+  right: "column",
+  bottom: "column",
+};
+
+/** Read back through the same clamp as everything else: this comes from a stored document. */
+export function readBoards(raw: unknown): Record<Anchor, BoardSettings> {
+  const source = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const boards = {} as Record<Anchor, BoardSettings>;
+
+  for (const anchor of ANCHORS) {
+    const stored = source[anchor];
+    const value = stored && typeof stored === "object" ? (stored as BoardSettings) : {};
+    boards[anchor] = {
+      flow: (FLOWS as string[]).includes(String(value.flow))
+        ? (value.flow as Flow)
+        : DEFAULT_BOARD_FLOW[anchor],
+      scroll: (SCROLLS as string[]).includes(String(value.scroll)) ? (value.scroll as Scroll) : "none",
+    };
+  }
+
+  return boards;
+}
+
+/** Where the wallpaper comes from, defaulting to the picture of the day. */
+export function readPage(raw: unknown): PageSettings {
+  const source = raw && typeof raw === "object" ? (raw as PageSettings) : {};
+  const wallpaper = source.wallpaper;
+
+  if (!wallpaper || typeof wallpaper !== "object") return { wallpaper: { source: "bing" } };
+
+  const kind = wallpaper.source;
+  if (kind !== "url" && kind !== "media") return { wallpaper: { source: "bing" } };
+
+  // Only http(s), and only a URL that parses: this ends up as an image source on the page.
+  const url = typeof wallpaper.url === "string" ? wallpaper.url.trim() : "";
+  if (!url) return { wallpaper: { source: "bing" } };
+
+  try {
+    const parsed = new URL(url, "https://example.invalid");
+    const relative = url.startsWith("/");
+    if (!relative && parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+      return { wallpaper: { source: "bing" } };
+    }
+  } catch {
+    return { wallpaper: { source: "bing" } };
+  }
+
+  return { wallpaper: { source: kind, url } };
+}
+
+export const writeLayout = (
+  anchors: AnchoredLayout,
+  boards?: Record<Anchor, BoardSettings>,
+  page?: PageSettings,
+): ProfileLayout => ({
   version: LAYOUT_VERSION,
   anchors,
+  boards,
+  page,
 });
 
 /** Moves a widget to another position within one list, returning a new array. */

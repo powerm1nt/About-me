@@ -127,7 +127,7 @@ function Shell() {
 
       <header className="page-top">
         <div className="page-rail">
-          <AnchorRegion anchor="top" flow="column" />
+          <AnchorRegion anchor="top" />
         </div>
       </header>
 
@@ -198,7 +198,7 @@ function Shell() {
 
       <footer className="page-bottom">
         <div className="page-rail">
-          <AnchorRegion anchor="bottom" flow="column" />
+          <AnchorRegion anchor="bottom" />
         </div>
       </footer>
 

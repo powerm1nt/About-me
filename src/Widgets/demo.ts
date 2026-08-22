@@ -1,6 +1,6 @@
-import type { ProfileScope } from "./context";
-import type { ProfileData } from "../Services/profile";
-import type { PostSummary } from "../Services/types";
+import type { ProfileScope } from "../Types";
+import type { ProfileData } from "../Types";
+import type { PostSummary } from "../Types";
 
 /**
  * Stand-in content, so a gallery tile shows a working widget rather than an empty one.

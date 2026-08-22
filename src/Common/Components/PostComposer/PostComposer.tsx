@@ -1,7 +1,7 @@
 import { useRef, useState, type FormEvent } from "react";
 import { createPost } from "../../../Services/api";
 import { useAuth } from "../../../Services/auth";
-import type { PostSummary } from "../../../Services/types";
+import type { PostSummary } from "../../../Types";
 
 export interface PostComposerProps {
   isJapanese: boolean;

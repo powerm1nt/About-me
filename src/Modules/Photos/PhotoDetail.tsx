@@ -15,7 +15,7 @@ import {
   toggleLike,
   updatePhoto,
 } from "../../Services/photos";
-import type { PhotoDetail as PhotoDetailData, PhotoPost } from "../../Services/types";
+import type { PhotoDetail as PhotoDetailData, PhotoPost } from "../../Types";
 
 export interface PhotoDetailProps {
   id: string;

@@ -5,7 +5,7 @@ import { Link } from "../../../Services/router";
 import { useAuth } from "../../../Services/auth";
 import { fetchArticles } from "../../../Services/api";
 import { articleRoute, postsFor } from "../../../Services/paths";
-import type { ArticleMetadata } from "../../../Services/types";
+import type { ArticleMetadata } from "../../../Types";
 
 export interface PostsIndexProps {
   isJapanese?: boolean;

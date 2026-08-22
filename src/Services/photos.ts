@@ -1,7 +1,7 @@
 import { getSiteHandle } from "./router";
 import { readErrorMessage } from "./api";
 import { apiUrl } from "./config";
-import type { PhotoComment, PhotoDetail, PhotoPost } from "./types";
+import type { PhotoComment, PhotoDetail, PhotoPost } from "../Types";
 
 /**
  * Client for the photo gallery API.

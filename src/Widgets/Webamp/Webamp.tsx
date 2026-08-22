@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { WidgetProps } from "../types";
+import type { WidgetProps } from "../../Types";
 
 /**
  * One classic window, in pixels.

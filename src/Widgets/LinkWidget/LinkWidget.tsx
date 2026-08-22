@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import ExternalLink from "../../Common/Components/ExternalLink/ExternalLink";
-import type { WidgetProps } from "../types";
+import type { WidgetProps } from "../../Types";
 
 /**
  * A link somebody added themselves.

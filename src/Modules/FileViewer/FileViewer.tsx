@@ -9,7 +9,7 @@ import { useAuth } from "../../Services/auth";
 import { fetchArticles, fetchPage } from "../../Services/api";
 import { getSiteHandle } from "../../Services/router";
 import { articleRoute, postsFor } from "../../Services/paths";
-import type { ArticleMetadata, Page } from "../../Services/types";
+import type { ArticleMetadata, Page } from "../../Types";
 
 export interface FileViewerProps {
   /** Blob path of the page to show, e.g. "posts/welcome.ja.md". */

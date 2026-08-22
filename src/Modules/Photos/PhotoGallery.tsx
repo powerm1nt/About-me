@@ -5,7 +5,7 @@ import PhotoComposer from "../../Common/Components/PhotoComposer/PhotoComposer";
 import { Link } from "../../Services/router";
 import { useAuth } from "../../Services/auth";
 import { fetchPhotos, photoRoute } from "../../Services/photos";
-import type { PhotoPost } from "../../Services/types";
+import type { PhotoPost } from "../../Types";
 
 export interface PhotoGalleryProps {
   isJapanese: boolean;

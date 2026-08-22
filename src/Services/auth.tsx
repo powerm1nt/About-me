@@ -1,6 +1,6 @@
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { authClient } from "./authClient";
-import type { AuthUser } from "./types";
+import type { AuthUser } from "../Types";
 
 /**
  * Sign-in state, over better-auth's session hook.

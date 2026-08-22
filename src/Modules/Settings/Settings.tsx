@@ -4,16 +4,10 @@ import InfoBubble from "../../Common/Components/InfoBubble/InfoBubble";
 import Skeleton from "../../Common/Components/Skeleton/Skeleton";
 import { useAuth } from "../../Services/auth";
 import { apiUrl } from "../../Services/config";
-import { fetchMyProfile, updateMyProfile, type ProfileData } from "../../Services/profile";
+import { fetchMyProfile, updateMyProfile } from "../../Services/profile";
+import type { ProfileData } from "../../Types";
 
-/**
- * The account, and nothing else.
- *
- * Everything about how a page looks has moved to where it is looked at: widgets are styled in the
- * Inspector, the header and footer are arranged on the page itself, and links are widgets rather
- * than a JSON field. What is left here is what a form is actually good for — the handful of facts
- * about a person that are not part of any particular page.
- */
+/** The account. How a page looks is decided on the page, in the Inspector. */
 export default function Settings() {
   const { t } = useTranslation();
   const auth = useAuth();

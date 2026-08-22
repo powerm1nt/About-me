@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Link, apexHref, useRouter } from "../../Services/router";
-import type { WidgetProps } from "../types";
+import type { WidgetProps } from "../../Types";
 
 /** The site's own pages, and how each one decides it is the page you are on. */
 const TARGETS: Record<string, { path: string; active: (path: string) => boolean }> = {

@@ -1,4 +1,4 @@
-import type { WidgetRegistry } from "./types";
+import type { WidgetRegistry } from "../Types";
 
 import Account from "./Account/Account";
 import Bio from "./Bio/Bio";
@@ -10,6 +10,7 @@ import Identity from "./Identity/Identity";
 import LinkWidget from "./LinkWidget/LinkWidget";
 import Links from "./Links/Links";
 import Nav from "./Nav/Nav";
+import Spacer from "./Spacer/Spacer";
 import Text from "./Text/Text";
 import Timeline from "./Timeline/Timeline";
 import Webamp from "./Webamp/Webamp";
@@ -39,8 +40,8 @@ export const WIDGET_REGISTRY: WidgetRegistry = {
   heatmap: Heatmap,
   timeline: Timeline,
   text: Text,
+  spacer: Spacer,
   webamp: Webamp,
 };
 
-export type { WidgetProps, WidgetComponent, WidgetRegistry } from "./types";
 export { ProfileScopeProvider, useProfileScope } from "./context";

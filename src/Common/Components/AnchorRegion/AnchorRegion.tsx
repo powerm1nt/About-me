@@ -1,48 +1,48 @@
-import { useCallback } from "react";
-import type { Flow } from "../../../Services/layout";
+import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { usePageLayout } from "../../../Services/pageLayout";
-import type { Anchor } from "../../../Services/profile";
+import type { AnchorRegionProps, Flow, Scroll } from "../../../Types";
+import BoardInspector from "../Inspector/BoardInspector";
 import WidgetBoard from "../WidgetBoard/WidgetBoard";
 
-export interface AnchorRegionProps {
-  anchor: Anchor;
-  /** How the anchor itself lays its widgets out, before any container inside it takes over. */
-  flow?: Flow;
-  className?: string;
-}
+/** One of the page's five positions, and whatever has been put there. */
+export default function AnchorRegion({ anchor, className }: AnchorRegionProps) {
+  const { t } = useTranslation();
+  const { anchors, setAnchor, boards, editing } = usePageLayout();
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const gear = useRef<HTMLButtonElement>(null);
 
-/**
- * One of the page's five positions, and whatever has been put there.
- *
- * This is the whole of what used to be Header and Footer. Neither exists any more: the top anchor
- * holds a container of navigation widgets, the bottom anchor holds a container with the brand and
- * the colophon, and nothing in this file knows the difference. Moving that container from `top` to
- * `bottom` moves the header to the foot of the page, which is the point of anchors being the only
- * fixed vocabulary.
- *
- * An empty anchor renders nothing at all rather than an empty box, so the four unused positions on
- * an ordinary page cost no layout.
- */
-export default function AnchorRegion({ anchor, flow = "column", className }: AnchorRegionProps) {
-  const { anchors, setAnchor, editing } = usePageLayout();
   const widgets = anchors[anchor] ?? [];
-
-  // Stable, so the board below is not handed a new function on every render of this one.
-  const onChange = useCallback(
-    (next: Parameters<typeof setAnchor>[1]) => setAnchor(anchor, next),
-    [anchor, setAnchor],
-  );
+  const board = boards[anchor];
 
   if (widgets.length === 0 && !editing) return null;
 
   return (
     <div className={`anchor-region ${className ?? ""}`.trim()} data-anchor={anchor}>
+      {editing && (
+        <button
+          type="button"
+          ref={gear}
+          className="anchor-settings"
+          aria-label={`${t("board.settings")} · ${t(`anchors.${anchor}`)}`}
+          aria-expanded={settingsOpen}
+          onClick={() => setSettingsOpen(!settingsOpen)}
+        >
+          ⚙
+        </button>
+      )}
+
       <WidgetBoard
         widgets={widgets}
-        flow={flow}
+        flow={board.flow as Flow}
+        scroll={board.scroll as Scroll}
         editing={editing}
-        onChange={onChange}
+        onChange={(next) => setAnchor(anchor, next)}
       />
+
+      {settingsOpen && (
+        <BoardInspector anchor={anchor} trigger={gear} onClose={() => setSettingsOpen(false)} />
+      )}
     </div>
   );
 }
