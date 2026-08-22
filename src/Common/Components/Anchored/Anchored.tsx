@@ -15,14 +15,15 @@ export interface AnchoredProps {
 /**
  * A panel positioned under an element but rendered outside it.
  *
- * An absolutely-positioned popover inside the pivot strip could never work: that strip scrolls
- * horizontally, and `overflow-x: auto` makes `overflow-y` compute to `auto` as well, so the strip
- * clips the panel vertically and grows a scrollbar trying to contain it. No z-index fixes that —
- * clipping happens whatever the stacking order. So the panel goes to the end of <body> through a
- * portal and is positioned in viewport coordinates instead, where nothing can clip it.
+ * An absolutely-positioned panel is at the mercy of its ancestors. The pivot strip used to be a
+ * horizontal scroller, and `overflow-x` makes `overflow-y` compute to `auto` as well, so it clipped
+ * anything hanging below it and grew a scrollbar trying to contain it — which no z-index can fix,
+ * because clipping happens whatever the stacking order. The strip wraps now instead, but the header
+ * still sets its own `z-index`, which would cap anything nested inside it. Going to the end of
+ * <body> through a portal and positioning in viewport coordinates settles both at once.
  *
  * Because the position is measured rather than inherited, it has to be re-measured whenever anything
- * could have moved the anchor: scrolling (including the strip's own), and resizing.
+ * could have moved the anchor: scrolling, and resizing.
  */
 export default function Anchored({ anchor, align = "left", className, gap = 10, children }: AnchoredProps) {
   const [rect, setRect] = useState<DOMRect | null>(null);

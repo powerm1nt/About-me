@@ -145,16 +145,16 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   min-width: 0;
   display: flex;
   align-items: baseline;
-  gap: 2.4em;
-  /* overflow-x makes overflow-y compute to auto, so this clips vertically too — pad for
-     the pivot glyphs' descenders and cap-height overshoot. */
+  /* Wraps rather than scrolls. The strip used to be a horizontal scroller, which clipped: setting
+     overflow-x makes overflow-y compute to auto as well, so anything reaching past an item's own box
+     — the corner badges, the edit-mode dance, a popover hanging below — was cut off and dragged the
+     strip into scrolling after it. Wrapping costs a second line on a narrow screen and clips
+     nothing. Row gap is tight because the labels already carry their own leading. */
+  flex-wrap: wrap;
+  gap: 0.2em 2.4em;
+  /* Room for the pivot glyphs' descenders and cap-height overshoot. */
   padding: 0.5rem 0;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
 }
-.metro-pivot::-webkit-scrollbar { display: none; }
 /* Account tile — flat and square, brightens on hover/focus. */
 .metro-avatar-tile {
   flex: 0 0 auto;
@@ -189,12 +189,9 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 }
 .pivot-item:hover { color: var(--color-text-secondary); text-decoration: none; }
 .pivot-item.is-active { color: #ffffff; }
-/* Trailing room so the last big label can be scrolled clear of the edge. */
-.metro-pivot > :last-child { padding-right: 12vw; }
 @media screen and (max-width: 768px) {
   .metro-header-row { width: 95%; }
-  /* The whole item, not just the tile inside it: an empty wrapper left in the strip would still be
-     its last child, and would take the trailing scroll room meant for the last label. */
+  /* The whole item, not just the tile inside it, so no empty wrapper is left taking up a gap. */
   .header-item[data-kind="avatar"] { display: none; }
 }
 
@@ -206,7 +203,7 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
    toggle, and nothing at all when not arranging. */
 .header-item { flex: 0 0 auto; position: relative; display: inline-flex; align-items: baseline; }
 /* The tile is a square block; baseline-aligning it against 3.6rem labels would hang it far too low. */
-.header-item[data-kind="avatar"] { align-self: center; padding-right: 0; }
+.header-item[data-kind="avatar"] { align-self: center; }
 /* Pinned right only while it still ends the strip. Dragged into the middle it just sits inline,
    which is the point of it being an item rather than fixed chrome. */
 .header-item[data-kind="avatar"][data-tail] { margin-left: auto; }
@@ -471,8 +468,8 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 /* Pre-boot skeleton — mirrors the real app chrome */
 .sk-shell { display: flex; flex-direction: column; min-height: 100vh; font-family: "Segoe UI", system-ui, -apple-system, sans-serif; background-color: #121212; }
 .sk-header { background: transparent; }
-.sk-header-inner { width: clamp(280px,85%,1200px); margin: 0 auto; display: flex; align-items: center; gap: 1.5em; padding: 2em 0 0.6em; overflow: hidden; }
-.sk-pivot { flex: 1 1 auto; min-width: 0; display: flex; align-items: baseline; gap: 2.4em; overflow: hidden; }
+.sk-header-inner { width: clamp(280px,85%,1200px); margin: 0 auto; display: flex; align-items: center; gap: 1.5em; padding: 2em 0 0.6em; }
+.sk-pivot { flex: 1 1 auto; min-width: 0; display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.2em 2.4em; }
 .sk-nav-item { height: 2.6rem; border-radius: 0; }
 .sk-avatar-tile { flex: 0 0 auto; width: 3.4rem; height: 3.4rem; border-radius: 0; }
 .sk-body { display: flex; justify-content: center; flex: 1; padding: 0 0 2.5em; }
@@ -659,8 +656,7 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 /* Metro Dropdown Menu.
    Portalled to <body> by <Anchored> and positioned in viewport coordinates, so it inherits nothing
    from the app shell and must state its own type. It sets no `position` here for the same reason the
-   action popover does not: the inline `position: fixed` is what keeps it out of the clipping
-   scroller the account tile now lives in. */
+   action popover does not: the inline `position: fixed` is what carries it clear of the header. */
 .metro-dropdown-menu {
   z-index: 1200;
   min-width: 220px;
@@ -843,7 +839,8 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 .widget-board.is-editing .widget.is-hidden { opacity: 0.5; }
 
 /* The corner badge, where an iPhone puts it: over the widget's own edge rather than in a toolbar,
-   because it acts on that one widget and belongs to it. */
+   because it acts on that one widget and belongs to it. Nothing on the way up may clip, or half of
+   it disappears. */
 .widget-board.is-editing .widget { position: relative; }
 .widget-remove-badge {
   position: absolute;
@@ -973,9 +970,9 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 .pivot-name-input::placeholder { color: transparent; }
 
 /* Anchored under the item being named rather than centred on the screen: it is about that item.
-   Positioned by <Anchored>, which portals it out of the pivot strip and sets `position: fixed`
-   inline — so this rule must not set `position`, or it would win over the inline value's own
-   property and pull the panel back into a scroller that clips it. */
+   Positioned by <Anchored>, which portals it to <body> and sets `position: fixed` inline — so this
+   rule must not set `position`, or it would win over the inline value and pull the panel back under
+   the header's own stacking context. */
 .pivot-action-popover {
   z-index: 1200;
   min-width: 280px;
