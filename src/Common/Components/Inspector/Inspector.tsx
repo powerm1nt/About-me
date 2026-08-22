@@ -172,6 +172,33 @@ export default function Inspector({ widget, anchor, onChange, onClose }: Inspect
                 </>
               )}
 
+              {widget.kind === "webamp" && (
+                <>
+                  <label className="inspector-field">
+                    <span>{t("webamp.src")}</span>
+                    <input
+                      value={String(widget.props?.src ?? "")}
+                      placeholder="https://"
+                      onChange={(e) => setProp("src", e.target.value)}
+                    />
+                  </label>
+                  <label className="inspector-field">
+                    <span>{t("webamp.title")}</span>
+                    <input
+                      value={String(widget.props?.title ?? "")}
+                      onChange={(e) => setProp("title", e.target.value)}
+                    />
+                  </label>
+                  <label className="inspector-field">
+                    <span>{t("webamp.artist")}</span>
+                    <input
+                      value={String(widget.props?.artist ?? "")}
+                      onChange={(e) => setProp("artist", e.target.value)}
+                    />
+                  </label>
+                </>
+              )}
+
               {/* Taking the slack at the end of a bar is a layout question, not a style one. */}
               <label className="inspector-check">
                 <input

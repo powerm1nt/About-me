@@ -89,6 +89,10 @@
     "text": {
       "label": "Text",
       "description": "A heading and some words of your own."
+    },
+    "webamp": {
+      "label": "Winamp",
+      "description": "A working Winamp, by way of Webamp. Drop in a file, or point it at one."
     }
   },
   "text": {
@@ -168,5 +172,13 @@
       "both": "Both"
     },
     "scrollNote": "CSS cannot scroll one axis while the other stays visible, so anything reaching outside this container — a corner badge, a menu — will be clipped on both."
+  },
+  "webamp": {
+    "untitled": "Untitled",
+    "paused": "The player is paused while you arrange the page, so its windows do not fight the drag.",
+    "failed": "The player could not load.",
+    "src": "Audio URL",
+    "title": "Track title",
+    "artist": "Artist"
   }
 }

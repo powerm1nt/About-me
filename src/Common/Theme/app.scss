@@ -1139,3 +1139,28 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   width: 100%;
 }
 .inspector-note { margin: 0; font-size: 0.75rem; line-height: 1.5; color: var(--color-text-muted); }
+
+
+/* ── Winamp (Webamp) ───────────────────────────────────────────────────
+   The player draws its own chrome from a skin, so the widget only reserves room for it and keeps it
+   inside its own box. The classic windows are a fixed 275px wide; below that the skin crops rather
+   than reflowing, which is why the widget's smallest size is two columns. */
+.webamp-widget { position: relative; min-height: 348px; min-width: 275px; }
+/* Webamp positions its windows absolutely against the nearest positioned ancestor, which the rule
+   above makes the widget itself rather than the page. */
+.webamp-widget #webamp { position: absolute; inset: 0; }
+
+.webamp-widget.is-placeholder {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4em;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 1em;
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+  min-height: 8em;
+}
+.webamp-placeholder-title { margin: 0; font-weight: 600; letter-spacing: 0.02em; }
+.webamp-placeholder-note { margin: 0; font-size: 0.8rem; color: var(--color-text-muted); line-height: 1.5; }
+.webamp-placeholder-track { margin: 0; font-size: 0.8rem; color: var(--color-text-secondary); overflow-wrap: anywhere; }
+.webamp-widget.is-failed { margin: 0; font-size: 0.85rem; color: var(--color-text-muted); min-height: 0; }

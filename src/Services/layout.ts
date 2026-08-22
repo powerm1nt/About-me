@@ -162,6 +162,17 @@ export const WIDGETS: Record<WidgetKind, WidgetSpec> = {
     defaultSize: "large",
     sizes: ["large"],
   },
+  webamp: {
+    label: { en: "Winamp", ja: "Winamp" },
+    description: {
+      en: "A working Winamp, by way of Webamp. Drop in a file, or point it at one.",
+      ja: "Webamp による Winamp。ファイルをドロップするか、URL を指定します。",
+    },
+    confirmRemove: true,
+    // The main window is a fixed 275px wide, so anything under two columns crops it.
+    defaultSize: "medium",
+    sizes: ["medium", "large"],
+  },
   text: {
     label: { en: "Text", ja: "テキスト" },
     description: { en: "A heading and some words of your own.", ja: "自分で書く見出しと本文。" },

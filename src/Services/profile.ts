@@ -55,7 +55,8 @@ export type WidgetKind =
   | "bio"
   | "heatmap"
   | "timeline"
-  | "text";
+  | "text"
+  | "webamp";
 
 /** Widths, in the phone-home-screen sense rather than pixels. */
 export type WidgetSize = "small" | "medium" | "large";

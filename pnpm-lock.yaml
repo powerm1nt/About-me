@@ -35,6 +35,9 @@ importers:
       react-i18next:
         specifier: ^17.0.12
         version: 17.0.12(i18next@26.4.0(typescript@5.9.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@5.9.3)
+      webamp:
+        specifier: ^2.3.1
+        version: 2.3.1
     devDependencies:
       '@eslint/js':
         specifier: ^10.0.1
@@ -3303,6 +3306,9 @@ packages:
         optional: true
       yaml:
         optional: true
+
+  webamp@2.3.1:
+    resolution: {integrity: sha512-u2NpSKYsUfDKltcvteF3vDbAzp+kDiymr5Sn0Vgfl+Uk9Kvd4GmuaF3stOxKNLbDH+RkJ2YZfus7O3W2axq4Qg==}
 
   webidl-conversions@3.0.1:
     resolution: {integrity: sha512-2JAn3z8AR6rjK8Sm8orRC0h/bcl/DqL7tRPdGZ4I1CjdF+EaMLmYxBHyXuKL849eucPFhvBoxMsflfOb8kxaeQ==}
@@ -7011,6 +7017,8 @@ snapshots:
       jiti: 2.7.0
       sass: 1.102.0
       tsx: 4.23.12
+
+  webamp@2.3.1: {}
 
   webidl-conversions@3.0.1: {}
 

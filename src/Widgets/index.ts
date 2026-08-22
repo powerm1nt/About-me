@@ -12,6 +12,7 @@ import Links from "./Links/Links";
 import Nav from "./Nav/Nav";
 import Text from "./Text/Text";
 import Timeline from "./Timeline/Timeline";
+import Webamp from "./Webamp/Webamp";
 
 /**
  * Every widget there is.
@@ -38,6 +39,7 @@ export const WIDGET_REGISTRY: WidgetRegistry = {
   heatmap: Heatmap,
   timeline: Timeline,
   text: Text,
+  webamp: Webamp,
 };
 
 export type { WidgetProps, WidgetComponent, WidgetRegistry } from "./types";
