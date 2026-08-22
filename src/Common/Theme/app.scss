@@ -1020,8 +1020,12 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
    stored value is needed for the common case. */
 .widget {
   background: rgba(16, 12, 48, var(--widget-veil-alpha, 0.55));
-  backdrop-filter: blur(var(--widget-blur, 16px)) saturate(130%);
-  -webkit-backdrop-filter: blur(var(--widget-blur, 16px)) saturate(130%);
+  /* The whole value comes from the board, including the word "none" when the blur is off. It cannot
+     be a rule here that sets `none`: the minifier reads that as the property's initial value and
+     drops it, which leaves the -webkit- spelling alone and an override that fails in every browser
+     supporting the standard property. */
+  backdrop-filter: var(--widget-backdrop, blur(16px) saturate(130%));
+  -webkit-backdrop-filter: var(--widget-backdrop, blur(16px) saturate(130%));
   padding: clamp(0.9em, 2vw, 1.3em);
 }
 
@@ -1176,36 +1180,11 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 .webamp-widget #playlist-close-button,
 .webamp-widget #playlist-shade-button { display: none !important; }
 
-/* The still frame shown while arranging and in a gallery tile: enough of Winamp to be recognised,
-   with none of it running. */
-.webamp-widget.is-still { display: flex; flex-direction: column; gap: 0.6em; margin: 0; }
-.webamp-mock {
-  width: 100%;
-  max-width: 275px;
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  background: #1c1c22;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  color: #00e87b;
-}
-.webamp-mock-titlebar {
-  background: linear-gradient(to bottom, #3a3a48, #23232c);
-  padding: 0.2em 0.5em;
-  font-size: 0.6rem;
-  letter-spacing: 0.28em;
-  color: #b9b9c8;
-}
-.webamp-mock-display {
-  display: flex; align-items: baseline; gap: 0.7em;
-  padding: 0.6em 0.7em; background: #000000;
-}
-.webamp-mock-time { font-size: 1.4rem; line-height: 1; font-variant-numeric: tabular-nums; }
-.webamp-mock-track { font-size: 0.72rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.webamp-mock-transport {
-  display: flex; gap: 0.35em; padding: 0.45em 0.7em;
-  background: #23232c; color: #b9b9c8; font-size: 0.7rem;
-}
-.webamp-still-note { margin: 0; font-size: 0.78rem; color: var(--color-text-muted); line-height: 1.5; }
-.webamp-widget.is-failed { margin: 0; font-size: 0.85rem; color: var(--color-text-muted); }
+/* While the page is being arranged, and in a gallery tile, the real player is still there — it just
+   stops taking the pointer. Webamp's windows drag themselves, and two drag implementations over the
+   same pixels means neither works, so the drag falls through to the widget instead. */
+.webamp-widget.is-inert { pointer-events: none; }
+.webamp-widget.is-failed { margin: 0; font-size: 0.85rem; color: var(--color-text-muted); width: auto; height: auto; }
 
 /* A container previews as the arrangement it makes, in whichever direction it is set to. */
 .container-preview { display: flex; gap: 0.4em; width: 100%; }

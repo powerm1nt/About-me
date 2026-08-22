@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import type { Widget, WidgetStyle } from "./profile";
+import type { Widget, WidgetKind, WidgetStyle } from "./profile";
 
 /**
  * A widget's own appearance, and how it becomes CSS.
@@ -70,7 +70,45 @@ export function readStyle(raw: unknown): WidgetStyle | undefined {
   return style;
 }
 
-export const styleOf = (widget: Widget): WidgetStyle => ({ ...DEFAULT_STYLE, ...widget.style });
+/**
+ * Widgets that start out unlike the rest.
+ *
+ * Kept here rather than in the layout engine's spec table to avoid a cycle — that table already
+ * imports this file to validate a stored style — and it belongs here anyway: this file is where what
+ * a widget looks like is decided.
+ *
+ * Winamp draws its own chrome, down to the frame and the titlebar, so a frosted panel behind it is
+ * just a smear around the edges. More to the point, `backdrop-filter` creates a stacking context,
+ * and Webamp's windows carry z-indexes of their own that are then trapped inside it — which is what
+ * made them appear to sit behind each other wrongly.
+ */
+const KIND_STYLE: Partial<Record<WidgetKind, Partial<WidgetStyle>>> = {
+  webamp: { blur: 0, opacity: 0 },
+};
+
+export const styleOf = (widget: Widget): WidgetStyle => ({
+  ...DEFAULT_STYLE,
+  ...KIND_STYLE[widget.kind],
+  ...widget.style,
+});
+
+/**
+ * The whole backdrop-filter value, or the word "none".
+ *
+ * Zero blur has to mean no filter at all, not `blur(0px)`: the property itself is what creates a
+ * stacking context and a backdrop root, so at zero a widget would keep every side effect of the
+ * frosting while showing none of it — which is what trapped Winamp's own window z-indexes inside
+ * their widget.
+ *
+ * It is computed here and passed down as one custom property rather than expressed as a stylesheet
+ * rule setting `backdrop-filter: none`, because that rule does not survive the build: the minifier
+ * treats `none` as the property's initial value and drops it, leaving only the -webkit- spelling and
+ * an override that silently fails in every browser that supports the standard one.
+ */
+export const backdropFilter = (style: WidgetStyle): string => {
+  const blur = style.blur ?? DEFAULT_STYLE.blur;
+  return blur > 0 ? `blur(${blur}px) saturate(130%)` : "none";
+};
 
 /** True when the widget looks exactly as it would with no styling at all. */
 export const isDefaultStyle = (style: WidgetStyle): boolean =>
@@ -90,7 +128,7 @@ export const isDefaultStyle = (style: WidgetStyle): boolean =>
  */
 export function styleVariables(style: WidgetStyle): CSSProperties {
   const variables: Record<string, string> = {
-    "--widget-blur": `${style.blur ?? DEFAULT_STYLE.blur}px`,
+    "--widget-backdrop": backdropFilter(style),
     "--widget-veil-alpha": String(style.opacity ?? DEFAULT_STYLE.opacity),
   };
 

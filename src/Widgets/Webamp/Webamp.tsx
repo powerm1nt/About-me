@@ -8,8 +8,7 @@ import type { WidgetProps } from "../types";
  * Winamp's windows are a fixed 275 wide and 116 tall each; nothing about them reflows, which is why
  * the widget reserves exactly this much and centres it rather than trying to fill whatever space the
  * board gave it. Webamp centres its windows inside the element it is handed, so a host any larger
- * than the stack leaves the player floating somewhere in the middle of an empty box — which is what
- * made the widget's size look broken at anything above its smallest.
+ * than the stack leaves the player adrift in the middle of an empty box.
  */
 const WINDOW_WIDTH = 275;
 const WINDOW_HEIGHT = 116;
@@ -22,13 +21,15 @@ const STACK_HEIGHT = WINDOW_HEIGHT * 3;
  * skin renderer inside it, and a page whose owner has not put one on it should not pay for that —
  * so the import happens when the widget mounts, not when the app does.
  *
- * It is not mounted while the page is being arranged, nor in a gallery tile. Webamp's windows are
- * draggable in their own right, and two drag implementations over the same pixels means neither
- * works: picking the widget up would move the equaliser instead. A gallery of tiles would also mean
- * one audio context per tile, which browsers cap.
+ * It is the real player everywhere it appears, including while the page is being arranged and in the
+ * gallery. What changes in those places is only that it stops taking the pointer: Webamp's windows
+ * are draggable in their own right, and two drag implementations over the same pixels means neither
+ * works, so the player is made transparent to the pointer and the drag lands on the widget instead.
+ * The instance stays alive across that, since tearing down an audio context to grey out a control
+ * would stop whatever was playing.
  *
  * Its own window controls are disabled. Closing a window inside a widget leaves an empty box with no
- * way to get it back, and "minimise" means nothing for something that is already inside a page
+ * titlebar left to reopen it from, and "minimise" means nothing for something already in a page
  * rather than on a desktop. The close is refused through Webamp's own onWillClose rather than only
  * hidden, so the context menu and the keyboard cannot get around it either.
  */
@@ -41,11 +42,10 @@ export default function Webamp({ widget, editing, preview }: WidgetProps) {
   const title = String(widget.props?.title ?? "").trim();
   const artist = String(widget.props?.artist ?? "").trim();
 
-  const still = editing || preview;
+  // Deliberately not a reason to unmount: the player keeps running while the page is arranged.
+  const inert = editing || preview;
 
   useEffect(() => {
-    if (still) return;
-
     let disposed = false;
     let player: { dispose: () => void } | null = null;
 
@@ -106,38 +106,14 @@ export default function Webamp({ widget, editing, preview }: WidgetProps) {
       disposed = true;
       player?.dispose();
     };
-  }, [still, src, title, artist, t]);
-
-  if (still) {
-    return (
-      <div className="webamp-widget is-still">
-        <div className="webamp-mock" aria-hidden="true">
-          <div className="webamp-mock-titlebar">
-            <span className="webamp-mock-title">WINAMP</span>
-          </div>
-          <div className="webamp-mock-display">
-            <span className="webamp-mock-time">0:00</span>
-            <span className="webamp-mock-track">{title || t("webamp.untitled")}</span>
-          </div>
-          <div className="webamp-mock-transport">
-            {["⏮", "▶", "⏸", "⏹", "⏭"].map((glyph, i) => (
-              <span className="webamp-mock-button" key={i}>
-                {glyph}
-              </span>
-            ))}
-          </div>
-        </div>
-        {editing && <p className="webamp-still-note">{t("webamp.paused")}</p>}
-      </div>
-    );
-  }
+  }, [src, title, artist, t]);
 
   if (failed) return <p className="webamp-widget is-failed">{t("webamp.failed")}</p>;
 
   // Sized to the stack exactly, so Webamp's centring lands where the widget expects it.
   return (
     <div
-      className="webamp-widget"
+      className={`webamp-widget ${inert ? "is-inert" : ""}`.trim()}
       ref={host}
       style={{ width: WINDOW_WIDTH, height: STACK_HEIGHT }}
     />

@@ -179,7 +179,6 @@
   },
   "webamp": {
     "untitled": "Untitled",
-    "paused": "The player is paused while you arrange the page, so its windows do not fight the drag.",
     "failed": "The player could not load.",
     "src": "Audio URL",
     "title": "Track title",
