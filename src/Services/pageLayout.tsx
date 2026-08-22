@@ -85,7 +85,7 @@ export function PageLayoutProvider({ children }: { children: ReactNode }) {
           setSaveState("idle");
           setSaveError(err instanceof Error ? err.message : String(err));
         });
-    }, 700);
+    }, 1200);
 
     return () => window.clearTimeout(timer);
   }, [dirty, anchors, auth.isSignedIn]);

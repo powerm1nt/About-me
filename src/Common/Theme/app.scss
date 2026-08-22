@@ -117,6 +117,9 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
    the strip, its scrolling, its add control and its per-item chrome — went with the header
    component: the bar is a container of widgets now, and it gets its layout from the container's
    flow rather than from a rule that knew it was a header. */
+/* --row-fit is set by useFitRow on a non-scrolling row that would otherwise run off the page. It is
+   applied to sizes rather than as a transform on the row: a transform there would create a stacking
+   context and a backdrop root, which is what has repeatedly broken the frosting elsewhere. */
 .pivot-item {
   flex: 0 0 auto;
   white-space: nowrap;
@@ -124,7 +127,7 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   text-transform: lowercase;
   color: var(--color-text-faint);
   font-weight: 200;
-  font-size: clamp(2.6rem, 13vw, 3.6rem);
+  font-size: calc(clamp(2.6rem, 13vw, 3.6rem) * var(--row-fit, 1));
   line-height: 1.15;
   letter-spacing: -0.01em;
   transition: color 0.15s ease-in-out;
@@ -148,8 +151,8 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 /* Account tile — flat and square, brightens on hover/focus. */
 .metro-avatar-tile {
   flex: 0 0 auto;
-  width: 3.4rem;
-  height: 3.4rem;
+  width: calc(3.4rem * var(--row-fit, 1));
+  height: calc(3.4rem * var(--row-fit, 1));
   display: block;
   overflow: hidden;
   padding: 0;
@@ -723,7 +726,8 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   flex-direction: row;
   flex-wrap: nowrap;
   align-items: baseline;
-  gap: 2.4em;
+  /* Scales with the row, so the space between items closes as the items themselves shrink. */
+  gap: calc(2.4em * var(--row-fit, 1));
   min-width: 0;
 }
 .widget-board[data-flow="wrap"] {
@@ -734,6 +738,55 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   gap: 0.2em 2.4em;
 }
 .widget-board[data-flow="column"] { display: flex; flex-direction: column; gap: 1.2em; align-items: stretch; }
+
+/* A free board: the same four columns, but a widget names the cell it starts in as well as how many
+   it spans. Rows are a fixed height so that a cell has two known dimensions to snap to — columns
+   still reflow with the board, so a layout composed on a desktop narrows rather than scrambling. */
+.widget-board[data-flow="free"] {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-auto-rows: var(--free-row, 72px);
+  gap: 0;
+  align-items: stretch;
+  min-height: calc(var(--free-row, 72px) * 4);
+}
+
+/* The grid, drawn only while a corner is being pulled. It exists to be aimed at: a size that snaps
+   without showing what it is snapping to just looks like it is fighting you. */
+.widget-board.is-snapping::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(to right, var(--color-accent-soft) 0 1px, transparent 1px calc(100% / 4)),
+    repeating-linear-gradient(to bottom, var(--color-accent-soft) 0 1px, transparent 1px var(--free-row, 72px));
+  background-size: 100% 100%;
+}
+.widget-board.is-snapping > .widget { position: relative; z-index: 1; }
+
+/* The corner itself. Small, and only visible while the board is being arranged. */
+.widget-resize-handle {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  z-index: 3;
+  width: 14px;
+  height: 14px;
+  cursor: nwse-resize;
+  background: linear-gradient(
+    135deg,
+    transparent 0 40%,
+    var(--color-accent-strong) 40% 55%,
+    transparent 55% 70%,
+    var(--color-accent-strong) 70% 85%,
+    transparent 85%
+  );
+  touch-action: none;
+}
+.widget-resize-handle:focus-visible { outline: 2px dotted var(--color-text); outline-offset: 2px; }
 
 /* Scrolling, per container, off unless asked for. Only one axis can be named in CSS: setting either
    overflow property computes the other to auto, so a container told to scroll sideways clips

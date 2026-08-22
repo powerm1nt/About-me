@@ -31,6 +31,51 @@ export const ANCHOR_LABELS: Record<Anchor, { en: string; ja: string }> = {
 /** Columns on the widest grid layout. Narrower screens collapse this in CSS, not here. */
 export const GRID_COLUMNS = 4;
 
+/**
+ * The height of one row in a free layout, in pixels.
+ *
+ * A free board needs a cell with two known dimensions or there is nothing to snap to: columns come
+ * from the board's own width, rows have to be stated. Fixed rather than derived so that a widget
+ * placed on a wide screen keeps its proportions on a narrow one — the columns reflow, the rows do
+ * not stretch to fill.
+ */
+export const FREE_ROW_HEIGHT = 72;
+
+/**
+ * Where a widget sits on a free board.
+ *
+ * Columns and rows are 1-based, matching CSS grid lines, and spans are in cells. This is the one
+ * place the model holds anything like a coordinate, and it is still not a pixel: a free board
+ * reflows its columns like any other, so a layout composed on a desktop narrows rather than
+ * scrambling or scaling down illegibly.
+ */
+export interface Placement {
+  col: number;
+  row: number;
+  w: number;
+  h: number;
+}
+
+const int = (value: unknown, min: number, max: number, fallback: number): number => {
+  const number = typeof value === "number" ? Math.round(value) : Number.NaN;
+  if (!Number.isFinite(number)) return fallback;
+  return Math.min(max, Math.max(min, number));
+};
+
+/** Read back through a clamp: these come from a stored document that can be written by hand. */
+export function placementOf(item: Widget): Placement {
+  const props = item.props ?? {};
+  const w = int(props.w, 1, GRID_COLUMNS, SIZE_SPAN[item.size]);
+  const col = int(props.col, 1, GRID_COLUMNS - w + 1, 1);
+  return { col, row: int(props.row, 1, 500, 1), w, h: int(props.h, 1, 40, 1) };
+}
+
+/** A widget moved or resized on a free board, with the placement folded back into its props. */
+export const withPlacement = (item: Widget, place: Placement): Widget => ({
+  ...item,
+  props: { ...item.props, ...place },
+});
+
 /** How many columns each size occupies at full width. */
 export const SIZE_SPAN: Record<WidgetSize, number> = {
   small: 1,
@@ -47,16 +92,9 @@ export const SIZES: WidgetSize[] = ["small", "medium", "large"];
  * sit beside each other. "wrap" is the same line allowed to fold onto a second when it runs out of
  * room. "column" stacks. "grid" is the four-column board a profile's body uses.
  */
-export type Flow = "row" | "wrap" | "column" | "grid";
+export type Flow = "row" | "wrap" | "column" | "grid" | "free";
 
-export const FLOWS: Flow[] = ["row", "wrap", "column", "grid"];
-
-export const FLOW_LABELS: Record<Flow, { en: string; ja: string }> = {
-  row: { en: "row", ja: "横一列" },
-  wrap: { en: "wrap", ja: "折り返し" },
-  column: { en: "column", ja: "縦" },
-  grid: { en: "grid", ja: "グリッド" },
-};
+export const FLOWS: Flow[] = ["row", "wrap", "column", "grid", "free"];
 
 interface WidgetSpec {
   label: { en: string; ja: string };
@@ -453,6 +491,24 @@ export function cycleSize(item: Widget): WidgetSize {
   const sizes = WIDGETS[item.kind].sizes;
   const index = sizes.indexOf(item.size);
   return sizes[(index + 1) % sizes.length] ?? item.size;
+}
+
+/**
+ * The size closest to a given number of grid columns, among those this widget allows.
+ *
+ * Dragging a corner produces a column count; the model only knows three sizes. Rather than refusing
+ * the widths in between, the nearest allowed size wins — so a widget that only comes in full width
+ * snaps back to it instead of sticking at whatever the pointer last measured.
+ */
+export function sizeForSpan(kind: WidgetKind, span: number): WidgetSize {
+  const allowed = WIDGETS[kind].sizes;
+  let best = allowed[0] ?? WIDGETS[kind].defaultSize;
+
+  for (const size of allowed) {
+    if (Math.abs(SIZE_SPAN[size] - span) < Math.abs(SIZE_SPAN[best] - span)) best = size;
+  }
+
+  return best;
 }
 
 /** The next flow in the list, wrapping — what tapping a container's layout control does. */

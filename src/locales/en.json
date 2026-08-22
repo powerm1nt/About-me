@@ -43,7 +43,8 @@
     "row": "row",
     "wrap": "wrap",
     "column": "column",
-    "grid": "grid"
+    "grid": "grid",
+    "free": "free"
   },
   "widgets": {
     "container": {

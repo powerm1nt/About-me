@@ -1,6 +1,8 @@
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  FREE_ROW_HEIGHT,
+  GRID_COLUMNS,
   SIZE_SPAN,
   WIDGETS,
   cycleFlow,
@@ -9,14 +11,18 @@ import {
   flowOf,
   isContainer,
   moveWidget,
+  placementOf,
   removeWidget,
   scrollOf,
+  sizeForSpan,
+  withPlacement,
   type Flow,
   type Scroll,
 } from "../../../Services/layout";
 import type { Widget } from "../../../Services/profile";
 import { styleOf, styleVariables } from "../../../Services/widgetStyle";
 import { WIDGET_REGISTRY } from "../../../Widgets";
+import { useFitRow } from "../../Hooks/useFitRow";
 import { useFlip } from "../../Hooks/useFlip";
 import ConfirmDialog from "../ConfirmDialog/ConfirmDialog";
 import Inspector from "../Inspector/Inspector";
@@ -63,7 +69,16 @@ export default function WidgetBoard({
   // two widgets would leave no way to tell which one you were changing.
   const [inspecting, setInspecting] = useState<string | null>(null);
   const inspectorAnchor = useRef<HTMLElement | null>(null);
+  // The widget whose corner is being pulled. While this is set the board shows its grid, so there is
+  // something to aim at rather than a size that changes for no visible reason.
+  const [resizing, setResizing] = useState<string | null>(null);
+  const boardRef = useRef<HTMLDivElement | null>(null);
   const flipRef = useFlip();
+
+  const free = flow === "free";
+  // A row neither wraps nor clips, so one with more in it than the page is wide has to give way
+  // somewhere. Scrolling is a setting and wrapping is a different flow; left alone, it shrinks.
+  const fit = useFitRow(flow === "row" && scroll === "none");
 
   const update = (next: Widget[]) => onChange?.(next);
   const replace = (id: string, next: Widget) =>
@@ -109,6 +124,57 @@ export default function WidgetBoard({
     update(moveWidget(widgets, from, to));
   };
 
+  /** The size of one grid cell, measured rather than assumed: the columns reflow with the board. */
+  const cellSize = () => {
+    const rect = boardRef.current?.getBoundingClientRect();
+    if (!rect) return null;
+    return { rect, width: rect.width / GRID_COLUMNS, height: FREE_ROW_HEIGHT };
+  };
+
+  /**
+   * Pulling the bottom-right corner.
+   *
+   * On a free board this sets the widget's span in cells directly. On an ordinary grid there are
+   * only three widths to land on, so the column count is rounded to the nearest one the widget
+   * allows — a widget that only comes full width snaps back rather than sticking wherever the
+   * pointer stopped.
+   */
+  const resizeTo = (item: Widget, event: { clientX: number; clientY: number }) => {
+    const cell = cellSize();
+    const box = flipRef.rect(item.id);
+    if (!cell || !box) return;
+
+    const columns = Math.max(1, Math.round((event.clientX - box.left) / cell.width));
+
+    if (!free) {
+      const next = sizeForSpan(item.kind, Math.min(GRID_COLUMNS, columns));
+      if (next !== item.size) replace(item.id, { ...item, size: next });
+      return;
+    }
+
+    const place = placementOf(item);
+    const w = Math.min(GRID_COLUMNS - place.col + 1, columns);
+    const h = Math.max(1, Math.round((event.clientY - box.top) / cell.height));
+    if (w !== place.w || h !== place.h) replace(item.id, withPlacement(item, { ...place, w, h }));
+  };
+
+  /** Dragging on a free board puts the widget in a cell rather than reordering the list. */
+  const placeOver = (item: Widget, event: { clientX: number; clientY: number }) => {
+    const cell = cellSize();
+    if (!cell) return;
+
+    const place = placementOf(item);
+    const col = Math.min(
+      GRID_COLUMNS - place.w + 1,
+      Math.max(1, Math.floor((event.clientX - cell.rect.left) / cell.width) + 1),
+    );
+    const row = Math.max(1, Math.floor((event.clientY - cell.rect.top) / cell.height) + 1);
+
+    if (col !== place.col || row !== place.row) {
+      replace(item.id, withPlacement(item, { ...place, col, row }));
+    }
+  };
+
   return (
     <>
       {/* The dance stops for the duration of a drag. It is a transform, and every measurement made
@@ -120,12 +186,19 @@ export default function WidgetBoard({
         className={[
           "widget-board",
           editing ? "is-editing" : "",
-          dragging !== null ? "is-reordering" : "",
+          dragging !== null || resizing !== null ? "is-reordering" : "",
+          resizing !== null ? "is-snapping" : "",
         ]
           .filter(Boolean)
           .join(" ")}
+        ref={(node) => {
+          boardRef.current = node;
+          fit.ref(node);
+        }}
         data-flow={flow}
         data-scroll={scroll}
+        // The cell height a free board snaps to, so the CSS and the arithmetic cannot disagree.
+        style={free ? ({ "--free-row": `${FREE_ROW_HEIGHT}px` } as React.CSSProperties) : undefined}
       >
         {widgets.map((widget) => {
           const spec = WIDGETS[widget.kind];
@@ -160,9 +233,19 @@ export default function WidgetBoard({
               }}
               className={`widget ${dragging === widget.id ? "is-dragging" : ""}`.trim()}
               style={{
-                // Only a grid places by span. A row or a column is laid out by what is in it, and a
-                // grid-column on a flex item is simply ignored.
-                ...(flow === "grid" ? { gridColumn: `span ${SIZE_SPAN[widget.size]}` } : {}),
+                // A free board places by cell; an ordinary grid by span. A row or a column is laid
+                // out by what is in it, and a grid-column on a flex item is simply ignored.
+                ...(free
+                  ? (() => {
+                      const p = placementOf(widget);
+                      return {
+                        gridColumn: `${p.col} / span ${p.w}`,
+                        gridRow: `${p.row} / span ${p.h}`,
+                      };
+                    })()
+                  : flow === "grid"
+                    ? { gridColumn: `span ${SIZE_SPAN[widget.size]}` }
+                    : {}),
                 ...styleVariables(style),
               }}
               data-widget={widget.kind}
@@ -175,7 +258,7 @@ export default function WidgetBoard({
               // Takes the slack at the end of a bar — how the account tile sits at the far right
               // without being pinned there.
               data-push={widget.props?.push ? "" : undefined}
-              draggable={editing}
+              draggable={editing && resizing === null}
               onDragStart={(e) => {
                 draggedNode.current = e.currentTarget;
                 setDragging(widget.id);
@@ -190,7 +273,8 @@ export default function WidgetBoard({
                 // A container's own board handles drops inside it; this level must not also claim
                 // them, or dragging into a container would reorder the container instead.
                 e.stopPropagation();
-                reorderOver(widget, e);
+                if (free) placeOver(widget, e);
+                else reorderOver(widget, e);
               }}
               onDrop={(e) => {
                 if (!editing) return;
@@ -269,6 +353,51 @@ export default function WidgetBoard({
                     <span className="widget-grip" aria-hidden="true">⠿</span>
                   </div>
                 </div>
+              )}
+
+              {/* The corner you pull to resize. Pointer events rather than the drag machinery: a
+                  drag would move the widget, and this has to change its size while it stays put.
+                  Only where a size means something — a row or a column is measured by its contents. */}
+              {editing && (flow === "grid" || free) && (
+                <span
+                  className="widget-resize-handle"
+                  role="slider"
+                  tabIndex={0}
+                  aria-label={t("board.resize")}
+                  aria-valuenow={free ? placementOf(widget).w : SIZE_SPAN[widget.size]}
+                  aria-valuemin={1}
+                  aria-valuemax={GRID_COLUMNS}
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.currentTarget.setPointerCapture(e.pointerId);
+                    setResizing(widget.id);
+                  }}
+                  onPointerMove={(e) => {
+                    if (resizing !== widget.id) return;
+                    resizeTo(widget, e);
+                  }}
+                  onPointerUp={(e) => {
+                    e.currentTarget.releasePointerCapture(e.pointerId);
+                    setResizing(null);
+                  }}
+                  onPointerCancel={() => setResizing(null)}
+                  // The same thing from the keyboard, since a corner is pointer-only by nature.
+                  onKeyDown={(e) => {
+                    const step = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+                    if (step === 0) return;
+                    e.preventDefault();
+
+                    if (free) {
+                      const p = placementOf(widget);
+                      const w = Math.min(GRID_COLUMNS - p.col + 1, Math.max(1, p.w + step));
+                      replace(widget.id, withPlacement(widget, { ...p, w }));
+                    } else {
+                      const next = sizeForSpan(widget.kind, SIZE_SPAN[widget.size] + step);
+                      if (next !== widget.size) replace(widget.id, { ...widget, size: next });
+                    }
+                  }}
+                />
               )}
 
               {/* Only ever the server's scoped version: the raw source could restyle the whole app,

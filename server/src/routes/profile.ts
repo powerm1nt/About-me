@@ -46,7 +46,27 @@ profileRouter.put("/me", async (req, res) => {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
-  if (!consumeQuota(`profile:update:${viewer.id}`, 20, 60 * 60 * 1000)) {
+  /**
+   * Two different rates, because there are two different kinds of write here.
+   *
+   * Changing a handle, a stylesheet or a wallpaper is something a person does a handful of times,
+   * and twenty an hour is a generous ceiling on it. Arranging a page is not: the layout autosaves
+   * after every drag and every pause in typing, so the same ceiling was being spent in a couple of
+   * minutes of ordinary use and the editor started answering 429 to its own saves.
+   *
+   * A request that touches nothing but the layout gets its own, much larger allowance. It is still
+   * bounded — this is a write to the database from an unattended loop, and a stuck client should not
+   * be able to hammer it forever.
+   */
+  const layoutOnly =
+    Object.keys(req.body ?? {}).length > 0 &&
+    Object.keys(req.body ?? {}).every((field) => field === "layout");
+
+  const allowed = layoutOnly
+    ? consumeQuota(`profile:layout:${viewer.id}`, 600, 60 * 60 * 1000)
+    : consumeQuota(`profile:update:${viewer.id}`, 60, 60 * 60 * 1000);
+
+  if (!allowed) {
     return res.status(429).json({ error: "Profile update limit reached. Try again later." });
   }
 

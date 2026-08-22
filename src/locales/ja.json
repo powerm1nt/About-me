@@ -43,7 +43,8 @@
     "row": "横一列",
     "wrap": "折り返し",
     "column": "縦",
-    "grid": "グリッド"
+    "grid": "グリッド",
+    "free": "自由配置"
   },
   "widgets": {
     "container": {
