@@ -123,5 +123,50 @@
   "save": {
     "saving": "保存中…",
     "saved": "保存しました。"
+  },
+  "inspector": {
+    "title": "インスペクター",
+    "open": "設定",
+    "tabs": {
+      "general": "一般",
+      "customize": "外観",
+      "advanced": "詳細"
+    },
+    "size": "サイズ",
+    "sizes": {
+      "small": "小",
+      "medium": "中",
+      "large": "大"
+    },
+    "target": "ページ",
+    "push": "バーの端に寄せる",
+    "blur": "ぼかし",
+    "opacity": "背景の濃さ",
+    "border": "枠線",
+    "borders": {
+      "none": "なし",
+      "hairline": "細線",
+      "solid": "実線",
+      "accent": "アクセント"
+    },
+    "shadow": "影",
+    "shadows": {
+      "none": "なし",
+      "soft": "やわらかい",
+      "hard": "はっきり"
+    },
+    "accent": "アクセントカラー",
+    "clear": "消す",
+    "reset": "外観を初期化",
+    "css": "カスタム CSS",
+    "cssNote": "保存時にこのウィジェットの中だけに限定されます。外に出られる指定（固定配置、@import、外部URL）は取り除かれます。",
+    "scroll": "スクロール",
+    "scrolls": {
+      "none": "なし",
+      "inline": "横",
+      "block": "縦",
+      "both": "両方"
+    },
+    "scrollNote": "CSS では片方の軸だけをスクロールさせることはできません。コンテナからはみ出すもの（角のバッジ、メニューなど）は両方向で切り取られます。"
   }
 }

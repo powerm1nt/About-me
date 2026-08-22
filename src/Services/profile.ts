@@ -69,12 +69,40 @@ export type WidgetSize = "small" | "medium" | "large";
  */
 export type Anchor = "top" | "left" | "center" | "right" | "bottom";
 
+/**
+ * How one widget looks, as set in the Inspector.
+ *
+ * Every field but the stylesheet is a number or one of a fixed set of words, so it can be clamped on
+ * the way in and assigned to a custom property on the way out. See Services/widgetStyle.
+ */
+export interface WidgetStyle {
+  /** Backdrop blur in pixels. 0 turns the frosting off entirely. */
+  blur?: number;
+  /** How opaque the widget's own ground is, 0 to 1. */
+  opacity?: number;
+  /** Metro edge treatment. */
+  border?: "none" | "hairline" | "solid" | "accent";
+  /** A drop shadow, which is what lifts an anchored bar off the page behind it. */
+  shadow?: "none" | "soft" | "hard";
+  /** Overrides the accent colour for this widget and everything inside it. */
+  accent?: string;
+  /** What the author wrote in the Inspector's Advanced tab. Never rendered as-is. */
+  css?: string;
+  /**
+   * The server's confined version of `css`, scoped to this widget alone. This is the only form the
+   * page ever injects: the raw source could restyle the whole app, or somebody else's profile.
+   */
+  scopedCss?: string;
+}
+
 export interface Widget {
   id: string;
   kind: WidgetKind;
   size: WidgetSize;
   /** Per-kind settings — a text widget's words, a container's flow, a nav widget's target. */
   props?: Record<string, string | number | boolean>;
+  /** How it looks. Absent means the app's own styling. */
+  style?: WidgetStyle;
   /** What is inside, for a container. Leaf widgets have none. */
   children?: Widget[];
 }

@@ -10,17 +10,23 @@ import {
   isContainer,
   moveWidget,
   removeWidget,
+  scrollOf,
   type Flow,
+  type Scroll,
 } from "../../../Services/layout";
 import type { Widget } from "../../../Services/profile";
+import { styleOf, styleVariables } from "../../../Services/widgetStyle";
 import { WIDGET_REGISTRY } from "../../../Widgets";
 import { useFlip } from "../../Hooks/useFlip";
 import ConfirmDialog from "../ConfirmDialog/ConfirmDialog";
+import Inspector from "../Inspector/Inspector";
 
 export interface WidgetBoardProps {
   widgets: Widget[];
   /** How this level lays its widgets out. A container passes its own flow to its children. */
   flow?: Flow;
+  /** Whether this level scrolls. Off unless a container was set to. */
+  scroll?: Scroll;
   /** Editing turns the board into its own editor: the real page, with handles on it. */
   editing?: boolean;
   onChange?: (widgets: Widget[]) => void;
@@ -43,6 +49,7 @@ export interface WidgetBoardProps {
 export default function WidgetBoard({
   widgets,
   flow = "grid",
+  scroll = "none",
   editing = false,
   onChange,
 }: WidgetBoardProps) {
@@ -52,6 +59,10 @@ export default function WidgetBoard({
   const [dragging, setDragging] = useState<string | null>(null);
   const draggedNode = useRef<HTMLElement | null>(null);
   const [pendingRemoval, setPendingRemoval] = useState<Widget | null>(null);
+  // Which widget's Inspector is open, and the element it hangs from. One at a time: two panels for
+  // two widgets would leave no way to tell which one you were changing.
+  const [inspecting, setInspecting] = useState<string | null>(null);
+  const inspectorAnchor = useRef<HTMLElement | null>(null);
   const flipRef = useFlip();
 
   const update = (next: Widget[]) => onChange?.(next);
@@ -114,11 +125,13 @@ export default function WidgetBoard({
           .filter(Boolean)
           .join(" ")}
         data-flow={flow}
+        data-scroll={scroll}
       >
         {widgets.map((widget) => {
           const spec = WIDGETS[widget.kind];
           const View = WIDGET_REGISTRY[widget.kind];
           const container = isContainer(widget);
+          const style = styleOf(widget);
 
           const content = (
             <View
@@ -130,6 +143,7 @@ export default function WidgetBoard({
                 <WidgetBoard
                   widgets={widget.children ?? []}
                   flow={flowOf(widget)}
+                  scroll={scrollOf(widget)}
                   editing={editing}
                   onChange={(children) => replace(widget.id, { ...widget, children })}
                 />
@@ -140,12 +154,24 @@ export default function WidgetBoard({
           return (
             <section
               key={widget.id}
-              ref={flipRef.node(widget.id)}
+              ref={(node) => {
+                flipRef.node(widget.id)(node);
+                if (inspecting === widget.id) inspectorAnchor.current = node;
+              }}
               className={`widget ${dragging === widget.id ? "is-dragging" : ""}`.trim()}
-              // Only a grid places by span. A row or a column is laid out by what is in it, and a
-              // grid-column on a flex item is simply ignored.
-              style={flow === "grid" ? { gridColumn: `span ${SIZE_SPAN[widget.size]}` } : undefined}
+              style={{
+                // Only a grid places by span. A row or a column is laid out by what is in it, and a
+                // grid-column on a flex item is simply ignored.
+                ...(flow === "grid" ? { gridColumn: `span ${SIZE_SPAN[widget.size]}` } : {}),
+                ...styleVariables(style),
+              }}
               data-widget={widget.kind}
+              // What the server scopes this widget's own stylesheet to. Must match widgetScope() in
+              // server/services/layoutCss.ts, or a widget's CSS lands on nothing.
+              data-widget-id={widget.id}
+              data-border={style.border}
+              data-shadow={style.shadow}
+              data-inspecting={inspecting === widget.id ? "" : undefined}
               // Takes the slack at the end of a bar — how the account tile sits at the far right
               // without being pinned there.
               data-push={widget.props?.push ? "" : undefined}
@@ -231,16 +257,43 @@ export default function WidgetBoard({
                     >
                       ⧉
                     </button>
+                    <button
+                      type="button"
+                      className="widget-btn"
+                      title={t("inspector.open")}
+                      aria-expanded={inspecting === widget.id}
+                      onClick={() => setInspecting(inspecting === widget.id ? null : widget.id)}
+                    >
+                      ⚙
+                    </button>
                     <span className="widget-grip" aria-hidden="true">⠿</span>
                   </div>
                 </div>
               )}
+
+              {/* Only ever the server's scoped version: the raw source could restyle the whole app,
+                  or somebody else's profile on a shared page. */}
+              {style.scopedCss && <style>{style.scopedCss}</style>}
 
               <div className="widget-content">{content}</div>
             </section>
           );
         })}
       </div>
+
+      {editing && inspecting !== null && (() => {
+        const target = widgets.find((item) => item.id === inspecting);
+        if (!target) return null;
+
+        return (
+          <Inspector
+            widget={target}
+            anchor={inspectorAnchor}
+            onChange={(next) => replace(target.id, next)}
+            onClose={() => setInspecting(null)}
+          />
+        );
+      })()}
 
       {pendingRemoval !== null && (
         <ConfirmDialog

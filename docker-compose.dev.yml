@@ -96,6 +96,14 @@ services:
       TRUST_PRIVATE_NETWORK_ORIGINS: "true"
       BETTER_AUTH_SECRET: local-development-secret-not-used-anywhere-else
       AUTH_APP_NAME: Hisuiki (dev)
+      # Sign-in through GitHub and Google. Empty by default so the stack starts without an OAuth
+      # application; set them in ./.env (see .env.example) and the buttons appear on the sign-in
+      # page. A provider with no client id is not registered at all, because better-auth otherwise
+      # fails only when the button is pressed, as a 500 with nothing useful in it.
+      GITHUB_CLIENT_ID: "${GITHUB_CLIENT_ID:-}"
+      GITHUB_CLIENT_SECRET: "${GITHUB_CLIENT_SECRET:-}"
+      GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID:-}"
+      GOOGLE_CLIENT_SECRET: "${GOOGLE_CLIENT_SECRET:-}"
       # Empty: both halves are localhost in development, so the cookie needs no parent domain.
       AUTH_COOKIE_DOMAIN: ""
       SITE_OWNER_EMAILS: dev@example.com

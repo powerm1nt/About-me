@@ -4,6 +4,7 @@ import { Prisma } from "../generated/prisma/client.js";
 import { displayName, getViewer } from "../services/identity.js";
 import { saveContent } from "../services/content.js";
 import { PROFILE_SCOPE, scopeCss } from "../services/userContent.js";
+import { scopeLayoutCss } from "../services/layoutCss.js";
 import { consumeQuota } from "../services/rateLimit.js";
 
 export const profileRouter = Router();
@@ -54,6 +55,16 @@ profileRouter.put("/me", async (req, res) => {
     profileLinks, publicEmail, location, pronouns, layout,
   } = req.body;
 
+  /**
+   * Every widget's own stylesheet, confined to that widget.
+   *
+   * The layout is a JSON blob the client sends whole, so a stylesheet inside it would otherwise
+   * arrive unexamined and be served to anyone who visits this profile. It goes through the same
+   * filter as the profile's own custom CSS, and only the confined result is what the page renders.
+   */
+  const safeLayout =
+    layout === undefined ? undefined : (scopeLayoutCss(layout) as Prisma.InputJsonValue);
+
   // Refuse a stylesheet that cannot be made safe, rather than storing something whose scoped form is
   // empty and leaving the author wondering why nothing applied.
   if (customCss !== undefined && customCss !== null) {
@@ -99,7 +110,7 @@ profileRouter.put("/me", async (req, res) => {
       publicEmail,
       location,
       pronouns,
-      layout,
+      layout: safeLayout,
     },
     create: {
       userId: viewer.id,
@@ -115,7 +126,7 @@ profileRouter.put("/me", async (req, res) => {
       publicEmail,
       location,
       pronouns,
-      layout,
+      layout: safeLayout,
     },
   });
 

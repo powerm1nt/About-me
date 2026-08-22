@@ -123,5 +123,50 @@
   "save": {
     "saving": "Saving…",
     "saved": "Saved."
+  },
+  "inspector": {
+    "title": "Inspector",
+    "open": "Inspect",
+    "tabs": {
+      "general": "General",
+      "customize": "Customize",
+      "advanced": "Advanced"
+    },
+    "size": "Size",
+    "sizes": {
+      "small": "Small",
+      "medium": "Medium",
+      "large": "Large"
+    },
+    "target": "Page",
+    "push": "Push to the end of the bar",
+    "blur": "Blur",
+    "opacity": "Background",
+    "border": "Border",
+    "borders": {
+      "none": "None",
+      "hairline": "Hairline",
+      "solid": "Solid",
+      "accent": "Accent"
+    },
+    "shadow": "Drop shadow",
+    "shadows": {
+      "none": "None",
+      "soft": "Soft",
+      "hard": "Hard"
+    },
+    "accent": "Accent colour",
+    "clear": "Clear",
+    "reset": "Reset appearance",
+    "css": "Custom CSS",
+    "cssNote": "Confined to this widget when saved. Rules that could reach outside it — fixed positioning, imports, external URLs — are dropped.",
+    "scroll": "Scrolling",
+    "scrolls": {
+      "none": "None",
+      "inline": "Sideways",
+      "block": "Up and down",
+      "both": "Both"
+    },
+    "scrollNote": "CSS cannot scroll one axis while the other stays visible, so anything reaching outside this container — a corner badge, a menu — will be clipped on both."
   }
 }

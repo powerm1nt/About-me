@@ -57,7 +57,14 @@ app.use("/api", (_req, res, next) => {
  * and no bucket — so a static import crash-loops it on boot.
  */
 if (config.servesApi) {
-  const [{ toNodeHandler }, { auth }, { photosRouter }, { wallpaperRouter }, { profileRouter }, { postsRouter }] =
+  const [
+    { toNodeHandler },
+    { auth, availableProviders },
+    { photosRouter },
+    { wallpaperRouter },
+    { profileRouter },
+    { postsRouter },
+  ] =
     await Promise.all([
       import("better-auth/node"),
       import("./services/auth.js"),
@@ -70,6 +77,16 @@ if (config.servesApi) {
   app.all("/api/auth/*splat", toNodeHandler(auth));
 
   app.use(express.json({ limit: "1mb" }));
+
+  /**
+   * What this deployment can actually do, so the sign-in page does not offer a button that fails.
+   *
+   * A development stack has no OAuth application of its own, and pressing "Continue with GitHub"
+   * there used to reach better-auth with no client id and come back as an unexplained 500.
+   */
+  app.get("/api/site", (_req, res) => {
+    res.json({ socialProviders: availableProviders() });
+  });
 
   // No cache override: like and comment counts change per request and must never be shared-cached.
   app.use("/api/photos", photosRouter);

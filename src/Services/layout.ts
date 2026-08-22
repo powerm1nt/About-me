@@ -1,4 +1,5 @@
 import type { Anchor, AnchoredLayout, ProfileLayout, Widget, WidgetKind, WidgetSize } from "./profile";
+import { readStyle } from "./widgetStyle";
 
 /**
  * A page is a set of anchors, each holding widgets.
@@ -170,6 +171,27 @@ export const WIDGETS: Record<WidgetKind, WidgetSpec> = {
   },
 };
 
+/**
+ * Whether a container scrolls, and along which axis.
+ *
+ * Off by default, and deliberately opt-in: overflow is what clips, and the page is full of things
+ * that reach outside their own widget's box — corner badges, dropdowns, the edit-mode dance. Worth
+ * knowing before choosing one axis: CSS does not allow scrolling one axis while the other stays
+ * visible, so "inline" also clips vertically and "block" also clips horizontally. Only "none" leaves
+ * a container's overflow alone.
+ */
+export type Scroll = "none" | "inline" | "block" | "both";
+
+export const SCROLLS: Scroll[] = ["none", "inline", "block", "both"];
+
+/** How a container scrolls, defaulting to not at all. */
+export const scrollOf = (item: Widget): Scroll => {
+  const stored = item.props?.scroll;
+  return typeof stored === "string" && (SCROLLS as string[]).includes(stored)
+    ? (stored as Scroll)
+    : "none";
+};
+
 /** The flow a container lays its children out with, defaulting to a row. */
 export const flowOf = (item: Widget): Flow => {
   const stored = item.props?.flow;
@@ -264,6 +286,7 @@ function readWidget(raw: unknown, seen: Set<string>, depth: number): Widget | nu
     kind: value.kind,
     size: value.size && spec.sizes.includes(value.size) ? value.size : spec.defaultSize,
     props: value.props,
+    style: readStyle(value.style),
   };
 
   if (spec.container) {
@@ -376,6 +399,7 @@ function copyWidget(source: Widget): Widget {
     kind: source.kind,
     size: source.size,
     props: source.props ? { ...source.props } : undefined,
+    style: source.style ? { ...source.style } : undefined,
     children: source.children?.map(copyWidget),
   };
 }

@@ -1,8 +1,9 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import InfoBubble from "../../Common/Components/InfoBubble/InfoBubble";
 import { authClient } from "../../Services/authClient";
 import { RETURN_PARAM, useAuth } from "../../Services/auth";
 import { Link, useRouter } from "../../Services/router";
+import { apiUrl } from "../../Services/config";
 
 export interface SignInProps {
   isJapanese: boolean;
@@ -67,6 +68,26 @@ export default function SignIn({ isJapanese }: SignInProps) {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Empty until the server says otherwise, so a slow answer shows no social buttons rather than
+  // flashing up two that might not work.
+  const [providers, setProviders] = useState<string[]>([]);
+
+  useEffect(() => {
+    let active = true;
+
+    fetch(apiUrl("/api/site"), { credentials: "include" })
+      .then((res) => (res.ok ? (res.json() as Promise<{ socialProviders?: string[] }>) : null))
+      .then((site) => {
+        if (active && Array.isArray(site?.socialProviders)) setProviders(site.socialProviders);
+      })
+      .catch(() => {
+        // Email and password still work, which is the part that never depends on a third party.
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const social = async (provider: "github" | "google") => {
     setBusy(true);
@@ -133,26 +154,36 @@ export default function SignIn({ isJapanese }: SignInProps) {
 
       {error !== null && <InfoBubble title={error} className="md-component-danger" />}
 
-      <div className="signin-providers">
-        <button
-          type="button"
-          className="editor-btn editor-btn-cancel signin-provider"
-          onClick={() => void social("github")}
-          disabled={busy}
-        >
-          {text.withGithub}
-        </button>
-        <button
-          type="button"
-          className="editor-btn editor-btn-cancel signin-provider"
-          onClick={() => void social("google")}
-          disabled={busy}
-        >
-          {text.withGoogle}
-        </button>
-      </div>
+      {/* Only what this deployment is configured for. A development stack has no OAuth application
+          of its own, and a button that always fails is worse than no button. */}
+      {providers.length > 0 && (
+        <>
+          <div className="signin-providers">
+            {providers.includes("github") && (
+              <button
+                type="button"
+                className="editor-btn editor-btn-cancel signin-provider"
+                onClick={() => void social("github")}
+                disabled={busy}
+              >
+                {text.withGithub}
+              </button>
+            )}
+            {providers.includes("google") && (
+              <button
+                type="button"
+                className="editor-btn editor-btn-cancel signin-provider"
+                onClick={() => void social("google")}
+                disabled={busy}
+              >
+                {text.withGoogle}
+              </button>
+            )}
+          </div>
 
-      <p className="signin-separator">{text.or}</p>
+          <p className="signin-separator">{text.or}</p>
+        </>
+      )}
 
       <form className="signin-form" onSubmit={(e) => void submit(e)}>
         {mode === "signup" && (

@@ -12,6 +12,26 @@ import { config } from "../config.js";
 import { prisma } from "./prisma.js";
 import { trustedOrigins } from "./origins.js";
 
+
+/** Which social providers are configured, in the shape better-auth wants them. */
+function enabledProviders() {
+  const providers: Record<string, { clientId: string; clientSecret: string }> = {};
+
+  for (const [name, credentials] of [
+    ["github", config.auth.github],
+    ["google", config.auth.google],
+  ] as const) {
+    if (credentials.clientId && credentials.clientSecret) {
+      providers[name] = { clientId: credentials.clientId, clientSecret: credentials.clientSecret };
+    }
+  }
+
+  return providers;
+}
+
+/** The names of those providers, for the sign-in page to decide what to show. */
+export const availableProviders = (): string[] => Object.keys(enabledProviders());
+
 export const auth = betterAuth({
   appName: config.auth.appName,
   baseURL: config.auth.baseUrl,
@@ -26,16 +46,16 @@ export const auth = betterAuth({
     requireEmailVerification: false,
   },
 
-  socialProviders: {
-    github: {
-      clientId: config.auth.github.clientId,
-      clientSecret: config.auth.github.clientSecret,
-    },
-    google: {
-      clientId: config.auth.google.clientId,
-      clientSecret: config.auth.google.clientSecret,
-    },
-  },
+  /**
+   * Only the providers that have credentials.
+   *
+   * Registering one without a client id does not fail at startup — it fails when somebody presses
+   * the button, deep inside the authorisation-URL builder, as a 500 whose message never reaches the
+   * browser. A provider that cannot work is better left unregistered, so the attempt is refused
+   * cleanly and the sign-in page can decline to offer it at all. This is the ordinary state of a
+   * development stack, which has no OAuth application of its own.
+   */
+  socialProviders: enabledProviders(),
 
   // The same rule the CORS check uses: an origin trusted to call the API is trusted to be returned
   // to after a social redirect, and sharing one implementation means the two cannot drift apart.
