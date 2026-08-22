@@ -823,25 +823,19 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
    The five positions. What is at the top is a header because it is at the top, and for no other
    reason — so these rules say where, and nothing about what. */
 .page-rail { width: clamp(280px, 85%, 1200px); margin: 0 auto; }
+/* No background of its own: the anchor inside paints it, from the setting in its board Inspector.
+   Two sources for one effect meant the setting could never turn it off. */
 .page-top {
   position: relative;
   z-index: 100;
   width: 100%;
-  /* The bar sits directly on the wallpaper with no panel, so its thin labels need a guaranteed dark
-     base. A gradient rather than a blur: blurring a band this wide reads as a bar bolted over the
-     photo rather than chrome sitting on it. */
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0) 100%);
   padding: 2em 0 0.6em;
   text-shadow: none;
 }
 .page-bottom { position: relative; z-index: 1; width: 100%; margin-top: auto; }
 .anchor-region { position: relative; min-width: 0; }
-/* An empty container is invisible, which makes one you have just added look like it failed. */
-.container-empty-hint { margin: 0; font-size: 0.8rem; color: var(--color-text-muted); }
-.widget-board:not(.is-editing) + .container-empty-hint,
-.widget-content > .container-empty-hint:not(:only-child) { display: none; }
-.widget-board[data-flow="row"] .container-empty-hint,
-.widget-board[data-flow="wrap"] .container-empty-hint { white-space: nowrap; }
+.page-top > .anchor-region,
+.page-bottom > .anchor-region { width: 100%; }
 
 .link-widget-edit { display: inline-flex; align-items: baseline; gap: 0.5em; }
 .link-widget-href { font-size: 0.85rem; max-width: 18ch; }

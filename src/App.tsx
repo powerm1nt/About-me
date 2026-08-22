@@ -127,9 +127,7 @@ function Shell() {
       <Wallpaper />
 
       <header className="page-top">
-        <div className="page-rail">
-          <AnchorRegion anchor="top" />
-        </div>
+        <AnchorRegion anchor="top" rail />
       </header>
 
       {/* The gallery belongs to the page, not to the profile: with the header and footer arrangeable
@@ -204,9 +202,7 @@ function Shell() {
       </div>
 
       <footer className="page-bottom">
-        <div className="page-rail">
-          <AnchorRegion anchor="bottom" />
-        </div>
+        <AnchorRegion anchor="bottom" rail />
       </footer>
 
       <AppModal />

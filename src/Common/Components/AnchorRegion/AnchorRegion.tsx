@@ -8,7 +8,7 @@ import BoardInspector from "../Inspector/BoardInspector";
 import WidgetBoard from "../WidgetBoard/WidgetBoard";
 
 /** One of the page's five positions, and whatever has been put there. */
-export default function AnchorRegion({ anchor, className }: AnchorRegionProps) {
+export default function AnchorRegion({ anchor, className, rail }: AnchorRegionProps) {
   const { t } = useTranslation();
   const { anchors, setAnchor, boards, editing, moveWidget, dragging } = usePageLayout();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -89,14 +89,18 @@ export default function AnchorRegion({ anchor, className }: AnchorRegionProps) {
         </button>
       )}
 
-      <WidgetBoard
-        widgets={widgets}
-        flow={board.flow as Flow}
-        scroll={board.scroll as Scroll}
-        editing={editing}
-        anchor={anchor}
-        onChange={(next) => setAnchor(anchor, next)}
-      />
+      {/* The rail lives inside the anchor, not around it: a background set on the anchor should
+          reach the page's edges even though its contents are held to reading width. */}
+      <div className={rail ? "page-rail" : undefined}>
+        <WidgetBoard
+          widgets={widgets}
+          flow={board.flow as Flow}
+          scroll={board.scroll as Scroll}
+          editing={editing}
+          anchor={anchor}
+          onChange={(next) => setAnchor(anchor, next)}
+        />
+      </div>
 
       {/* Named while a drag is in flight, so the rails are findable rather than guessed at. */}
       {isTarget && <span className="anchor-guide">{t(`anchors.${anchor}`)}</span>}

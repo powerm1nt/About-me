@@ -504,8 +504,10 @@ export default function WidgetBoard({
               // What the server scopes this widget's own stylesheet to. Must match widgetScope() in
               // server/services/layoutCss.ts, or a widget's CSS lands on nothing.
               data-widget-id={widget.id}
-              data-border={style.border}
-              data-shadow={style.shadow}
+              // Omitted at "none", so the rules that ask whether a widget has been given a border
+              // or a shadow can actually tell.
+              data-border={style.border === "none" ? undefined : style.border}
+              data-shadow={style.shadow === "none" ? undefined : style.shadow}
               data-inspecting={inspecting === widget.id ? "" : undefined}
               // Takes the slack at the end of a bar — how the account tile sits at the far right
               // without being pinned there.

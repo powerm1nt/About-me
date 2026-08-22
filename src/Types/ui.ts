@@ -15,6 +15,8 @@ export interface WidgetBoardProps {
 export interface AnchorRegionProps {
   anchor: Anchor;
   className?: string;
+  /** Centres the board in a reading-width column while the anchor itself spans the page. */
+  rail?: boolean;
 }
 
 export interface WidgetGalleryProps {
