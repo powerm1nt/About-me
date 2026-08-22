@@ -767,26 +767,30 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 }
 .widget-board.is-snapping > .widget { position: relative; z-index: 1; }
 
-/* The corner itself. Small, and only visible while the board is being arranged. */
+/* The corner itself: a bracket, not a gripper. Metro's chrome is flat, square and made of lines, so
+   this is two edges of a square rather than the diagonal ridges other systems use — no gradient, no
+   radius, nothing raised. Always present while arranging, dim enough to sit quietly under the widget
+   and bright the moment it is pointed at. */
 .widget-resize-handle {
   position: absolute;
-  right: -2px;
-  bottom: -2px;
+  right: 0;
+  bottom: 0;
   z-index: 3;
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
+  border-right: 2px solid var(--color-accent-strong);
+  border-bottom: 2px solid var(--color-accent-strong);
+  opacity: 0.5;
   cursor: nwse-resize;
-  background: linear-gradient(
-    135deg,
-    transparent 0 40%,
-    var(--color-accent-strong) 40% 55%,
-    transparent 55% 70%,
-    var(--color-accent-strong) 70% 85%,
-    transparent 85%
-  );
   touch-action: none;
+  transition: opacity 0.12s ease-in-out, width 0.12s ease-in-out, height 0.12s ease-in-out;
 }
+.widget:hover > .widget-resize-handle { opacity: 1; }
+/* Grows rather than lights up on grab: the size is the thing being changed, so the handle says so. */
+.widget-resize-handle:hover,
+.widget-resize-handle:focus-visible { opacity: 1; width: 16px; height: 16px; }
 .widget-resize-handle:focus-visible { outline: 2px dotted var(--color-text); outline-offset: 2px; }
+.widget-board.is-snapping .widget-resize-handle { opacity: 1; }
 
 /* Scrolling, per container, off unless asked for. Only one axis can be named in CSS: setting either
    overflow property computes the other to auto, so a container told to scroll sideways clips

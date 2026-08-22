@@ -3,16 +3,15 @@ import { useTranslation } from "react-i18next";
 import type { WidgetProps } from "../types";
 
 /**
- * The size of the stack of classic windows, in pixels.
+ * One classic window, in pixels.
  *
- * Winamp's windows are a fixed 275 wide and 116 tall each; nothing about them reflows, which is why
- * the widget reserves exactly this much and centres it rather than trying to fill whatever space the
- * board gave it. Webamp centres its windows inside the element it is handed, so a host any larger
- * than the stack leaves the player adrift in the middle of an empty box.
+ * Winamp's windows are a fixed 275 by 116; nothing about them reflows, which is why the widget
+ * reserves exactly as much as the open ones need and centres them rather than trying to fill
+ * whatever space the board gave it. Webamp centres its windows inside the element it is handed, so
+ * a host any larger leaves the player adrift in the middle of an empty box.
  */
 const WINDOW_WIDTH = 275;
 const WINDOW_HEIGHT = 116;
-const STACK_HEIGHT = WINDOW_HEIGHT * 3;
 
 /**
  * Winamp, on the page, by way of Webamp.
@@ -41,6 +40,13 @@ export default function Webamp({ widget, editing, preview }: WidgetProps) {
   const src = String(widget.props?.src ?? "").trim();
   const title = String(widget.props?.title ?? "").trim();
   const artist = String(widget.props?.artist ?? "").trim();
+
+  // Just the player, unless asked for more. All three windows stacked is nearly 350px of a page for
+  // something most people want as a play button and a track name; the other two are worth having,
+  // but worth choosing.
+  const equalizer = widget.props?.equalizer === true;
+  const playlist = widget.props?.playlist === true;
+  const height = WINDOW_HEIGHT * (1 + (equalizer ? 1 : 0) + (playlist ? 1 : 0));
 
   // Deliberately not a reason to unmount: the player keeps running while the page is arranged.
   const inert = editing || preview;
@@ -79,11 +85,17 @@ export default function Webamp({ widget, editing, preview }: WidgetProps) {
         const instance = new WebampPlayer({
           initialTracks: track ? [track] : undefined,
           // Relative offsets: Webamp centres the whole set inside the host, so these only stack the
-          // three windows against each other.
+          // open windows against each other. An omitted window starts closed.
           windowLayout: {
             main: { position: { top: 0, left: 0 } },
-            equalizer: { position: { top: WINDOW_HEIGHT, left: 0 } },
-            playlist: { position: { top: WINDOW_HEIGHT * 2, left: 0 } },
+            ...(equalizer ? { equalizer: { position: { top: WINDOW_HEIGHT, left: 0 } } } : {}),
+            ...(playlist
+              ? {
+                  playlist: {
+                    position: { top: WINDOW_HEIGHT * (equalizer ? 2 : 1), left: 0 },
+                  },
+                }
+              : {}),
           },
         });
 
@@ -106,7 +118,7 @@ export default function Webamp({ widget, editing, preview }: WidgetProps) {
       disposed = true;
       player?.dispose();
     };
-  }, [src, title, artist, t]);
+  }, [src, title, artist, equalizer, playlist, t]);
 
   if (failed) return <p className="webamp-widget is-failed">{t("webamp.failed")}</p>;
 
@@ -115,7 +127,7 @@ export default function Webamp({ widget, editing, preview }: WidgetProps) {
     <div
       className={`webamp-widget ${inert ? "is-inert" : ""}`.trim()}
       ref={host}
-      style={{ width: WINDOW_WIDTH, height: STACK_HEIGHT }}
+      style={{ width: WINDOW_WIDTH, height }}
     />
   );
 }

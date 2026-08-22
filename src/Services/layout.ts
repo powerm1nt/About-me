@@ -473,6 +473,39 @@ export function addWidget(widgets: Widget[], kind: WidgetKind): Widget[] {
   return [...widgets, created];
 }
 
+/**
+ * Puts a group of widgets inside a new container, where the first of them was.
+ *
+ * The container takes the position of the earliest widget in the selection, and they go into it in
+ * the order they had on the board rather than the order they happened to be selected in — a
+ * selection is a set, and reading an order into it would rearrange the page as a side effect of
+ * picking things.
+ */
+export function wrapWidgets(widgets: Widget[], ids: Set<string>, flow: Flow): Widget[] {
+  const chosen = widgets.filter((item) => ids.has(item.id));
+  if (chosen.length === 0) return widgets;
+
+  const at = widgets.findIndex((item) => ids.has(item.id));
+  const rest = widgets.filter((item) => !ids.has(item.id));
+
+  const container = make("container", {
+    size: "large",
+    props: { flow },
+    // A free layout inside a container it was just wrapped into would place everything at cell 1,1
+    // on top of each other, so the placement each widget had on the board outside is dropped.
+    children: flow === "free" ? chosen.map(atOrigin) : chosen,
+  });
+
+  return [...rest.slice(0, at), container, ...rest.slice(at)];
+}
+
+/** Strips a free-board placement, for a widget moving into a container that has its own. */
+function atOrigin(item: Widget): Widget {
+  if (!item.props) return item;
+  const { col: _col, row: _row, ...props } = item.props;
+  return { ...item, props };
+}
+
 /** Replaces one widget wherever it is, however deeply nested. */
 export function updateWidget(
   widgets: Widget[],

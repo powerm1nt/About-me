@@ -196,6 +196,24 @@ export default function Inspector({ widget, anchor, onChange, onClose }: Inspect
                       onChange={(e) => setProp("artist", e.target.value)}
                     />
                   </label>
+                  {/* Off by default: all three windows is nearly 350px of page for something most
+                      people want as a play button and a track name. */}
+                  <label className="inspector-check">
+                    <input
+                      type="checkbox"
+                      checked={widget.props?.equalizer === true}
+                      onChange={(e) => setProp("equalizer", e.target.checked)}
+                    />
+                    <span>{t("webamp.equalizer")}</span>
+                  </label>
+                  <label className="inspector-check">
+                    <input
+                      type="checkbox"
+                      checked={widget.props?.playlist === true}
+                      onChange={(e) => setProp("playlist", e.target.checked)}
+                    />
+                    <span>{t("webamp.playlist")}</span>
+                  </label>
                 </>
               )}
 
